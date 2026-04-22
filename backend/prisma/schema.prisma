@@ -1,0 +1,88 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name         String?
+  canApprove   Boolean  @default(false)
+  signatureUrl String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  tasks     Task[]
+}
+
+model Task {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  completed   Boolean  @default(false)
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model TripTicket {
+  id                Int      @id @default(autoincrement())
+  dateRequested     String?
+  requestorName     String?
+  subsidiary        String?
+  driver            String?
+  vehicle           String?
+  plateNumber       String?
+  etdOffice         String?
+  etaDestination    String?
+  dateTimeDeparture String?
+  dateTimeReturn    String?
+  passengersDetail  String?
+  destination       String?
+  purpose           String?
+  medium            String?
+  requestedBy       String?
+  endorsedBy        String?
+  approvedBy        String?
+  layout            Json?
+  status            String   @default("Pending")
+  createdAt         DateTime @default(now())
+}
+
+model Prf {
+  id               Int       @id @default(autoincrement())
+  prfNo            String?
+  dateRequested    String?
+  dateNeeded       String?
+  to               String?
+  from             String?
+  remarks          String?
+  quotationSummary String?
+  preparedBy       String?
+  verifiedBy       String?
+  notedBy          String?
+  approvedBy       String?
+  layout           Json?
+  status           String    @default("Pending")
+  items            PrfItem[]
+  createdAt        DateTime  @default(now())
+}
+
+model PrfItem {
+  id              Int     @id @default(autoincrement())
+  qty             String?
+  unit            String?
+  particulars     String?
+  estimatedCost   String?
+  availableStocks String?
+  prfId           Int
+  prf             Prf     @relation(fields: [prfId], references: [id])
+}
