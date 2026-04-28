@@ -1,14 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
+import api from '../services/api';
+import { useToast } from '../context/ToastContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const INITIAL_FIELDS = {};
 
 export default function PRFForm() {
+  const { showToast } = useToast();
   const location = useLocation();
   const initialData = location.state?.initialData;
   const isReviewMode = !!initialData;
 
+  const user = JSON.parse(localStorage.getItem('user'));
   const [fields, setFields] = useState(() => {
     if (initialData) {
       const savedLayout = typeof initialData.layout === 'string' ? JSON.parse(initialData.layout) : initialData.layout;
@@ -30,9 +34,11 @@ export default function PRFForm() {
   const [status, setStatus] = useState(initialData?.status || 'Pending');
   const [isAddingField, setIsAddingField] = useState(false);
   const [draggingField, setDraggingField] = useState(null);
+  const [draggingStart, setDraggingStart] = useState(null);
   const [resizingField, setResizingField] = useState(null);
   const [resizeHandle, setResizeHandle] = useState(null);
   const [resizingStart, setResizingStart] = useState(null);
+  const [rotatingField, setRotatingField] = useState(null);
   const [selectedField, setSelectedField] = useState(null);
   const [zoom, setZoom] = useState(1.2);
   const containerRef = useRef(null);
@@ -40,7 +46,22 @@ export default function PRFForm() {
 
   const handleDragStart = (e, key) => {
     if (appMode !== 'layout') return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const field = fields[key];
+    const mouseX = ((e.clientX - rect.left) / rect.width) * 100;
+    const mouseY = ((e.clientY - rect.top) / rect.height) * 100;
+
     setDraggingField(key);
+    setDraggingStart({
+      offsetX: mouseX - field.x,
+      offsetY: mouseY - field.y
+    });
+  };
+
+  const handleRotateStart = (e, key) => {
+    if (appMode !== 'layout') return;
+    e.stopPropagation();
+    setRotatingField(key);
   };
 
   const handleResizeStart = (e, key, handle) => {
@@ -64,13 +85,17 @@ export default function PRFForm() {
     if (appMode !== 'layout') return;
     const rect = containerRef.current.getBoundingClientRect();
 
-    if (draggingField) {
-      const x = ((e.clientX - rect.left) / rect.width) * 100;
-      const y = ((e.clientY - rect.top) / rect.height) * 100;
+    if (draggingField && draggingStart) {
+      const mouseX = ((e.clientX - rect.left) / rect.width) * 100;
+      const mouseY = ((e.clientY - rect.top) / rect.height) * 100;
       
       setFields(prev => ({
         ...prev,
-        [draggingField]: { ...prev[draggingField], x, y }
+        [draggingField]: { 
+          ...prev[draggingField], 
+          x: mouseX - draggingStart.offsetX, 
+          y: mouseY - draggingStart.offsetY 
+        }
       }));
     } else if (resizingField && resizingStart) {
       const deltaX = ((e.clientX - resizingStart.x) / rect.width) * 100;
@@ -118,14 +143,27 @@ export default function PRFForm() {
 
         return { ...prev, [resizingField]: newField };
       });
+    } else if (rotatingField) {
+      const field = fields[rotatingField];
+      const centerX = rect.left + (field.x + field.width / 2) * rect.width / 100;
+      const centerY = rect.top + (field.y + field.height / 2) * rect.height / 100;
+      
+      const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * 180 / Math.PI;
+      
+      setFields(prev => ({
+        ...prev,
+        [rotatingField]: { ...prev[rotatingField], rotate: angle }
+      }));
     }
   };
 
   const handleMouseUp = () => {
     setDraggingField(null);
+    setDraggingStart(null);
     setResizingField(null);
     setResizeHandle(null);
     setResizingStart(null);
+    setRotatingField(null);
   };
 
   const handleValueChange = (key, val) => {
@@ -155,7 +193,7 @@ export default function PRFForm() {
     const user = JSON.parse(userStr);
     
     if (!user.signatureUrl) {
-      return alert('You have not uploaded an E-Signature yet. Please go to your Profile to upload one.');
+      return showToast('please upload the signature', 'error');
     }
 
     const id = `sig_${Date.now()}`;
@@ -200,13 +238,13 @@ export default function PRFForm() {
     }));
   };
 
-  const handleSave = async () => {
+  const handleApprove = async () => {
+    if (!window.confirm('Are you sure you want to approve this PRF?')) return;
     try {
-      localStorage.setItem('prfLayoutClean', JSON.stringify(fields));
-      
       const payload = {
+        ...initialData,
         layout: fields,
-        status,
+        status: 'Approved',
         ...Object.keys(fields).reduce((acc, key) => {
           if (!fields[key].isExtra) acc[key] = fields[key].value;
           return acc;
@@ -220,11 +258,102 @@ export default function PRFForm() {
         })).filter(it => it.particulars.trim() !== '')
       };
 
+      await api.put(`/prfs/${initialData.id}`, payload);
+      showToast('PRF Approved successfully!', 'success');
+      navigate('/dashboard');
+    } catch (err) {
+      console.error(err);
+      const errMsg = err.response?.data?.error || err.message || 'Error approving PRF';
+      showToast(`Error: ${errMsg}`, 'error');
+    }
+  };
+
+  const handleDisapprove = async () => {
+    if (!window.confirm('Are you sure you want to disapprove this PRF?')) return;
+    try {
+      const payload = {
+        ...initialData,
+        layout: fields,
+        status: 'Disapproved',
+        ...Object.keys(fields).reduce((acc, key) => {
+          if (!fields[key].isExtra) acc[key] = fields[key].value;
+          return acc;
+        }, {}),
+        items: Array(15).fill().map((_, i) => ({
+          qty: fields[`qty_${i}`]?.value || '',
+          unit: fields[`unit_${i}`]?.value || '',
+          particulars: fields[`part_${i}`]?.value || '',
+          estimatedCost: fields[`cost_${i}`]?.value || '',
+          availableStocks: fields[`stocks_${i}`]?.value || '',
+        })).filter(it => it.particulars.trim() !== '')
+      };
+
+      await api.put(`/prfs/${initialData.id}`, payload);
+      showToast('PRF Disapproved and moved to Archive', 'info');
+      navigate('/archived');
+    } catch (err) {
+      console.error(err);
+      const errMsg = err.response?.data?.error || err.message || 'Error disapproving PRF';
+      showToast(`Error: ${errMsg}`, 'error');
+    }
+  };
+
+  const handleArchive = async () => {
+    if (!window.confirm('Are you sure you want to archive this PRF?')) return;
+    try {
+      const payload = {
+        ...initialData,
+        layout: fields,
+        status: 'Archived',
+        ...Object.keys(fields).reduce((acc, key) => {
+          if (!fields[key].isExtra) acc[key] = fields[key].value;
+          return acc;
+        }, {}),
+        items: Array(15).fill().map((_, i) => ({
+          qty: fields[`qty_${i}`]?.value || '',
+          unit: fields[`unit_${i}`]?.value || '',
+          particulars: fields[`part_${i}`]?.value || '',
+          estimatedCost: fields[`cost_${i}`]?.value || '',
+          availableStocks: fields[`stocks_${i}`]?.value || '',
+        })).filter(it => it.particulars.trim() !== '')
+      };
+
+      await api.put(`/prfs/${initialData.id}`, payload);
+      showToast('PRF Archived successfully!', 'success');
+      navigate('/archived');
+    } catch (err) {
+      console.error(err);
+      const errMsg = err.response?.data?.error || err.message || 'Error archiving PRF';
+      showToast(`Error: ${errMsg}`, 'error');
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      localStorage.setItem('prfLayoutClean', JSON.stringify(fields));
+      
+      const payload = {
+        ...Object.keys(fields).reduce((acc, key) => {
+          if (!fields[key].isExtra) acc[key] = fields[key].value;
+          return acc;
+        }, {}),
+        layout: fields,
+        status,
+        requestor: user?.name || 'Unknown', 
+        items: Array(15).fill().map((_, i) => ({
+          qty: fields[`qty_${i}`]?.value || '',
+          unit: fields[`unit_${i}`]?.value || '',
+          particulars: fields[`part_${i}`]?.value || '',
+          estimatedCost: fields[`cost_${i}`]?.value || '',
+          availableStocks: fields[`stocks_${i}`]?.value || '',
+        })).filter(it => it.particulars.trim() !== '')
+      };
+
       if (isReviewMode && initialData?.id) {
-        await axios.put(`http://localhost:5000/api/prfs/${initialData.id}`, payload);
+        await api.put(`/prfs/${initialData.id}`, payload);
         alert('Updated Successfully!');
       } else {
-        await axios.post('http://localhost:5000/api/prfs', payload);
+        await api.post('/prfs', payload);
         alert('Saved Successfully!');
       }
       navigate('/dashboard');
@@ -241,7 +370,7 @@ export default function PRFForm() {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [draggingField, resizingField, resizingStart, resizeHandle, appMode]);
+  }, [draggingField, draggingStart, resizingField, resizingStart, resizeHandle, rotatingField, appMode]);
 
   return (
     <div className="smart-canvas-page">
@@ -252,9 +381,11 @@ export default function PRFForm() {
            <button className={`tool-btn ${appMode === 'view' ? 'active-mode' : ''}`} onClick={() => {setAppMode('view'); setIsAddingField(false); setSelectedField(null);}}>
              📄 View Mode
            </button>
-           <button className={`tool-btn ${appMode === 'layout' ? 'active-mode' : ''}`} onClick={() => setAppMode('layout')}>
-             🛠️ Layout & Edit
-           </button>
+           {status !== 'Approved' && status !== 'Archived' && (
+             <button className={`tool-btn ${appMode === 'layout' ? 'active-mode' : ''}`} onClick={() => setAppMode('layout')}>
+               🛠️ Layout & Edit
+             </button>
+           )}
 
            {appMode === 'layout' && (
              <div className="layout-tools">
@@ -315,10 +446,26 @@ export default function PRFForm() {
           />
         </div>
         <div className="tool-group">
-          <button className="tool-btn save" onClick={handleSave}>
-            {isReviewMode ? 'Update Record' : 'Finalize & Save'}
-          </button>
-          <button className="tool-btn print" onClick={() => window.print()}>🖨️ Print</button>
+           {isReviewMode && user?.canApprove && status === 'Pending' && (
+             <>
+               <button className="tool-btn approve" onClick={handleApprove}>
+                 ✅ Approve
+               </button>
+               <button className="tool-btn disapprove-btn" onClick={handleDisapprove}>
+                 ❌ Disapprove
+               </button>
+             </>
+           )}
+           {!isReviewMode && status !== 'Approved' && status !== 'Archived' && (
+             <button className="tool-btn save" onClick={handleSave}>
+              Finalize & Save
+            </button>
+           )}
+           {status === 'Approved' && user?.canApprove && (
+             <button className="tool-btn" style={{ background: '#f59e0b', color: 'white' }} onClick={handleArchive}>
+               📥 Archive
+             </button>
+           )}
         </div>
       </div>
       <div 
@@ -332,7 +479,7 @@ export default function PRFForm() {
         }}
       >
         <img 
-          src="/prf.jpg" 
+          src="/Request for Payment.jpg" 
           className="form-image" 
           alt="form" 
           style={{ width: '100%', height: 'auto', display: 'block', pointerEvents: 'none' }}
@@ -346,7 +493,8 @@ export default function PRFForm() {
               left: `${field.x}%`,
               top: `${field.y}%`,
               width: `${field.width}%`,
-              height: `${field.height}%`
+              height: `${field.height}%`,
+              transform: `rotate(${field.rotate || 0}deg)`
             }}
             onClick={(e) => { e.stopPropagation(); handleSelectField(key); }}
           >
@@ -405,6 +553,12 @@ export default function PRFForm() {
                 <div className="resizer-side b" onMouseDown={(e) => handleResizeStart(e, key, 'bottom')}></div>
                 <div className="resizer-side l" onMouseDown={(e) => handleResizeStart(e, key, 'left')}></div>
                 <div className="resizer-side t" onMouseDown={(e) => handleResizeStart(e, key, 'top')}></div>
+
+                {/* Rotation Handle */}
+                <div className="rotate-handle" onMouseDown={(e) => handleRotateStart(e, key)}>
+                  <div className="rotate-line"></div>
+                  <div className="rotate-circle">🔄</div>
+                </div>
               </>
             )}
 
@@ -447,25 +601,32 @@ export default function PRFForm() {
 
       <style>{`
         @page { size: A4; margin: 0; }
-        .smart-canvas-page { background: #0f172a; min-height: 100vh; padding: 100px 20px 40px; display: flex; flex-direction: column; align-items: center; font-family: 'Outfit', sans-serif; overflow-x: auto; }
+        .smart-canvas-page { background: var(--bg-gradient); min-height: 100vh; padding: 100px 20px 40px; display: flex; flex-direction: column; align-items: center; font-family: 'Outfit', sans-serif; overflow-x: auto; }
         
         .sticky-toolbar { 
-          position: fixed; top: 0; left: 0; right: 0; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(12px); 
-          padding: 12px 40px; display: flex; justify-content: space-between; align-items: center; z-index: 1000; border-bottom: 1px solid #1e293b;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+          position: fixed; top: 0; left: 280px; right: 0; background: var(--glass); backdrop-filter: blur(20px); 
+          padding: 1rem 3rem; display: flex; justify-content: space-between; align-items: center; z-index: 900; border-bottom: 1px solid var(--glass-border);
+          box-shadow: 0 4px 30px rgba(0,0,0,0.03);
+          transition: var(--transition-smooth);
         }
-        .tool-group { display: flex; gap: 10px; align-items: center; }
-        .tool-btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; transition: all 0.2s; font-size: 0.9rem; }
-        .tool-btn.back { background: #334155; color: white; }
-        .tool-btn.active-mode { background: #6366f1; color: white; border: 2px solid #fff; }
+        .tool-group { display: flex; gap: 12px; align-items: center; }
+        .tool-btn { padding: 10px 20px; border-radius: 12px; border: none; cursor: pointer; font-weight: 700; transition: var(--transition-smooth); font-size: 0.95rem; display: flex; align-items: center; gap: 8px; }
+        .tool-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .tool-btn.back { background: var(--primary-light); color: var(--primary); }
+        .tool-btn.active-mode { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
         .tool-btn.active-tool { background: #ef4444; color: white; animation: pulse 1.5s infinite; }
-        .tool-btn.inactive-tool { background: #1e293b; color: #94a3b8; border: 1px solid #334155; }
+        .tool-btn.inactive-tool { background: var(--card-bg); color: var(--text-dim); border: 1px solid var(--glass-border); }
         .tool-btn.reset { background: #475569; color: white; }
-        .tool-btn.save { background: #10b981; color: white; }
-        .tool-btn.print { background: #06b6d4; color: white; }
+        .tool-btn.save { background: #10b981; color: white; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
+        
+        @media (max-width: 1024px) {
+            .sticky-toolbar { left: 0; padding: 1rem; }
+        }
+        .tool-btn.approve { background: #10b981; color: white; border: 2px solid #fff; }
+        .tool-btn.disapprove-btn { background: #ef4444; color: white; }
 
-        .zoom-control { background: rgba(30, 41, 59, 0.5); padding: 6px 15px; border-radius: 30px; border: 1px solid #334155; }
-        .zoom-slider { cursor: pointer; accent-color: #6366f1; width: 100px; }
+        .zoom-control { background: rgba(0,0,0,0.03); padding: 6px 15px; border-radius: 30px; border: 1px solid var(--glass-border); }
+        .zoom-slider { cursor: pointer; accent-color: var(--primary); width: 100px; }
 
         @keyframes pulse {
           0% { transform: scale(1); }
@@ -565,15 +726,6 @@ export default function PRFForm() {
 
         .resizer-side:hover { background: rgba(99, 102, 241, 0.3); }
 
-        .status-selector { display: flex; flex-direction: column; gap: 2px; }
-        .status-select { 
-            background: #0f172a; border: 1px solid #475569; color: white; padding: 4px 8px; border-radius: 6px; 
-            font-size: 0.8rem; font-weight: bold; outline: none; transition: border-color 0.2s;
-        }
-        .status-select.pending { border-color: #facc15; color: #facc15; }
-        .status-select.approved { border-color: #4ade80; color: #4ade80; }
-        .status-select.rejected { border-color: #fb7185; color: #fb7185; }
-
         .print-only { display: none; }
 
         @media print {
@@ -590,6 +742,36 @@ export default function PRFForm() {
           .draggable-field.layout { border: none !important; background: transparent !important; }
           .draggable-field.layout input, .draggable-field.layout textarea { border: none !important; background: transparent !important; }
           .drag-handle { display: none !important; }
+          .rotate-handle { display: none !important; }
+        }
+
+        .rotate-handle {
+          position: absolute;
+          top: 50%;
+          right: -50px;
+          transform: translateY(-50%);
+          display: flex;
+          align-items: center;
+          cursor: grab;
+          z-index: 130;
+        }
+        .rotate-handle:active { cursor: grabbing; }
+        .rotate-line {
+          width: 25px;
+          height: 2px;
+          background: #6366f1;
+        }
+        .rotate-circle {
+          width: 26px;
+          height: 26px;
+          background: white;
+          border: 2px solid #6366f1;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 14px;
+          box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
       `}</style>
     </div>

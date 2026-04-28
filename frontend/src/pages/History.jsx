@@ -1,208 +1,160 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { historyService } from '../services/history.service';
+
+// Modular Components
+import TicketTable from '../components/history/TicketTable';
+import CalendarView from '../components/history/CalendarView';
+import ActivityLog from '../components/history/ActivityLog';
 
 export default function History() {
-  const [tripTickets, setTripTickets] = useState([]);
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(() => {
+    const passedTab = location.state?.initialTab;
+    if (passedTab === 'activity') return 'logs';
+    if (passedTab) return passedTab;
+    return localStorage.getItem('historyActiveTab') || 'tickets';
+  });
+  
+  const [tickets, setTickets] = useState([]);
   const [prfs, setPrfs] = useState([]);
+  const [rrfs, setRrfs] = useState([]);
+  const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [currentDate, setCurrentDate] = useState(new Date());
   const navigate = useNavigate();
 
+  const user = JSON.parse(localStorage.getItem('user'));
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    localStorage.setItem('historyActiveTab', tab);
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [ticketsRes, prfsRes] = await Promise.all([
-          axios.get('http://localhost:5000/api/trip-tickets'),
-          axios.get('http://localhost:5000/api/prfs')
-        ]);
-        setTripTickets(Array.isArray(ticketsRes.data) ? ticketsRes.data : []);
-        setPrfs(Array.isArray(prfsRes.data) ? prfsRes.data : []);
-      } catch (err) {
-        console.error('Error fetching records:', err);
-        setTripTickets([]);
-        setPrfs([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    loadData();
   }, []);
 
-  // Calendar Helpers
-  const daysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
-  const firstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [ticketsData, prfsData, rrfsData] = await Promise.all([
+        historyService.getTripTickets(),
+        historyService.getPRFs(),
+        historyService.getRRFs()
+      ]);
+      setTickets(ticketsData);
+      setPrfs(prfsData);
+      setRrfs(rrfsData);
 
-  const getCalendarDays = () => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const days = [];
-    const totalDays = daysInMonth(year, month);
-    const startOffset = firstDayOfMonth(year, month);
-
-    // Add empty slots for previous month
-    for (let i = 0; i < startOffset; i++) {
-        days.push(null);
+      if (user?.canApprove) {
+        const logsData = await historyService.getActivityLogs();
+        setLogs(logsData);
+      }
+    } catch (err) {
+      console.error('Failed to load history data:', err);
+    } finally {
+      setLoading(false);
     }
-
-    // Add days of current month
-    for (let d = 1; d <= totalDays; d++) {
-        days.push(new Date(year, month, d));
-    }
-    return days;
   };
 
-  const formatDate = (date) => date.toISOString().split('T')[0];
-
-  const getTicketsForDate = (date) => {
-    if (!date) return [];
-    const dateStr = formatDate(date);
-    return tripTickets.filter(ticket => {
-        // Simple string check or date range check
-        // Check if dateRequested matches or if it falls within departure/return range
-        if (ticket.dateRequested === dateStr) return true;
-        
-        // Try parsing range
-        try {
-            const start = new Date(ticket.dateTimeDeparture);
-            const end = new Date(ticket.dateTimeReturn);
-            if (!isNaN(start) && !isNaN(end)) {
-                return date >= start && date <= end;
-            }
-        } catch(e) {}
-        
-        return false;
-    });
+  const handleViewRecord = (record, type) => {
+    let path = '/trip-ticket';
+    if (type === 'PRF') path = '/prf';
+    else if (type === 'RRF') path = '/rrf';
+    navigate(path, { state: { initialData: record, isReviewMode: true } });
   };
 
-  const handleViewTicket = (ticket) => {
-    navigate('/trip-ticket', { state: { initialData: ticket, readOnly: true } });
+  const handleViewLogReference = (log) => {
+    let record;
+    if (log.resource === 'TRIP_TICKET') record = tickets.find(t => t.id === log.resourceId);
+    else if (log.resource === 'PRF') record = prfs.find(p => p.id === log.resourceId);
+    else if (log.resource === 'RRF') record = rrfs.find(r => r.id === log.resourceId);
+    
+    if (record) handleViewRecord(record, log.resource);
   };
 
-  const handleViewPRF = (prf) => {
-    navigate('/prf', { state: { initialData: prf, readOnly: true } });
-  };
-
-  const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
-  const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
-
-  if (loading) return <div className="history-view" style={{ padding: '3rem', color: 'white' }}>Loading Records...</div>;
+  if (loading) return <div className="history-page" style={{ padding: '3rem', color: 'var(--text-main)' }}>Loading System Records...</div>;
 
   return (
-    <div className="history-view" style={{ padding: '3rem' }}>
-      <header style={{ marginBottom: '3rem' }}>
-        <h1 style={{ fontSize: '2.5rem', fontWeight: '800' }}>History & Records</h1>
-        <p style={{ color: 'var(--text-dim)', fontSize: '1rem', marginTop: '0.4rem' }}>
-          Monitor all trip tickets and purchase requests.
+    <div className="history-page" style={{ padding: '3rem' }}>
+      <header className="page-header" style={{ marginBottom: '3rem', animation: 'slideDown 0.6s ease-out' }}>
+        <h1 style={{ fontSize: '3rem', fontWeight: '800', letterSpacing: '-1.5px' }}>📂 Records & Activity</h1>
+        <p style={{ color: 'var(--text-dim)', marginTop: '0.6rem', fontSize: '1.1rem', fontWeight: '500' }}>
+          Monitor all document flows, approvals, and system changes in one centralized view.
         </p>
       </header>
 
-      <section className="calendar-section">
-        <div className="section-header">
-            <h2>📅 Trip Ticket Calendar</h2>
-            <div className="month-controls">
-                <button onClick={prevMonth}>‹</button>
-                <span>{currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}</span>
-                <button onClick={nextMonth}>›</button>
-            </div>
-        </div>
+      <div className="tabs-container" style={{ display: 'flex', gap: '1.2rem', marginBottom: '3rem' }}>
+        <button className={`tab-btn ${activeTab === 'tickets' ? 'active' : ''}`} onClick={() => handleTabChange('tickets')}>
+          🚗 Trip Tickets
+        </button>
+        <button className={`tab-btn ${activeTab === 'prfs' ? 'active' : ''}`} onClick={() => handleTabChange('prfs')}>
+          📄 PRF Documents
+        </button>
+        <button className={`tab-btn ${activeTab === 'rrfs' ? 'active' : ''}`} onClick={() => handleTabChange('rrfs')}>
+          📄 RRF Documents
+        </button>
+        <button className={`tab-btn ${activeTab === 'calendar' ? 'active' : ''}`} onClick={() => handleTabChange('calendar')}>
+          📅 Dispatch Calendar
+        </button>
+        {user?.canApprove && (
+          <button className={`tab-btn ${activeTab === 'logs' ? 'active' : ''}`} onClick={() => handleTabChange('logs')}>
+            📜 System Activity
+          </button>
+        )}
+      </div>
 
-        <div className="calendar-grid">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                <div key={day} className="day-header">{day}</div>
-            ))}
-            {getCalendarDays().map((date, idx) => {
-                const tickets = getTicketsForDate(date);
-                return (
-                    <div key={idx} className={`day-cell ${!date ? 'empty' : ''} ${date && formatDate(date) === formatDate(new Date()) ? 'today' : ''}`}>
-                        {date && <span className="day-num">{date.getDate()}</span>}
-                        <div className="day-events">
-                            {tickets.map(t => (
-                                <div 
-                                    key={t.id} 
-                                    className={`event-tag ${t.status?.toLowerCase() || 'pending'}`}
-                                    onClick={() => handleViewTicket(t)}
-                                    title={`${t.requestorName} - ${t.status || 'Pending'}`}
-                                >
-                                    {t.requestorName}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                );
-            })}
-        </div>
-      </section>
+      <div className="content-container premium-card" style={{ padding: '2.5rem', background: 'var(--card-bg)' }}>
+        {activeTab === 'tickets' && (
+          <TicketTable 
+            tickets={tickets.map(t => ({ ...t, requestorName: t.requestorName || t.author?.name || 'Unknown' }))} 
+            onView={(t) => handleViewRecord(t, 'TRIP_TICKET')} 
+          />
+        )}
 
-      <section className="records-section">
-        <h2>📄 PRF Records</h2>
-        <div className="records-list">
-            {prfs.map(prf => (
-                <div key={prf.id} className="record-card glass" onClick={() => handleViewPRF(prf)}>
-                    <div className="card-top">
-                        <span className="record-id">#{prf.prfNo || prf.id}</span>
-                        <span className={`status-badge ${prf.status?.toLowerCase() || 'pending'}`}>
-                            {prf.status || 'Pending'}
-                        </span>
-                    </div>
-                    <div className="card-body">
-                        <p><strong>Prepared By:</strong> {prf.preparedBy}</p>
-                        <p><strong>Date Needed:</strong> {prf.dateNeeded}</p>
-                    </div>
-                    <div className="card-footer">
-                        <span>Created: {prf.createdAt ? new Date(prf.createdAt).toLocaleDateString() : 'N/A'}</span>
-                        <button className="view-btn">View Details</button>
-                    </div>
-                </div>
-            ))}
-            {prfs.length === 0 && <p className="empty-msg">No PRF records found.</p>}
-        </div>
-      </section>
+        {activeTab === 'prfs' && (
+          <TicketTable 
+            tickets={prfs.map(p => ({ ...p, requestorName: p.requestor || p.author?.name || (p.prfNo ? `PRF #${p.prfNo}` : 'Unnamed PRF') }))} 
+            onView={(p) => handleViewRecord(p, 'PRF')} 
+            typeLabel="PRF Form"
+          />
+        )}
+
+        {activeTab === 'rrfs' && (
+          <TicketTable 
+            tickets={rrfs.map(r => ({ ...r, requestorName: r.requestor || r.author?.name || (r.rrfNo ? `RRF #${r.rrfNo}` : 'Unnamed RRF') }))} 
+            onView={(r) => handleViewRecord(r, 'RRF')} 
+            typeLabel="RRF Form"
+          />
+        )}
+
+        {activeTab === 'calendar' && (
+          <CalendarView tickets={tickets} onTicketClick={(t) => handleViewRecord(t, 'TRIP_TICKET')} />
+        )}
+
+        {activeTab === 'logs' && (
+          <ActivityLog logs={logs} onViewResource={handleViewLogReference} />
+        )}
+      </div>
 
       <style>{`
-        .history-view { 
-            color: white; font-family: 'Outfit', sans-serif;
-        }
-        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
-        .month-controls { display: flex; align-items: center; gap: 15px; background: rgba(0,0,0,0.2); padding: 8px 20px; border-radius: 30px; border: 1px solid var(--glass-border); }
-        .month-controls button { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; padding: 0 10px; }
-        .month-controls span { font-weight: 600; min-width: 150px; text-align: center; }
-
-        .calendar-grid { 
-            display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; 
-            background: var(--glass-border); border-radius: 16px; overflow: hidden; border: 1px solid var(--glass-border);
-        }
-        .day-header { background: rgba(15, 23, 42, 0.8); padding: 12px; text-align: center; font-weight: 600; color: var(--text-dim); font-size: 0.8rem; text-transform: uppercase; }
-        .day-cell { background: rgba(255, 255, 255, 0.03); min-height: 120px; padding: 10px; position: relative; transition: background 0.2s; }
-        .day-cell:not(.empty):hover { background: rgba(255, 255, 255, 0.06); }
-        .day-cell.today { background: rgba(99, 102, 241, 0.1); }
-        .day-num { font-size: 0.9rem; font-weight: 600; color: var(--text-dim); }
-        .today .day-num { color: #818cf8; }
-
-        .day-events { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
-        .event-tag { 
-            font-size: 0.7rem; padding: 4px 8px; border-radius: 4px; cursor: pointer; 
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-            border-left: 3px solid transparent; transition: all 0.2s;
-        }
-        .event-tag:hover { transform: translateX(3px); filter: brightness(1.2); }
-        .event-tag.pending { background: rgba(234, 179, 8, 0.2); color: #facc15; border-left-color: #facc15; }
-        .event-tag.approved { background: rgba(34, 197, 94, 0.2); color: #4ade80; border-left-color: #4ade80; }
-
-        .records-section { margin-top: 4rem; }
-        .records-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 1.5rem; }
-        .record-card { padding: 1.5rem; border-radius: 16px; cursor: pointer; transition: all 0.3s; }
-        .record-card:hover { transform: translateY(-5px); background: rgba(255, 255, 255, 0.08); }
-        .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
-        .record-id { font-family: monospace; color: var(--text-dim); }
-        .status-badge { font-size: 0.7rem; padding: 4px 10px; border-radius: 20px; font-weight: 600; text-transform: uppercase; }
-        .status-badge.pending { background: rgba(234, 179, 8, 0.2); color: #facc15; }
-        .status-badge.approved { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
-        .card-body p { margin-bottom: 5px; font-size: 0.9rem; }
-        .card-footer { margin-top: 1.5rem; border-top: 1px solid var(--glass-border); padding-top: 1rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--text-dim); }
-        .view-btn { background: var(--primary); border: none; color: white; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
         
-        .empty-msg { color: var(--text-dim); text-align: center; grid-column: 1 / -1; padding: 3rem; }
+        .tab-btn {
+          padding: 14px 28px; border-radius: 16px; border: 1px solid var(--glass-border);
+          background: var(--card-bg); color: var(--text-dim); cursor: pointer;
+          font-weight: 700; transition: var(--transition-smooth); font-size: 0.95rem;
+          box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+        }
+        .tab-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.05); color: var(--primary); }
+        .tab-btn.active { 
+          background: var(--primary); color: white; border-color: var(--primary); 
+          box-shadow: 0 10px 25px rgba(37, 99, 235, 0.3);
+          transform: translateY(-3px);
+        }
+        
+        .premium-card { animation: pageEnter 0.5s ease-out; }
+        @keyframes pageEnter { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
     </div>
   );

@@ -17,8 +17,13 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    
+    /* JavaScript Support */
+    "allowJs": true,
+    "checkJs": false,
+    "jsx": "react-jsx"
   },
-  "include": ["src"]
+  "include": ["src/**/*.js", "src/**/*.jsx", "src/**/*.d.ts"]
 }
 

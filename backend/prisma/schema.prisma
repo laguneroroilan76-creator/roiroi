@@ -10,16 +10,32 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  User
+  Admin
+  Driver
+  Guard
+}
+
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
   password  String
   name         String?
+  role         UserRole @default(User)
   canApprove   Boolean  @default(false)
   signatureUrl String?
+  avatarUrl    String?
+  themeColor   String?  @default("#6366f1")
+  isDarkMode   Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  tasks     Task[]
+  tasks        Task[]
+  tripTickets  TripTicket[]
+  prfs         Prf[]
+  rrfs         Rrf[]
+  activityLogs ActivityLog[]
+  reminders    Reminder[]
 }
 
 model Task {
@@ -45,6 +61,9 @@ model TripTicket {
   etaDestination    String?
   dateTimeDeparture String?
   dateTimeReturn    String?
+  passengerCount    String?
+  hdiPassengers     String?
+  outsidePassengers String?
   passengersDetail  String?
   destination       String?
   purpose           String?
@@ -52,14 +71,21 @@ model TripTicket {
   requestedBy       String?
   endorsedBy        String?
   approvedBy        String?
+  kmOut             String?
+  kmIn              String?
+  guardOut          String?
+  guardIn           String?
   layout            Json?
   status            String   @default("Pending")
+  authorId          Int?
+  author            User?    @relation(fields: [authorId], references: [id])
   createdAt         DateTime @default(now())
 }
 
 model Prf {
   id               Int       @id @default(autoincrement())
   prfNo            String?
+  requestor        String?
   dateRequested    String?
   dateNeeded       String?
   to               String?
@@ -72,6 +98,8 @@ model Prf {
   approvedBy       String?
   layout           Json?
   status           String    @default("Pending")
+  authorId         Int?
+  author           User?     @relation(fields: [authorId], references: [id])
   items            PrfItem[]
   createdAt        DateTime  @default(now())
 }
@@ -84,5 +112,69 @@ model PrfItem {
   estimatedCost   String?
   availableStocks String?
   prfId           Int
-  prf             Prf     @relation(fields: [prfId], references: [id])
+  prf             Prf     @relation(fields: [prfId], references: [id], onDelete: Cascade)
+}
+
+model ActivityLog {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id])
+  action     String   // e.g. "CREATED", "APPROVED", "REJECTED", "DELETED"
+  resource   String   // e.g. "TRIP_TICKET", "PRF"
+  resourceId Int
+  details    String?  // e.g. "Juan Dela Cruz created Trip Ticket #1"
+  createdAt  DateTime @default(now())
+}
+
+model Reminder {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  date      String   // Start date ISO string YYYY-MM-DD
+  endDate   String?  // End date ISO string YYYY-MM-DD
+  text      String   @db.Text
+  createdAt DateTime @default(now())
+}
+
+model Rrf {
+  id               Int       @id @default(autoincrement())
+  rrfNo            String?
+  requestor        String?
+  dateRequested    String?
+  dateNeeded       String?
+  remarks          String?
+  preparedBy       String?
+  verifiedBy       String?
+  approvedBy       String?
+  layout           Json?
+  status           String    @default("Pending")
+  authorId         Int?
+  author           User?     @relation(fields: [authorId], references: [id])
+  items            RrfItem[]
+  createdAt        DateTime  @default(now())
+}
+
+model RrfItem {
+  id              Int     @id @default(autoincrement())
+  qty             String?
+  unit            String?
+  particulars     String?
+  estimatedCost   String?
+  rrfId           Int
+  rrf             Rrf     @relation(fields: [rrfId], references: [id], onDelete: Cascade)
+}
+
+model Driver {
+  id        Int      @id @default(autoincrement())
+  name      String
+  status    String   @default("Active")
+  createdAt DateTime @default(now())
+}
+
+model Vehicle {
+  id          Int      @id @default(autoincrement())
+  name        String
+  plateNumber String
+  status      String   @default("Active")
+  createdAt   DateTime @default(now())
 }

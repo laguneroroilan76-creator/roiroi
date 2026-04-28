@@ -1,585 +1,587 @@
-import { useState, useRef, useEffect } from 'react';
-import axios from 'axios';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-
-const INITIAL_FIELDS = {};
+import { useToast } from '../context/ToastContext';
+import api from '../services/api';
 
 export default function TripTicketForm() {
+  const { showToast } = useToast();
   const location = useLocation();
-  const initialData = location.state?.initialData;
-  const isReviewMode = !!initialData;
-
-  const [fields, setFields] = useState(() => {
-    if (initialData) {
-      const savedLayout = typeof initialData.layout === 'string' ? JSON.parse(initialData.layout) : initialData.layout;
-      const base = savedLayout || { ...INITIAL_FIELDS };
-      // Ensure all initialData fields are mapped to layout values
-      Object.keys(base).forEach(key => {
-        if (initialData[key] !== undefined && !base[key].isExtra) {
-          base[key].value = initialData[key];
-        }
-      });
-      return base;
-    }
-    const saved = localStorage.getItem('tripTicketLayoutClean');
-    const base = saved ? JSON.parse(saved) : { ...INITIAL_FIELDS };
-    Object.keys(base).forEach(key => { if (!base[key].value) base[key].value = ''; });
-    return base;
-  });
-
-  const [appMode, setAppMode] = useState('view');
-  const [status, setStatus] = useState(initialData?.status || 'Pending');
-  const [isAddingField, setIsAddingField] = useState(false);
-  const [draggingField, setDraggingField] = useState(null);
-  const [resizingField, setResizingField] = useState(null);
-  const [resizeHandle, setResizeHandle] = useState(null);
-  const [resizingStart, setResizingStart] = useState(null);
-  const [selectedField, setSelectedField] = useState(null);
-  const [zoom, setZoom] = useState(1.2);
-  const containerRef = useRef(null);
   const navigate = useNavigate();
 
-  const handleDragStart = (e, key) => {
-    if (appMode !== 'layout') return;
-    setDraggingField(key);
+  const initialData = location.state?.initialData;
+  const isReviewMode = !!initialData;
+  const isReadOnly = location.state?.readOnly;
+
+  const user = JSON.parse(localStorage.getItem('user'));
+  const isGuard = user?.role === 'Guard';
+  const guardEditableFields = ['kmOut', 'kmIn', 'guardOut', 'guardIn'];
+
+  const isFieldDisabled = (fieldName, baseDisabled = false) => {
+    const guardOnlyFields = ['kmOut', 'kmIn', 'guardOut', 'guardIn', 'dateTimeDeparture', 'dateTimeReturn'];
+    // Guard-only fields should be editable only by Guard
+    if (guardOnlyFields.includes(fieldName)) {
+      return baseDisabled || !isGuard;
+    }
+
+    if (isGuard) {
+      // Guards can only edit checkpoint-related fields in the form
+      return baseDisabled || !guardEditableFields.includes(fieldName);
+    }
+
+    return baseDisabled;
   };
 
-  const handleResizeStart = (e, key, handle) => {
-    if (appMode !== 'layout') return;
-    e.stopPropagation();
-    const field = fields[key];
-    setResizingField(key);
-    setResizeHandle(handle);
-    setResizingStart({
-      x: e.clientX,
-      y: e.clientY,
-      width: field.width || 15,
-      height: field.height || 3, // New % height
-      crop: field.crop || { top: 0, right: 0, bottom: 0, left: 0 },
-      fieldX: field.x,
-      fieldY: field.y
-    });
-  };
+  const [formData, setFormData] = useState({
+    dateRequested: new Date().toISOString().split('T')[0],
+    requestorName: user?.name || '',
+    subsidiary: '',
+    driver: '',
+    vehicle: '',
+    plateNumber: '',
+    etdOffice: '',
+    etaDestination: '',
+    dateTimeDeparture: '',
+    dateTimeReturn: '',
+    passengerCount: '',
+    hdiPassengers: '',
+    outsidePassengers: '',
+    passengersDetail: '',
+    destination: '',
+    purpose: '',
+    medium: 'Land',
+    requestedBy: user?.name || '',
+    endorsedBy: '',
+    approvedBy: '',
+    kmOut: '',
+    kmIn: '',
+    guardOut: '',
+    guardIn: '',
+    ...initialData
+  });
 
-  const handleMouseMove = (e) => {
-    if (appMode !== 'layout') return;
-    const rect = containerRef.current.getBoundingClientRect();
+  const [status, setStatus] = useState(initialData?.status || 'Pending');
+  const [drivers, setDrivers] = useState([]);
+  const [vehicles, setVehicles] = useState([]);
+  const [guards, setGuards] = useState([]);
 
-    if (draggingField) {
-      const x = ((e.clientX - rect.left) / (rect.width)) * 100;
-      const y = ((e.clientY - rect.top) / (rect.height)) * 100;
+  useEffect(() => {
+    if (isGuard && !initialData) {
+      navigate('/guard-dashboard', { replace: true });
+    }
+  }, [isGuard, initialData, navigate]);
 
-      setFields(prev => ({
-        ...prev,
-        [draggingField]: { ...prev[draggingField], x, y }
-      }));
-    } else if (resizingField && resizingStart) {
-      const deltaX = ((e.clientX - resizingStart.x) / rect.width) * 100;
-      const deltaY = ((e.clientY - resizingStart.y) / rect.height) * 100;
-      const isSignature = fields[resizingField].isSignature;
-
-      setFields(prev => {
-        const field = prev[resizingField];
-        const newField = { ...field };
-
-        // Handle Side Handles (Resize Container)
-        if (['right', 'bottom', 'left', 'top'].includes(resizeHandle)) {
-          if (resizeHandle === 'right') newField.width = Math.max(1, resizingStart.width + deltaX);
-          if (resizeHandle === 'bottom') newField.height = Math.max(0.5, resizingStart.height + deltaY);
-          if (resizeHandle === 'left') {
-            newField.x = resizingStart.fieldX + deltaX;
-            newField.width = Math.max(1, resizingStart.width - deltaX);
-          }
-          if (resizeHandle === 'top') {
-            newField.y = resizingStart.fieldY + deltaY;
-            newField.height = Math.max(0.5, resizingStart.height - deltaY);
-          }
-          
-          if (isSignature) {
-            const newCrop = { ...(field.crop || { top: 0, right: 0, bottom: 0, left: 0 }) };
-            // Optional: add slide-to-crop logic here if desired, 
-            // but first priority is functional resizing.
-          }
-        } 
-        
-        // Handle Corner Resizing (Standard Canva Scaling)
-        if (['se', 'sw', 'ne', 'nw'].includes(resizeHandle)) {
-          if (['se', 'ne'].includes(resizeHandle)) {
-            newField.width = Math.max(1, resizingStart.width + deltaX);
-          } else {
-            newField.x = resizingStart.fieldX + deltaX;
-            newField.width = Math.max(1, resizingStart.width - deltaX);
-          }
-
-          if (['se', 'sw'].includes(resizeHandle)) {
-            newField.height = Math.max(0.5, resizingStart.height + deltaY);
-          } else {
-            newField.y = resizingStart.fieldY + deltaY;
-            newField.height = Math.max(0.5, resizingStart.height - deltaY);
-          }
+  useEffect(() => {
+    const fetchOptions = async () => {
+      try {
+        if (isGuard) {
+          const [guardsRes, vehiclesRes] = await Promise.all([
+            api.get('/users/guards'),
+            api.get('/vehicles')
+          ]);
+          setGuards(guardsRes.data || []);
+          setDrivers([]);
+          setVehicles(vehiclesRes.data);
+          return;
         }
 
-        return { ...prev, [resizingField]: newField };
-      });
-    }
-  };
-
-  const handleMouseUp = () => {
-    setDraggingField(null);
-    setResizingField(null);
-    setResizeHandle(null);
-    setResizingStart(null);
-  };
-
-  const handleValueChange = (key, val) => {
-    setFields(prev => ({
-      ...prev,
-      [key]: { ...prev[key], value: val }
-    }));
-  };
-
-  const handleClickCanvas = (e) => {
-    if (!isAddingField) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / (rect.width)) * 100;
-    const y = ((e.clientY - rect.top) / (rect.height)) * 100;
-    const id = `extra_${Date.now()}`;
-
-    setFields(prev => ({
-      ...prev,
-      [id]: { label: 'New Text', x, y, width: 15, height: 2.2, value: '', isExtra: true }
-    }));
-    setIsAddingField(false);
-  };
-
-  const handleAddSignature = () => {
-    const userStr = localStorage.getItem('user');
-    if (!userStr) return alert('Please log in first');
-    const user = JSON.parse(userStr);
-    
-    if (!user.signatureUrl) {
-      return alert('You have not uploaded an E-Signature yet. Please go to your Profile to upload one.');
-    }
-
-    const id = `sig_${Date.now()}`;
-    setFields(prev => ({
-      ...prev,
-      [id]: { 
-        label: 'Signature', 
-        x: 40, y: 80, width: 15, height: 6.5,
-        isSignature: true, 
-        signatureUrl: user.signatureUrl,
-        crop: { top: 0, right: 0, bottom: 0, left: 0 },
-        isExtra: true 
+        const [usersRes, vehiclesRes] = await Promise.all([
+          api.get('/users'),
+          api.get('/vehicles')
+        ]);
+        setDrivers(usersRes.data.filter(u => u.role === 'Driver'));
+        setVehicles(vehiclesRes.data);
+      } catch (err) {
+        console.error("Failed to fetch options", err);
       }
-    }));
-    setAppMode('layout');
-  };
+    };
+    if (!isReadOnly) fetchOptions();
+  }, [isReadOnly, isGuard]);
 
-
-  const handleFontSize = (key, val) => {
-    setFields(prev => ({
-      ...prev,
-      [key]: { ...prev[key], fontSize: parseFloat(val) || 10.5 }
-    }));
-  };
-
-  const handleSelectField = (key) => {
-    if (appMode !== 'layout') return;
-    setSelectedField(key);
-  };
-
-  const handleToggleStyle = (key, prop) => {
-    setFields(prev => ({
-      ...prev,
-      [key]: { ...prev[key], [prop]: !prev[key][prop] }
-    }));
-  };
-
-  const handleColorChange = (key, color) => {
-    setFields(prev => ({
-      ...prev,
-      [key]: { ...prev[key], color }
-    }));
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    if (name === 'vehicle') {
+      const selectedVehicle = vehicles.find(v => v.name === value);
+      setFormData(prev => ({
+        ...prev,
+        vehicle: value,
+        plateNumber: selectedVehicle ? selectedVehicle.plateNumber : prev.plateNumber
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSave = async () => {
     try {
-      localStorage.setItem('tripTicketLayoutClean', JSON.stringify(fields));
-      const payload = {
-        layout: fields,
-        status,
-        ...Object.keys(fields).reduce((acc, key) => {
-          if (!fields[key].isExtra) acc[key] = fields[key].value;
-          return { ...acc };
-        }, {})
-      };
+      const guardedFields = ['kmOut', 'kmIn', 'guardOut', 'guardIn', 'dateTimeDeparture', 'dateTimeReturn'];
+      let payload = { ...formData, status };
+
+      if (!isGuard) {
+        // remove guard-only fields from payload for non-guards
+        guardedFields.forEach((f) => delete payload[f]);
+      } else if (isGuard && isReviewMode && initialData?.id) {
+        // when Guard updates a ticket, only send the guard/actual-travel fields
+        payload = {};
+        ['kmOut', 'kmIn', 'guardOut', 'guardIn', 'dateTimeDeparture', 'dateTimeReturn'].forEach(k => {
+          if (formData[k] !== undefined) payload[k] = formData[k];
+        });
+      }
 
       if (isReviewMode && initialData?.id) {
-        await axios.put(`http://localhost:5000/api/trip-tickets/${initialData.id}`, payload);
-        alert('Updated Successfully!');
+        await api.put(`/trip-tickets/${initialData.id}`, payload);
+        showToast('Trip Ticket Updated Successfully!', 'success');
       } else {
-        await axios.post('http://localhost:5000/api/trip-tickets', payload);
-        alert('Saved Successfully!');
+        await api.post('/trip-tickets', payload);
+        showToast('Trip Ticket Created Successfully!', 'success');
       }
       navigate('/dashboard');
     } catch (err) {
-      console.error(err);
-      alert('Error saving data');
+      console.error('TripTicket save error:', err, err.response?.data);
+      const msg = err.response?.data?.error || err.response?.data?.message || err.message || 'Error saving Trip Ticket';
+      showToast(msg, 'error');
     }
   };
 
-  useEffect(() => {
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [draggingField, resizingField, resizingStart, resizeHandle, appMode]);
+  const handleApprove = async () => {
+    if (!window.confirm('Are you sure you want to approve this Trip Ticket?')) return;
+    try {
+      const payload = { ...formData, status: 'Approved', approvedBy: user.name };
+      await api.put(`/trip-tickets/${initialData.id}`, payload);
+      showToast('Trip Ticket Approved!', 'success');
+      navigate('/dashboard');
+    } catch (err) {
+      console.error(err);
+      showToast('Error approving Trip Ticket', 'error');
+    }
+  };
+
+  const handleArchive = async () => {
+    if (!window.confirm('Are you sure you want to archive this document?')) return;
+    try {
+      const payload = { ...formData, status: 'Archived' };
+      await api.put(`/trip-tickets/${initialData.id}`, payload);
+      showToast('Document Archived successfully!', 'success');
+      navigate('/archived');
+    } catch (err) {
+      console.error(err);
+      showToast('Error archiving document', 'error');
+    }
+  };
+
+  const handleDisapprove = async () => {
+    if (!window.confirm('Are you sure you want to disapprove this Trip Ticket?')) return;
+    try {
+      const payload = { ...formData, status: 'Disapproved' };
+      await api.put(`/trip-tickets/${initialData.id}`, payload);
+      showToast('Trip Ticket Disapproved and moved to Archive', 'info');
+      navigate('/archived');
+    } catch (err) {
+      console.error(err);
+      showToast('Error disapproving Trip Ticket', 'error');
+    }
+  };
 
   return (
-    <div className="smart-canvas-page">
-      <div className="no-print sticky-toolbar">
+    <div className="custom-form-page">
+      <div className="no-print sticky-toolbar glass">
         <div className="tool-group">
-          <button className="tool-btn back" onClick={() => navigate('/dashboard')}>← Back</button>
+          <button className="tool-btn back" onClick={() => navigate(-1)}>← Back</button>
+        </div>
 
-           <button className={`tool-btn ${appMode === 'view' ? 'active-mode' : ''}`} onClick={() => { setAppMode('view'); setIsAddingField(false); setSelectedField(null); }}>
-            📄 View Mode
-          </button>
-          <button className={`tool-btn ${appMode === 'layout' ? 'active-mode' : ''}`} onClick={() => setAppMode('layout')}>
-            🛠️ Layout & Edit
-          </button>
-
-          {appMode === 'layout' && (
-            <div className="layout-tools">
-              <button className={`tool-btn ${isAddingField ? 'active-tool' : 'inactive-tool'}`} onClick={() => setIsAddingField(!isAddingField)}>
-                {isAddingField ? '🎯 Click on Map' : '➕ Add Field'}
+        <div className="tool-group">
+          {isReviewMode && user?.canApprove && status === 'Pending' && (
+            <>
+              <button className="tool-btn approve" onClick={handleApprove}>
+                ✅ Approve
               </button>
-              <button className="tool-btn sig-tool" onClick={handleAddSignature}>
-                ✍️ Add My Signature
+              <button className="tool-btn disapprove-btn" onClick={handleDisapprove}>
+                ❌ Disapprove
               </button>
+            </>
+          )}
+          {!isReviewMode && status !== 'Approved' && status !== 'Archived' && (
+            <button className="tool-btn save" onClick={handleSave}>
+              💾 Submit Request
+            </button>
+          )}
+          {status === 'Approved' && user?.canApprove && !isReadOnly && (
+            <button className="tool-btn archive-btn" onClick={handleArchive}>
+              📥 Archive
+            </button>
+          )}
+        </div>
+      </div>
 
-              {selectedField && (
-                <div className="styling-bar">
-                  <div className="divider-v"></div>
-                  <button className={`style-btn ${fields[selectedField]?.isBold ? 'active' : ''}`} onClick={() => handleToggleStyle(selectedField, 'isBold')}>B</button>
-                  <button className={`style-btn ${fields[selectedField]?.isUnderline ? 'active' : ''}`} onClick={() => handleToggleStyle(selectedField, 'isUnderline')}>U</button>
-
-                  <input
-                    type="color"
-                    className="color-picker-mini"
-                    value={fields[selectedField]?.color || '#000000'}
-                    onChange={(e) => handleColorChange(selectedField, e.target.value)}
-                  />
-
-                  <div className="divider-v"></div>
-
-                  <div className="size-group">
-                    <span className="small-label">PX:</span>
-                    <input
-                      type="number"
-                      className="font-size-input"
-                      value={fields[selectedField]?.fontSize || 10.5}
-                      onChange={(e) => handleFontSize(selectedField, e.target.value)}
-                    />
-                  </div>
-
-                  <button className="tool-btn delete" onClick={() => {
-                    const newFields = { ...fields };
-                    delete newFields[selectedField];
-                    setFields(newFields);
-                    setSelectedField(null);
-                  }}>🗑️ Delete</button>
-                </div>
-              )}
+      <div className="form-container glass">
+        <div className="form-header">
+          <div className="company-info">
+            <h2>HDI ADVENTURES INC.</h2>
+            <p>Trip Ticket Form</p>
+          </div>
+          {initialData?.id && (
+            <div className="form-status">
+              <span className={`status-badge ${status.toLowerCase()}`}>{status}</span>
+              <p>Ticket #{initialData.id.toString().padStart(4, '0')}</p>
             </div>
           )}
         </div>
 
-        <div className="tool-group zoom-control">
-          <span style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: 600 }}>ZOOM: {Math.round(zoom * 100)}%</span>
-          <input
-            type="range"
-            min="0.5"
-            max="2"
-            step="0.1"
-            value={zoom}
-            onChange={(e) => setZoom(parseFloat(e.target.value))}
-            className="zoom-slider"
-          />
-        </div>
-
-        <div className="tool-group">
-          <button className="tool-btn save" onClick={handleSave}>
-            {isReviewMode ? 'Update Record' : 'Finalize & Save'}
-          </button>
-          <button className="tool-btn print" onClick={() => window.print()}>🖨️ Print</button>
-        </div>
-      </div>
-
-      <div
-        className={`canvas-wrapper ${isAddingField ? 'adding-cursor' : ''}`}
-        ref={containerRef}
-        onClick={handleClickCanvas}
-        style={{
-          transform: `scale(${zoom})`,
-          transformOrigin: 'top center',
-          marginBottom: `${(zoom - 1) * 300}mm` // Provide space for scaled content
-        }}
-      >
-        <img 
-          src="/tripticket.jpg" 
-          className="form-image" 
-          alt="form" 
-          style={{ width: '100%', height: 'auto', display: 'block', pointerEvents: 'none' }} 
-        />
-
-        {Object.entries(fields).map(([key, field]) => (
-          <div
-            key={key}
-            className={`draggable-field ${draggingField === key ? 'dragging' : ''} ${selectedField === key ? 'selected' : ''} ${appMode}`}
-            style={{
-              left: `${field.x}%`,
-              top: `${field.y}%`,
-              width: `${field.width}%`,
-              height: `${field.height}%`
-            }}
-            onClick={(e) => { e.stopPropagation(); handleSelectField(key); }}
-          >
-            {appMode === 'layout' && (
-              <div className="drag-handle" onMouseDown={(e) => handleDragStart(e, key)}>☩</div>
-            )}
-            
-            {/* Signature Rendering (Consolidated) */}
-            {field.isSignature ? (
-                <div 
-                  className="signature-container"
-                  style={{
-                    height: '100%',
-                    overflow: 'hidden'
-                  }}
-                >
-                    <img 
-                      src={field.signatureUrl.startsWith('http') ? field.signatureUrl : `http://localhost:5000${field.signatureUrl}`} 
-                      alt="Signature"
-                      className="sig-img"
-                      style={{
-                        clipPath: `inset(${field.crop?.top || 0}% ${field.crop?.right || 0}% ${field.crop?.bottom || 0}% ${field.crop?.left || 0}%)`,
-                        height: '100%', 
-                        objectFit: 'contain'
-                      }}
-                    />
-                </div>
-            ) : (
-                <>
-                {/* Always render text for printing */}
-                <div 
-                  className={`view-text ${appMode === 'view' ? '' : 'print-only'}`} 
-                  style={{ 
-                    fontSize: `${field.fontSize || 10.5}pt`,
-                    fontWeight: field.isBold ? 'bold' : 'normal',
-                    textDecoration: field.isUnderline ? 'underline' : 'none',
-                    color: field.color || '#000000',
-                    height: '100%'
-                  }}
-                >
-                  {field.value || " "}
-                </div>
-                </>
-            )}
-
-            {/* Resize Handles (Layout Mode Only) */}
-            {appMode === 'layout' && selectedField === key && (
-              <>
-                <div className="resizer ne" onMouseDown={(e) => handleResizeStart(e, key, 'ne')}></div>
-                <div className="resizer nw" onMouseDown={(e) => handleResizeStart(e, key, 'nw')}></div>
-                <div className="resizer sw" onMouseDown={(e) => handleResizeStart(e, key, 'sw')}></div>
-                <div className="resizer se" onMouseDown={(e) => handleResizeStart(e, key, 'se')}></div>
-                
-                {/* Side Handles for Cropping/Sizing */}
-                <div className="resizer-side r" onMouseDown={(e) => handleResizeStart(e, key, 'right')}></div>
-                <div className="resizer-side b" onMouseDown={(e) => handleResizeStart(e, key, 'bottom')}></div>
-                <div className="resizer-side l" onMouseDown={(e) => handleResizeStart(e, key, 'left')}></div>
-                <div className="resizer-side t" onMouseDown={(e) => handleResizeStart(e, key, 'top')}></div>
-              </>
-            )}
-
-            {/* Inputs only for screen and when not in view mode */}
-            {(appMode !== 'view' && !field.isSignature) && (
-              field.isTextarea ? (
-                <textarea 
-                  value={field.value}
-                  onChange={(e) => handleValueChange(key, e.target.value)}
-                  placeholder={field.label}
-                  className="no-print"
-                  style={{ 
-                    height: '100%',
-                    fontSize: `${field.fontSize || 10.5}pt`,
-                    fontWeight: field.isBold ? 'bold' : 'normal',
-                    textDecoration: field.isUnderline ? 'underline' : 'none',
-                    color: field.color || '#000000'
-                  }}
-                />
-              ) : (
-                <input 
-                  value={field.value}
-                  onChange={(e) => handleValueChange(key, e.target.value)}
-                  placeholder={field.label}
-                  className={`no-print ${field.isSignature ? 'sig-input' : ''}`}
-                  style={{ 
-                    height: '100%',
-                    fontSize: `${field.fontSize || 10.5}pt`,
-                    fontWeight: field.isBold ? 'bold' : 'normal',
-                    textDecoration: field.isUnderline ? 'underline' : 'none',
-                    color: field.color || '#000000'
-                  }}
-                />
-              )
-            )}
+        <div className="form-body">
+          {/* SECTION 1: General Info */}
+          <div className="form-section">
+            <h3 className="section-title">General Information</h3>
+            <div className="grid-3">
+              <div className="form-group">
+                <label>Date Requested</label>
+                <input type="date" name="dateRequested" value={formData.dateRequested} onChange={handleChange} disabled={isFieldDisabled('dateRequested', isReadOnly)} />
+              </div>
+              <div className="form-group">
+                <label>Requestor Name</label>
+                <input type="text" name="requestorName" value={formData.requestorName} onChange={handleChange} disabled={isFieldDisabled('requestorName', isReadOnly)} placeholder="Enter your name" />
+              </div>
+              <div className="form-group">
+                <label>Subsidiary/Department</label>
+                <input type="text" name="subsidiary" value={formData.subsidiary} onChange={handleChange} disabled={isFieldDisabled('subsidiary', isReadOnly)} placeholder="e.g. Sales, Operations" />
+              </div>
+            </div>
           </div>
-        ))}
+
+          {/* SECTION 2: Travel Details */}
+          <div className="form-section">
+            <h3 className="section-title">Travel Details</h3>
+            <div className="grid-2">
+              <div className="form-group">
+                <label>Destination</label>
+                <input type="text" name="destination" value={formData.destination} onChange={handleChange} disabled={isFieldDisabled('destination', isReadOnly)} placeholder="Target location" />
+              </div>
+              <div className="form-group">
+                <label>Transportation Medium/s</label>
+                <input
+                  type="text"
+                  name="medium"
+                  value="Land"
+                  readOnly
+                  disabled
+                />
+              </div>
+            </div>
+            <div className="form-group mt-3">
+              <label>Purpose of Trip</label>
+              <textarea name="purpose" value={formData.purpose} onChange={handleChange} disabled={isFieldDisabled('purpose', isReadOnly)} placeholder="Detail the objective of the travel" rows="2"></textarea>
+            </div>
+            <div className="grid-3 mt-3">
+              <div className="form-group">
+                <label>Number of Passenger</label>
+                <input type="number" min="0" name="passengerCount" value={formData.passengerCount} onChange={handleChange} disabled={isFieldDisabled('passengerCount', isReadOnly)} placeholder="Total passengers" />
+              </div>
+              <div className="form-group">
+                <label>HDI Passengers</label>
+                <input type="number" min="0" name="hdiPassengers" value={formData.hdiPassengers} onChange={handleChange} disabled={isFieldDisabled('hdiPassengers', isReadOnly)} placeholder="No. of HDI clients" />
+              </div>
+              <div className="form-group">
+                <label>Passengers Outside of HDI</label>
+                <input type="number" min="0" name="outsidePassengers" value={formData.outsidePassengers} onChange={handleChange} disabled={isFieldDisabled('outsidePassengers', isReadOnly)} placeholder="No. of external clients" />
+              </div>
+            </div>
+            <div className="form-group mt-3">
+              <label>Passengers Details</label>
+              <textarea name="passengersDetail" value={formData.passengersDetail} onChange={handleChange} disabled={isFieldDisabled('passengersDetail', isReadOnly)} placeholder="Names of all passengers" rows="2"></textarea>
+            </div>
+          </div>
+
+          {/* SECTION 3: Fleet Assignment */}
+          <div className="form-section">
+            <h3 className="section-title">Fleet Assignment</h3>
+            <div className="grid-3">
+              <div className="form-group">
+                <label>Assigned Driver</label>
+                <select name="driver" value={formData.driver} onChange={handleChange} disabled={isFieldDisabled('driver', isReadOnly)}>
+                  <option value="">Select Driver</option>
+                  {drivers.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                  {isReadOnly && !drivers.find(d => d.name === formData.driver) && formData.driver && (
+                    <option value={formData.driver}>{formData.driver}</option>
+                  )}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Vehicle</label>
+                <select name="vehicle" value={formData.vehicle} onChange={handleChange} disabled={isFieldDisabled('vehicle', isReadOnly)}>
+                  <option value="">Select Vehicle</option>
+                  {vehicles.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
+                  {isReadOnly && !vehicles.find(v => v.name === formData.vehicle) && formData.vehicle && (
+                    <option value={formData.vehicle}>{formData.vehicle}</option>
+                  )}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Plate Number</label>
+                <input type="text" name="plateNumber" value={formData.plateNumber} onChange={handleChange} disabled={isFieldDisabled('plateNumber', isReadOnly)} placeholder="ABC-1234" />
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 4: Schedule & Logging */}
+          <div className="form-section">
+            <h3 className="section-title">Schedule & Logistics</h3>
+            <div className="grid-2">
+              <div className="schedule-box">
+                <h4>Planned Schedule</h4>
+                <div className="form-group">
+                  <label>ETD (Estimated Time of Departure)</label>
+                  <input type="datetime-local" name="etdOffice" value={formData.etdOffice} onChange={handleChange} disabled={isFieldDisabled('etdOffice', isReadOnly)} />
+                </div>
+                <div className="form-group mt-3">
+                  <label>ETA (Estimated Time of Arrival)</label>
+                  <input type="datetime-local" name="etaDestination" value={formData.etaDestination} onChange={handleChange} disabled={isFieldDisabled('etaDestination', isReadOnly)} />
+                </div>
+              </div>
+              <div className="schedule-box actual-log">
+                <h4>Actual Travel Log (Filled by Guard)</h4>
+                <div className="form-group">
+                  <label>Actual Departure</label>
+                  <input type="datetime-local" name="dateTimeDeparture" value={formData.dateTimeDeparture} onChange={handleChange} disabled={isFieldDisabled('dateTimeDeparture', isReadOnly)} />
+                </div>
+                <div className="form-group mt-3">
+                  <label>Actual Return</label>
+                  <input type="datetime-local" name="dateTimeReturn" value={formData.dateTimeReturn} onChange={handleChange} disabled={isFieldDisabled('dateTimeReturn', isReadOnly)} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION: Guard's Log */}
+          <div className="form-section">
+            <h3 className="section-title">Guard's Log (Vehicle Mileage)</h3>
+            <div className="grid-2">
+              <div className="schedule-box">
+                <h4>Departure (Out)</h4>
+                <div className="form-group">
+                  <label>KM Reading (Out)</label>
+                  <input type="text" name="kmOut" value={formData.kmOut} onChange={handleChange} disabled={isFieldDisabled('kmOut', isReadOnly)} placeholder="e.g. 10450" />
+                </div>
+                <div className="form-group mt-3">
+                  <label>Guard on Duty (Out)</label>
+                  <select name="guardOut" value={formData.guardOut} onChange={handleChange} disabled={isFieldDisabled('guardOut', isReadOnly)}>
+                    <option value="">Select Guard</option>
+                    {guards.map((guard) => (
+                      <option key={guard.id} value={guard.name}>{guard.name}</option>
+                    ))}
+                    {formData.guardOut && !guards.find((guard) => guard.name === formData.guardOut) && (
+                      <option value={formData.guardOut}>{formData.guardOut}</option>
+                    )}
+                  </select>
+                </div>
+              </div>
+              <div className="schedule-box actual-log">
+                <h4>Return (In)</h4>
+                <div className="form-group">
+                  <label>KM Reading (In)</label>
+                  <input type="text" name="kmIn" value={formData.kmIn} onChange={handleChange} disabled={isFieldDisabled('kmIn', isReadOnly)} placeholder="e.g. 10520" />
+                </div>
+                <div className="form-group mt-3">
+                  <label>Guard on Duty (In)</label>
+                  <select name="guardIn" value={formData.guardIn} onChange={handleChange} disabled={isFieldDisabled('guardIn', isReadOnly)}>
+                    <option value="">Select Guard</option>
+                    {guards.map((guard) => (
+                      <option key={guard.id} value={guard.name}>{guard.name}</option>
+                    ))}
+                    {formData.guardIn && !guards.find((guard) => guard.name === formData.guardIn) && (
+                      <option value={formData.guardIn}>{formData.guardIn}</option>
+                    )}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 5: Signatures */}
+          <div className="form-section signature-section">
+            <div className="sig-block">
+              <div className="sig-line">
+                <input type="text" name="requestedBy" value={formData.requestedBy} onChange={handleChange} disabled={isFieldDisabled('requestedBy', isReadOnly)} placeholder="Name" />
+              </div>
+              <label>Requested By</label>
+            </div>
+            <div className="sig-block">
+              <div className="sig-line">
+                <input type="text" name="endorsedBy" value={formData.endorsedBy} onChange={handleChange} disabled={isFieldDisabled('endorsedBy', isReadOnly)} placeholder="Name" />
+              </div>
+              <label>Endorsed By</label>
+            </div>
+            <div className="sig-block">
+              <div className="sig-line">
+                <input type="text" name="approvedBy" value={formData.approvedBy} onChange={handleChange} disabled={isFieldDisabled('approvedBy', isReadOnly || !user?.canApprove)} placeholder="Name" />
+              </div>
+              <label>Approved By</label>
+            </div>
+          </div>
+        </div>
       </div>
 
       <style>{`
-        @page { size: A4; margin: 0; }
-        .smart-canvas-page { background: #0f172a; min-height: 100vh; padding: 100px 20px 40px; display: flex; flex-direction: column; align-items: center; font-family: 'Outfit', sans-serif; overflow-x: auto; }
+        .custom-form-page {
+          background: var(--bg-gradient);
+          min-height: 100vh;
+          padding: 100px 20px 60px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          font-family: 'Outfit', sans-serif;
+          color: var(--text-main);
+        }
+
+        .sticky-toolbar {
+          position: fixed; top: 0; left: 280px; right: 0;
+          padding: 1rem 3rem; display: flex; justify-content: space-between; align-items: center;
+          z-index: 900; border-bottom: 1px solid var(--glass-border);
+          box-shadow: 0 4px 30px rgba(0,0,0,0.03);
+          transition: var(--transition-smooth);
+        }
+
+        .tool-group { display: flex; gap: 12px; align-items: center; }
+        .tool-btn { padding: 10px 20px; border-radius: 12px; border: none; cursor: pointer; font-weight: 700; transition: var(--transition-smooth); font-size: 0.95rem; }
+        .tool-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .tool-btn.back { background: var(--primary-light); color: var(--primary); }
+        .tool-btn.save { background: var(--primary); color: white; }
+        .tool-btn.approve { background: #10b981; color: white; border: 2px solid transparent; }
+        .tool-btn.disapprove-btn { background: #ef4444; color: white; }
+        .tool-btn.archive-btn { background: #f59e0b; color: white; }
+
+        .form-container {
+          width: 100%;
+          max-width: 900px;
+          background: var(--card-bg);
+          border-radius: 24px;
+          padding: 3rem;
+          box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+          border: 1px solid var(--glass-border);
+        }
+
+        .form-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          border-bottom: 2px solid var(--primary);
+          padding-bottom: 1.5rem;
+          margin-bottom: 2rem;
+        }
+
+        .company-info h2 { margin: 0; font-size: 1.8rem; font-weight: 800; color: var(--primary); }
+        .company-info p { margin: 0; font-size: 1.2rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 2px; }
+
+        .form-status { text-align: right; }
+        .form-status p { margin: 5px 0 0; font-weight: 700; color: var(--text-dim); }
+        .status-badge { padding: 4px 12px; border-radius: 100px; font-size: 0.8rem; font-weight: 800; text-transform: uppercase; }
+        .status-badge.approved { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+        .status-badge.pending { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+        .status-badge.archived { background: rgba(100, 116, 139, 0.1); color: #94a3b8; }
+        .status-badge.disapproved { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+
+        .form-section { margin-bottom: 2.5rem; }
+        .section-title { 
+          font-size: 1.1rem; 
+          font-weight: 700; 
+          color: var(--primary); 
+          margin-bottom: 1.5rem;
+          padding-bottom: 0.5rem;
+          border-bottom: 1px solid var(--glass-border);
+        }
+
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+        .mt-3 { margin-top: 1.5rem; }
+
+        .form-group label {
+          display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-dim); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 1px;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+          width: 100%;
+          padding: 12px 16px;
+          border-radius: 12px;
+          border: 1px solid var(--glass-border);
+          background: rgba(0,0,0,0.2);
+          color: var(--text-main);
+          font-family: 'Outfit', sans-serif;
+          font-size: 1rem;
+          transition: all 0.3s;
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+          outline: none; border-color: var(--primary); background: rgba(37, 99, 235, 0.05);
+        }
+
+        .form-group input:disabled, .form-group select:disabled, .form-group textarea:disabled {
+          opacity: 0.7; cursor: not-allowed; background: rgba(0,0,0,0.4);
+        }
+
+        .schedule-box {
+          background: rgba(0,0,0,0.1);
+          border: 1px solid var(--glass-border);
+          border-radius: 16px;
+          padding: 1.5rem;
+        }
+        .schedule-box h4 { margin: 0 0 1.2rem 0; color: var(--primary-light); font-size: 1rem; }
+        .actual-log { background: rgba(16, 185, 129, 0.05); border-color: rgba(16, 185, 129, 0.2); }
+        .actual-log h4 { color: #10b981; }
+
+        .signature-section {
+          display: flex;
+          justify-content: space-between;
+          gap: 2rem;
+          margin-top: 4rem;
+        }
+
+        .sig-block { flex: 1; text-align: center; }
+        .sig-line {
+          border-bottom: 2px solid var(--text-dim);
+          margin-bottom: 0.5rem;
+        }
+        .sig-line input {
+          width: 100%; text-align: center; background: transparent; border: none; color: var(--text-main);
+          font-size: 1.1rem; font-weight: 700; padding: 5px; outline: none;
+        }
+        .sig-block label { font-size: 0.85rem; color: var(--text-dim); font-weight: 600; text-transform: uppercase; }
+
+        @media (max-width: 1024px) {
+          .sticky-toolbar { left: 0; padding: 1rem; }
+        }
         
-        .sticky-toolbar { 
-          position: fixed; top: 0; left: 0; right: 0; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(12px); 
-          padding: 12px 40px; display: flex; justify-content: space-between; align-items: center; z-index: 1000; border-bottom: 1px solid #1e293b;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        @media (max-width: 768px) {
+          .grid-3, .grid-2 { grid-template-columns: 1fr; }
+          .signature-section { flex-direction: column; gap: 3rem; }
+          .form-container { padding: 1.5rem; }
         }
-        .tool-group { display: flex; gap: 10px; align-items: center; }
-        .tool-btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; transition: all 0.2s; font-size: 0.9rem; }
-        .tool-btn.back { background: #334155; color: white; }
-        .tool-btn.active-mode { background: #6366f1; color: white; border: 2px solid #fff; }
-        .tool-btn.active-tool { background: #ef4444; color: white; animation: pulse 1.5s infinite; }
-        .tool-btn.inactive-tool { background: #1e293b; color: #94a3b8; border: 1px solid #334155; }
-        .tool-btn.reset { background: #475569; color: white; }
-        .tool-btn.save { background: #10b981; color: white; }
-        .tool-btn.print { background: #06b6d4; color: white; }
-
-        .zoom-control { background: rgba(30, 41, 59, 0.5); padding: 6px 15px; border-radius: 30px; border: 1px solid #334155; }
-        .zoom-slider { cursor: pointer; accent-color: #6366f1; width: 100px; }
-
-        .layout-tools { display: flex; align-items: center; gap: 10px; }
-        .styling-bar { display: flex; align-items: center; gap: 8px; background: rgba(30, 41, 59, 0.7); padding: 4px 12px; border-radius: 30px; border: 1px solid #334155; }
-        
-        .font-size-input { 
-          width: 50px; background: #0f172a; border: 1px solid #475569; color: white; padding: 4px 6px; border-radius: 4px; 
-          font-weight: bold; font-family: 'monospace'; outline: none; text-align: center;
-        }
-        .font-size-input:focus { border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2); }
-        .small-label { font-size: 0.65rem; color: #94a3b8; font-weight: 800; }
-        .size-group { display: flex; align-items: center; gap: 5px; }
-
-        .canvas-wrapper { 
-          position: relative; width: 210mm; height: fit-content; background: white; 
-          box-shadow: 0 30px 60px rgba(0,0,0,0.6); 
-          user-select: none; -webkit-user-select: none; 
-        }
-        .form-image { width: 100%; display: block; pointer-events: none; }
-
-        .drag-handle { 
-          position: absolute; top: -18px; left: 50%; transform: translateX(-50%);
-          background: #6366f1; color: white; width: 22px; height: 22px; display: flex; 
-          align-items: center; justify-content: center; cursor: move; border-radius: 50%; font-size: 14px; 
-          opacity: 0; transition: opacity 0.2s; z-index: 110;
-        }
-        .draggable-field:hover .drag-handle { opacity: 1; }
-        
-        .style-btn { 
-          width: 28px; height: 28px; border-radius: 4px; border: none; cursor: pointer; font-size: 12px; font-weight: bold; 
-          display: flex; align-items: center; justify-content: center; color: white; transition: all 0.1s; background: #475569;
-        }
-        .style-btn.active { background: #6366f1; box-shadow: 0 0 0 1px white; }
-        .style-btn:hover { transform: scale(1.1); }
-        
-        .tool-btn.delete { background: #ef4444; color: white; font-size: 0.75rem; padding: 4px 10px; }
-        .tool-btn.delete:hover { background: #dc2626; }
-
-        .color-picker-mini { width: 28px; height: 28px; border: 1px solid #475569; padding: 0; background: none; cursor: pointer; border-radius: 4px; overflow: hidden; }
-        .divider-v { width: 1px; height: 18px; background: #334155; margin: 0 5px; }
-
-        .draggable-field { 
-          position: absolute; display: flex; flex-direction: column; z-index: 100; border: 2px solid transparent; transition: border-color 0.2s; 
-          user-select: none; -webkit-user-select: none;
-        }
-        .draggable-field.selected { border-color: #6366f1; border-radius: 4px; background: rgba(99, 102, 241, 0.05); }
-
-        .draggable-field input, .draggable-field textarea {
-          width: 100%; border: none; background: transparent; outline: none; font-family: Arial, sans-serif;
-          padding: 2px 4px; transition: all 0.2s; color: #000;
-        }
-        
-        .draggable-field.layout input, .draggable-field.layout textarea { 
-          background: rgba(99, 102, 241, 0.03); border: 1px dashed rgba(99, 102, 241, 0.25); cursor: text;
-        }
-        .draggable-field.layout:hover input, .draggable-field.layout:hover textarea { 
-          border: 1px dashed rgba(99, 102, 241, 0.6); background: rgba(99, 102, 241, 0.05);
-        }
-        
-        .view-text {
-          font-family: Arial, sans-serif; min-height: 1.2em; white-space: pre-wrap; pointer-events: none;
-        }
-        
-        .sig-input { font-weight: bold; text-align: center; }
-        .sig-tool { background: #10b981 !important; color: white; }
-        .signature-container { width: 100%; display: flex; align-items: center; justify-content: center; }
-        .sig-img { 
-            width: 100%; 
-            display: block; 
-            mix-blend-mode: multiply; 
-            filter: contrast(120%) brightness(105%);
-            pointer-events: none;
-            transition: none;
-        }
-
-        .resizer {
-          position: absolute; width: 8px; height: 8px; background: white; border: 2px solid #6366f1;
-          border-radius: 50%; z-index: 120;
-        }
-        .resizer.nw { top: -4px; left: -4px; cursor: nwse-resize; }
-        .resizer.ne { top: -4px; right: -4px; cursor: nesw-resize; }
-        .resizer.sw { bottom: -4px; left: -4px; cursor: nesw-resize; }
-        .resizer.se { bottom: -4px; right: -4px; cursor: nwse-resize; }
-
-        .resizer-side {
-          position: absolute; z-index: 115;
-        }
-        .resizer-side.r { top: 0; right: -2px; width: 4px; height: 100%; cursor: ew-resize; }
-        .resizer-side.l { top: 0; left: -2px; width: 4px; height: 100%; cursor: ew-resize; }
-        .resizer-side.b { bottom: -2px; left: 0; width: 100%; height: 4px; cursor: ns-resize; }
-        .resizer-side.t { top: -2px; left: 0; width: 100%; height: 4px; cursor: ns-resize; }
-
-        .resizer-side:hover { background: rgba(99, 102, 241, 0.3); }
-
-        .status-selector { display: flex; flex-direction: column; gap: 2px; }
-        .status-select { 
-            background: #0f172a; border: 1px solid #475569; color: white; padding: 4px 8px; border-radius: 6px; 
-            font-size: 0.8rem; font-weight: bold; outline: none; transition: border-color 0.2s;
-        }
-        .status-select.pending { border-color: #facc15; color: #facc15; }
-        .status-select.approved { border-color: #4ade80; color: #4ade80; }
-        .status-select.rejected { border-color: #fb7185; color: #fb7185; }
-
-        .print-only { display: none; }
 
         @media print {
-          @page { size: A4; margin: 0; }
+          @page { size: A4; margin: 1.5cm; }
+          body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .no-print { display: none !important; }
-          .print-only { display: block !important; }
-          .smart-canvas-page { padding: 0 !important; background: white !important; min-height: auto !important; display: block !important; }
-          .canvas-wrapper { 
-            box-shadow: none !important; width: 210mm !important; height: auto !important; 
-            transform: none !important; margin: 0 auto !important; overflow: visible !important;
+          .custom-form-page { background: white !important; padding: 0 !important; color: black !important; }
+          .form-container {
+            box-shadow: none !important; border: none !important; padding: 0 !important; max-width: 100% !important; background: white !important;
           }
-          .view-text { background: transparent !important; border: none !important; }
-          .draggable-field { pointer-events: none; background: transparent !important; border: none !important; }
-          .draggable-field.layout { border: none !important; background: transparent !important; }
-          .draggable-field.layout input, .draggable-field.layout textarea { border: none !important; background: transparent !important; }
-          .drag-handle { display: none !important; }
+          
+          .company-info h2 { color: black !important; }
+          .company-info p { color: #555 !important; }
+          .section-title { color: black !important; border-bottom: 1px solid #ccc !important; }
+          .form-group label { color: #555 !important; }
+          .status-badge { display: none !important; }
+          
+          .form-group input, .form-group select, .form-group textarea {
+            background: transparent !important;
+            border: none !important;
+            border-bottom: 1px solid #ccc !important;
+            border-radius: 0 !important;
+            color: black !important;
+            padding: 4px 0 !important;
+          }
+
+          .schedule-box { border: 1px solid #ccc !important; background: transparent !important; }
+          .schedule-box h4 { color: black !important; }
+          
+          .sig-line input { color: black !important; }
+          .sig-block label { color: #555 !important; }
         }
       `}</style>
     </div>
