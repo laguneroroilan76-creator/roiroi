@@ -38,7 +38,7 @@ export default function Profile() {
     try {
       setIsUploading(true);
       const token = localStorage.getItem('token');
-      const response = await axios.post('http://localhost:5000/api/users/profile/signature', formData, {
+      const response = await axios.post('http://172.16.28.96:5000/api/users/profile/signature', formData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -68,7 +68,7 @@ export default function Profile() {
     try {
       setIsUploading(true);
       const token = localStorage.getItem('token');
-      const response = await axios.post('http://localhost:5000/api/users/profile/avatar', formData, {
+      const response = await axios.post('http://172.16.28.96:5000/api/users/profile/avatar', formData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -92,7 +92,7 @@ export default function Profile() {
   const handleThemeChange = async (newColor) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.post('http://localhost:5000/api/users/profile/theme', { themeColor: newColor }, {
+      await axios.post('http://172.16.28.96:5000/api/users/profile/theme', { themeColor: newColor }, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -111,7 +111,7 @@ export default function Profile() {
     try {
       const newVal = !isDarkMode;
       const token = localStorage.getItem('token');
-      await axios.post('http://localhost:5000/api/users/profile/darkmode', { isDarkMode: newVal }, {
+      await axios.post('http://172.16.28.96:5000/api/users/profile/darkmode', { isDarkMode: newVal }, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -129,7 +129,7 @@ export default function Profile() {
   if (!user) return <div className="profile-page">Loading...</div>;
 
   const fullSignatureUrl = user.signatureUrl && !user.signatureUrl.startsWith('http') 
-    ? `http://localhost:5000${user.signatureUrl}` 
+    ? `http://172.16.28.96:5000${user.signatureUrl}` 
     : user.signatureUrl;
 
   return (
@@ -144,7 +144,7 @@ export default function Profile() {
           <div className="avatar-section">
             <div className="big-avatar" onClick={() => avatarInputRef.current?.click()} title="Change Profile Picture">
               {user.avatarUrl ? (
-                <img src={user.avatarUrl.startsWith('http') ? user.avatarUrl : `http://localhost:5000${user.avatarUrl}`} alt="Avatar" className="avatar-img" />
+                <img src={user.avatarUrl.startsWith('http') ? user.avatarUrl : `http://172.16.28.96:5000${user.avatarUrl}`} alt="Avatar" className="avatar-img" />
               ) : (
                 user.name?.[0] || 'U'
               )}

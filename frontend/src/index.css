@@ -69,11 +69,26 @@ body {
 }
 
 @media (max-width: 1024px) {
-  .main-content { margin-left: 0; width: 100%; }
+  .main-content { 
+    margin-left: 0; 
+    width: 100%; 
+    padding: 1.5rem; 
+  }
 }
 
 @media print {
-  .main-content { margin-left: 0 !important; width: 100% !important; padding: 0 !important; }
+  .glass-sidebar, .mobile-menu-toggle, .sidebar-overlay, .sticky-toolbar, .no-print,
+  .confirm-overlay, .toast-container, header, nav, aside {
+    display: none !important;
+  }
+  .main-content { 
+    margin-left: 0 !important; 
+    width: 100% !important; 
+    padding: 0 !important; 
+  }
+  body {
+    background: white !important;
+  }
 }
 
 /* Global Transitions */
@@ -289,4 +304,22 @@ button, a, .nav-item, .task-card {
 @keyframes slideDown {
   from { opacity: 0; transform: translateY(-20px); }
   to { opacity: 1; transform: translateY(0); }
+}
+/* Global Mobile Refinements */
+@media (max-width: 768px) {
+  .records-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1.5rem !important;
+  }
+
+  .grid-2, .grid-3 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .premium-card {
+    border-radius: 16px;
+  }
+
+  h1 { font-size: 1.8rem !important; }
+  h2 { font-size: 1.5rem !important; }
 }

@@ -18,9 +18,9 @@ export default function ArchivedRecords() {
     try {
       const headers = { Authorization: `Bearer ${token}` };
       const [ticketsRes, prfsRes, rrfsRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/trip-tickets', { headers }).catch(() => ({ data: [] })),
-        axios.get('http://localhost:5000/api/prfs', { headers }).catch(() => ({ data: [] })),
-        axios.get('http://localhost:5000/api/rrfs', { headers }).catch(() => ({ data: [] }))
+        axios.get('http://172.16.28.96:5000/api/trip-tickets', { headers }).catch(() => ({ data: [] })),
+        axios.get('http://172.16.28.96:5000/api/prfs', { headers }).catch(() => ({ data: [] })),
+        axios.get('http://172.16.28.96:5000/api/rrfs', { headers }).catch(() => ({ data: [] }))
       ]);
 
       const tickets = Array.isArray(ticketsRes.data) ? ticketsRes.data : [];
@@ -118,7 +118,7 @@ export default function ArchivedRecords() {
                         color: record.type === 'TRIP_TICKET' ? '#818cf8' : (record.type === 'PRF' ? '#10b981' : '#f59e0b'),
                         border: `1px solid ${record.type === 'TRIP_TICKET' ? 'rgba(99, 102, 241, 0.2)' : (record.type === 'PRF' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)')}`
                     }}>
-                        {record.type === 'TRIP_TICKET' ? '🎫 TRIP TICKET' : (record.type === 'PRF' ? '💳 PRF' : '📄 RRF')}
+                        {record.type === 'TRIP_TICKET' ? '🎫 TRIP TICKET' : (record.type === 'PRF' ? '💳 PRF' : '📄 PRF')}
                     </span>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                         {new Date(record.createdAt).toLocaleString('en-US', {

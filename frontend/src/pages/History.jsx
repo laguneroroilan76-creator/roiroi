@@ -89,10 +89,10 @@ export default function History() {
           🚗 Trip Tickets
         </button>
         <button className={`tab-btn ${activeTab === 'prfs' ? 'active' : ''}`} onClick={() => handleTabChange('prfs')}>
-          📄 PRF Documents
+          📄 RFP Documents
         </button>
         <button className={`tab-btn ${activeTab === 'rrfs' ? 'active' : ''}`} onClick={() => handleTabChange('rrfs')}>
-          📄 RRF Documents
+          📄 Purchase Requisition (PRF)
         </button>
         <button className={`tab-btn ${activeTab === 'calendar' ? 'active' : ''}`} onClick={() => handleTabChange('calendar')}>
           📅 Dispatch Calendar
@@ -116,7 +116,7 @@ export default function History() {
           <TicketTable 
             tickets={prfs.map(p => ({ ...p, requestorName: p.requestor || p.author?.name || (p.prfNo ? `PRF #${p.prfNo}` : 'Unnamed PRF') }))} 
             onView={(p) => handleViewRecord(p, 'PRF')} 
-            typeLabel="PRF Form"
+            typeLabel="Request For Payment (RFP)"
           />
         )}
 
@@ -124,7 +124,7 @@ export default function History() {
           <TicketTable 
             tickets={rrfs.map(r => ({ ...r, requestorName: r.requestor || r.author?.name || (r.rrfNo ? `RRF #${r.rrfNo}` : 'Unnamed RRF') }))} 
             onView={(r) => handleViewRecord(r, 'RRF')} 
-            typeLabel="RRF Form"
+            typeLabel="Purchase Requisition (PRF)"
           />
         )}
 

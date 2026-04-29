@@ -12,6 +12,12 @@ const StatusPill = ({ status }) => {
       case 'disapproved':
       case 'rejected':
         return { background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', label: 'DISAPPROVED' };
+      case 'cancelled':
+        return { background: 'rgba(249, 115, 22, 0.1)', color: '#f97316', label: 'CANCELLED' };
+      case 'ongoing':
+        return { background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', label: 'ONGOING' };
+      case 'completed':
+        return { background: 'rgba(16, 185, 129, 0.12)', color: '#10b981', label: 'COMPLETED' };
       default:
         return { background: 'rgba(249, 115, 22, 0.1)', color: '#f97316', label: 'PENDING' };
     }

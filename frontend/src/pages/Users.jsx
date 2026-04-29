@@ -18,7 +18,7 @@ export default function Users() {
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/users', {
+      const response = await axios.get('http://172.16.28.96:5000/api/users', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setUsers(response.data);
@@ -60,14 +60,14 @@ export default function Users() {
       const config = { headers: { 'Authorization': `Bearer ${token}` } };
       
       if (editingUser) {
-        const res = await axios.put(`http://localhost:5000/api/users/${editingUser.id}`, formData, config);
+        const res = await axios.put(`http://172.16.28.96:5000/api/users/${editingUser.id}`, formData, config);
         showToast('User updated successfully', 'success');
         if (editingUser.id === currentUser?.id) {
             localStorage.setItem('user', JSON.stringify({ ...currentUser, ...res.data }));
             window.location.reload();
         }
       } else {
-        await axios.post('http://localhost:5000/api/auth/register', formData, config);
+        await axios.post('http://172.16.28.96:5000/api/auth/register', formData, config);
         showToast('User created successfully', 'success');
       }
       setIsModalOpen(false);
@@ -81,7 +81,7 @@ export default function Users() {
     if (!window.confirm('Are you sure you want to delete this user?')) return;
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`http://localhost:5000/api/users/${id}`, {
+      await axios.delete(`http://172.16.28.96:5000/api/users/${id}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       showToast('User deleted successfully', 'success');
@@ -120,7 +120,7 @@ export default function Users() {
                     <div className="user-cell">
                         <div className="user-initial">
                             {user.avatarUrl ? (
-                                <img src={user.avatarUrl.startsWith('http') ? user.avatarUrl : `http://localhost:5000${user.avatarUrl}`} alt="" style={{width:'100%', height:'100%', objectFit:'cover', borderRadius:'8px'}} />
+                                <img src={user.avatarUrl.startsWith('http') ? user.avatarUrl : `http://172.16.28.96:5000${user.avatarUrl}`} alt="" style={{width:'100%', height:'100%', objectFit:'cover', borderRadius:'8px'}} />
                             ) : (
                                 user.name?.[0] || 'U'
                             )}

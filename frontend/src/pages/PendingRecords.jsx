@@ -33,13 +33,13 @@ export default function PendingRecords() {
         ...prfsRes.data.filter(p => p.status === 'Pending' || !p.status).map(p => ({ 
             ...p, 
             docType: 'PRF',
-            displayType: 'PRF Form',
+            displayType: 'Request For Payment (RFP)',
             requestorName: p.requestor || p.author?.name || (p.prfNo ? `PRF #${p.prfNo}` : 'Unnamed PRF')
         })),
         ...rrfsRes.data.filter(r => r.status === 'Pending' || !r.status).map(r => ({ 
             ...r, 
             docType: 'RRF',
-            displayType: 'RRF Form',
+            displayType: 'Purchase Requisition (PRF)',
             requestorName: r.requestor || r.author?.name || (r.rrfNo ? `RRF #${r.rrfNo}` : 'Unnamed RRF')
         }))
       ];

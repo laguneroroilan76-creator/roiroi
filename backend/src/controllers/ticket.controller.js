@@ -47,9 +47,8 @@ const getTicketById = async (req, res) => {
 
 const updateTicket = async (req, res) => {
   try {
-    // Guard users can only update checkpoint and actual-travel fields
-    const guardAllowed = ['kmOut', 'kmIn', 'guardOut', 'guardIn', 'dateTimeDeparture', 'dateTimeReturn'];
-    const guardedFields = ['kmOut', 'kmIn', 'guardOut', 'guardIn', 'dateTimeDeparture', 'dateTimeReturn'];
+    // Guard users can only update checkpoint, actual-travel fields, and status
+    const guardAllowed = ['kmOut', 'kmIn', 'guardOut', 'guardIn', 'dateTimeDeparture', 'dateTimeReturn', 'status'];
 
     if (req.user.role === 'Guard') {
       const attemptedFields = Object.keys(req.body || {});

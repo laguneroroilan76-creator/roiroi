@@ -19,44 +19,11 @@ export default function TripTicketForm() {
   const [status, setStatus] = useState(initialData?.status || 'Pending');
   const [showReasonModal, setShowReasonModal] = useState(false);
   const [disReason, setDisReason] = useState('');
-  const [checklist, setChecklist] = useState([
-    { id: 1, text: 'Vehicle Availability Checked', checked: false },
-    { id: 2, text: 'Driver Schedule Verified', checked: false },
-    { id: 3, text: 'Destination Purpose Validated', checked: false },
-    { id: 4, text: 'Safety Protocols Acknowledged', checked: false }
-  ]);
   const [drivers, setDrivers] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [guards, setGuards] = useState([]);
   const [occupiedDrivers, setOccupiedDrivers] = useState([]);
   const [occupiedVehicles, setOccupiedVehicles] = useState([]);
-
-  const isFieldDisabled = (fieldName, baseDisabled = false) => {
-    // If it's already Approved or Archived, everything is locked for everyone except Guard-specific fields (for Guard)
-    if (status === 'Approved' || status === 'Archived' || status === 'Disapproved') {
-       // Only Guards can edit their fields if it's NOT Completed (checked in ApproveRecords logic usually, but here too)
-       const guardOnlyFields = ['kmOut', 'kmIn', 'guardOut', 'guardIn', 'dateTimeDeparture', 'dateTimeReturn'];
-       if (isGuard && guardOnlyFields.includes(fieldName)) return false;
-       return true;
-    }
-
-    // If status is Pending and in Review Mode, locked for everyone
-    if (status === 'Pending' && isReviewMode) {
-      return true;
-    }
-
-    // Default behavior for new forms
-    const guardOnlyFields = ['kmOut', 'kmIn', 'guardOut', 'guardIn', 'dateTimeDeparture', 'dateTimeReturn'];
-    if (guardOnlyFields.includes(fieldName)) {
-      return baseDisabled || !isGuard;
-    }
-
-    if (isGuard) {
-      return baseDisabled || !guardEditableFields.includes(fieldName);
-    }
-
-    return baseDisabled;
-  };
 
   const [formData, setFormData] = useState({
     dateRequested: new Date().toISOString().split('T')[0],
@@ -85,6 +52,37 @@ export default function TripTicketForm() {
     guardIn: '',
     ...initialData
   });
+
+  const isCompleted = !!(formData.dateTimeDeparture && formData.dateTimeReturn);
+
+  const isFieldDisabled = (fieldName, baseDisabled = false) => {
+    // 1. If both actual dates are filled, it's DONE. Lock everything for everyone.
+    if (isCompleted) return true;
+
+    // 2. If it's Approved, lock core info and signatures for everyone (Only logs for Guard)
+    if (status === 'Approved') {
+       const guardLogFields = ['kmOut', 'kmIn', 'guardOut', 'guardIn', 'dateTimeDeparture', 'dateTimeReturn'];
+       if (isGuard && guardLogFields.includes(fieldName)) return false;
+       return true;
+    }
+
+    // 3. If Archived or Disapproved, everything is locked
+    if (status === 'Archived' || status === 'Disapproved') return true;
+
+    // 4. If status is Pending and in Review Mode (Approver View)
+    if (status === 'Pending' && isReviewMode) {
+      // Approvers should be able to fill their names
+      if (fieldName === 'approvedBy' || fieldName === 'endorsedBy') return false;
+      return true;
+    }
+
+    // 5. Default behavior for new forms / Guard restriction
+    const guardOnlyFields = ['kmOut', 'kmIn', 'guardOut', 'guardIn', 'dateTimeDeparture', 'dateTimeReturn'];
+    if (isGuard && !guardOnlyFields.includes(fieldName)) return true;
+    if (!isGuard && guardOnlyFields.includes(fieldName)) return true;
+
+    return baseDisabled || isReadOnly;
+  };
 
 
   useEffect(() => {
@@ -240,6 +238,20 @@ export default function TripTicketForm() {
     }
   };
 
+  const handleCancel = async () => {
+    const confirmed = await confirm('Are you sure you want to CANCEL this approved trip? This will release the driver and vehicle for other bookings.');
+    if (!confirmed) return;
+    try {
+      const payload = { ...formData, status: 'Cancelled' };
+      await api.put(`/trip-tickets/${initialData.id}`, payload);
+      showToast('Trip Ticket Cancelled!', 'info');
+      navigate('/dashboard');
+    } catch (err) {
+      console.error(err);
+      showToast('Error cancelling Trip Ticket', 'error');
+    }
+  };
+
   const handleDrop = async () => {
     const confirmed = await confirm('Are you sure you want to DROP (delete) this pending request? This cannot be undone.');
     if (!confirmed) return;
@@ -348,6 +360,11 @@ export default function TripTicketForm() {
               📥 Archive
             </button>
           )}
+          {status === 'Approved' && !formData.dateTimeDeparture && (user?.canApprove || initialData?.userId === user?.id || formData?.requestedBy === user?.name) && (
+            <button className="tool-btn cancel-btn" onClick={handleCancel} style={{ background: '#f97316' }}>
+              🚫 Cancel Trip
+            </button>
+          )}
           <button className="tool-btn print-btn" onClick={() => window.print()}>
             🖨️ Print Form
           </button>
@@ -362,19 +379,10 @@ export default function TripTicketForm() {
               alt="HDI Logo" 
               className="company-logo"
             />
+          </div>
+          <div className="form-title-right">
             <p>Trip Ticket Form</p>
           </div>
-          {initialData?.id && (
-            <div className="form-status">
-              <span className={`status-badge ${status.toLowerCase()}`}>{status}</span>
-              {status === 'Archived' && initialData?.archivedBy && (
-                <p style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '4px', fontStyle: 'italic' }}>
-                  Archived by: {initialData.archivedBy}
-                </p>
-              )}
-              <p>Ticket #{initialData.id.toString().padStart(4, '0')}</p>
-            </div>
-          )}
         </div>
 
         <div className="form-body">
@@ -559,58 +567,6 @@ export default function TripTicketForm() {
             </div>
           </div>
 
-          {/* SECTION 5: Admin Verification Checklist (Visible only during Review) */}
-          {isReviewMode && user?.canApprove && status === 'Pending' && (
-            <div className="form-section no-print" style={{ 
-              marginTop: '1rem', 
-              border: '2px dashed var(--primary)', 
-              padding: '2rem', 
-              borderRadius: '20px', 
-              background: 'rgba(99, 102, 241, 0.05)',
-              boxShadow: 'inset 0 0 20px rgba(99, 102, 241, 0.02)'
-            }}>
-              <h3 className="section-title" style={{ color: 'var(--primary)', borderBottomColor: 'var(--primary)', marginBottom: '1rem' }}>📋 Admin Verification Checklist</h3>
-              <p style={{ fontSize: '0.9rem', color: 'var(--text-dim)', marginBottom: '1.5rem', fontWeight: 600 }}>Please verify the following before approving:</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.2rem' }}>
-                {checklist.map(item => (
-                  <label key={item.id} style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '15px', 
-                    cursor: 'pointer', 
-                    padding: '15px', 
-                    background: 'var(--card-bg)', 
-                    borderRadius: '14px', 
-                    border: '1px solid var(--glass-border)',
-                    transition: 'all 0.2s ease',
-                    boxShadow: item.checked ? '0 5px 15px rgba(99, 102, 241, 0.1)' : 'none',
-                    borderColor: item.checked ? 'var(--primary)' : 'var(--glass-border)'
-                  }}>
-                    <input 
-                      type="checkbox" 
-                      checked={item.checked}
-                      onChange={() => setChecklist(prev => prev.map(i => i.id === item.id ? { ...i, checked: !i.checked } : i))}
-                      style={{ 
-                        width: '22px', 
-                        height: '22px', 
-                        cursor: 'pointer',
-                        accentColor: 'var(--primary)'
-                      }}
-                    />
-                    <span style={{ 
-                      fontSize: '1rem', 
-                      fontWeight: 700, 
-                      color: item.checked ? 'var(--primary)' : 'var(--text-main)',
-                      textDecoration: item.checked ? 'line-through' : 'none',
-                      opacity: item.checked ? 0.7 : 1
-                    }}>
-                      {item.text}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* SECTION 6: Signatures */}
           <div className="form-section signature-section">
@@ -685,8 +641,14 @@ export default function TripTicketForm() {
           margin-bottom: 2rem;
         }
 
-        .company-info h2 { margin: 0; font-size: 1.8rem; font-weight: 800; color: var(--primary); }
-        .company-info p { margin: 0; font-size: 1.2rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 2px; }
+        .form-title-right p {
+          color: #000 !important;
+          font-size: 1.2rem;
+          font-weight: 800;
+          text-transform: uppercase;
+          margin: 0;
+          letter-spacing: 1px;
+        }
 
         .form-status { text-align: right; }
         .form-status p { margin: 5px 0 0; font-weight: 700; color: var(--text-dim); }
@@ -695,6 +657,7 @@ export default function TripTicketForm() {
         .status-badge.pending { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
         .status-badge.archived { background: rgba(100, 116, 139, 0.1); color: #94a3b8; }
         .status-badge.disapproved { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+        .status-badge.cancelled { background: rgba(249, 115, 22, 0.1); color: #f97316; }
 
         .form-section { margin-bottom: 2.5rem; }
         .section-title { 
@@ -816,57 +779,157 @@ export default function TripTicketForm() {
         }
 
         @media print {
-          .company-logo {
-            height: 50px; /* Slightly smaller for print to save space */
-          }
-          @page { size: A4; margin: 1cm 1.5cm; }
-          body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          .no-print { display: none !important; }
-          .custom-form-page { background: white !important; padding: 0 !important; color: black !important; min-height: auto !important; }
-          .form-container {
-            box-shadow: none !important; border: none !important; padding: 0 !important; max-width: 100% !important; background: white !important;
+          /* Hide all UI elements */
+          .glass-sidebar, .mobile-menu-toggle, .sidebar-overlay, .sticky-toolbar, .no-print, .reason-modal-overlay {
+            display: none !important;
           }
           
-          .form-header { margin-bottom: 1rem; padding-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: flex-start; }
-          .company-info h2 { color: #000 !important; font-size: 1.4rem !important; margin: 0; }
-          .company-info p { color: #333 !important; font-size: 0.9rem !important; margin: 0; }
-          .form-status p { font-size: 0.8rem !important; margin: 0 !important; }
+          @page { 
+            size: A4; 
+            margin: 5mm !important; 
+          }
           
-          .form-section { margin-bottom: 0.6rem !important; }
-          .section-title { color: #000 !important; font-size: 0.85rem !important; margin-bottom: 0.6rem !important; padding-bottom: 2px !important; border-bottom: 2px solid #000 !important; text-transform: uppercase; }
-          
-          .grid-3, .grid-2 { gap: 0.8rem !important; }
-          .mt-3 { margin-top: 0.6rem !important; }
-
-          .form-group label { color: #444 !important; font-size: 0.6rem !important; margin-bottom: 1px !important; }
-          .form-group input, .form-group select, .form-group textarea {
-            background: transparent !important;
-            border: none !important;
-            border-bottom: 1px solid #000 !important;
-            border-radius: 0 !important;
+          body { 
+            background: white !important; 
+            margin: 0 !important; 
+            padding: 0 !important; 
             color: black !important;
-            padding: 1px 0 !important;
-            font-size: 0.8rem !important;
-            min-height: auto !important;
+            -webkit-print-color-adjust: exact; 
+            print-color-adjust: exact; 
           }
-
-          .schedule-box { 
-            border: 1px solid #000 !important; 
-            background: transparent !important; 
-            padding: 0.6rem !important; 
-            border-radius: 4px !important;
-          }
-          .schedule-box h4 { color: #000 !important; font-size: 0.75rem !important; margin-bottom: 0.4rem !important; text-decoration: underline; }
           
-          .signature-section { margin-top: 1.5rem !important; gap: 1rem !important; }
-          .sig-line { border-bottom-color: #000 !important; }
-          .sig-line input { color: #000 !important; font-size: 0.85rem !important; }
-          .sig-block label { color: #333 !important; font-size: 0.65rem !important; }
+          .main-content { padding: 0 !important; margin: 0 !important; width: 100% !important; background: white !important; }
+          .custom-form-page { background: white !important; padding: 0 !important; color: black !important; min-height: auto !important; margin: 0 !important; }
+          
+          .form-container {
+            box-shadow: none !important; 
+            border: none !important; 
+            padding: 0 !important; 
+            max-width: 100% !important; 
+            width: 100% !important;
+            background: white !important;
+            margin: 0 !important;
+            transform: scale(0.94);
+            transform-origin: top center;
+          }
+          
+          .company-logo { height: 40px !important; margin-bottom: 2px; }
+          .form-header { 
+            margin-bottom: 1.5rem !important; 
+            border-bottom: 2px solid #000 !important;
+            padding-top: 20px !important;
+            padding-bottom: 15px !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+          }
+          .form-header h1, .form-title-right p { 
+            font-size: 1.2rem !important; 
+            margin: 0 !important; 
+            text-transform: uppercase; 
+            font-weight: 800 !important; 
+            color: #000 !important;
+          }
+          
+          .form-section { margin-bottom: 0.8rem !important; }
+          .section-title { 
+            font-size: 0.8rem !important; 
+            font-weight: 900 !important; 
+            text-transform: uppercase; 
+            border-bottom: 2px solid #000 !important; 
+            margin-bottom: 0.5rem !important;
+            padding-bottom: 1px !important;
+            color: #000 !important;
+          }
+          
+          .grid-3, .grid-2 { 
+            display: grid !important; 
+            grid-template-columns: repeat(2, 1fr) !important; 
+            gap: 0.8rem !important; 
+          }
+          .grid-3 { grid-template-columns: repeat(3, 1fr) !important; }
+          
+          .form-group { margin-bottom: 0.3rem !important; }
+          .form-group label { 
+            font-size: 0.6rem !important; 
+            font-weight: 800 !important; 
+            text-transform: uppercase; 
+            margin-bottom: 1px !important; 
+            display: block !important;
+            color: #333 !important;
+          }
+          
+          .form-group input, .form-group select, .form-group textarea {
+            border: 1px solid #ccc !important;
+            border-radius: 8px !important;
+            padding: 2px 8px !important;
+            font-size: 0.8rem !important;
+            background: #fff !important;
+            width: 100% !important;
+            min-height: auto !important;
+            color: #000 !important;
+            font-weight: 600 !important;
+            /* Remove dropdown arrows */
+            appearance: none !important;
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+          }
 
-          /* Prevent page breaks inside important blocks */
-          .form-section { break-inside: avoid; }
-          .form-header { break-inside: avoid; }
-          .signature-section { break-inside: avoid; }
+          /* Hide placeholders in print */
+          input::placeholder, textarea::placeholder {
+            color: transparent !important;
+            opacity: 0 !important;
+          }
+          
+          .schedule-box {
+            border: 1.5px solid #000 !important;
+            border-radius: 10px !important;
+            padding: 0.6rem !important;
+            background: #fff !important;
+          }
+          .schedule-box.actual-log {
+            border-color: #000 !important;
+          }
+          .schedule-box h4 { 
+            font-size: 0.7rem !important; 
+            font-weight: 900 !important; 
+            text-transform: uppercase; 
+            border-bottom: 1px solid #000 !important;
+            margin-bottom: 0.3rem !important;
+            padding-bottom: 1px !important;
+            text-decoration: none !important;
+            color: #000 !important; /* Force black instead of green */
+          }
+          
+          .signature-section { 
+            margin-top: 1.5rem !important; 
+            display: grid !important; 
+            grid-template-columns: repeat(3, 1fr) !important; 
+            gap: 1.5rem !important;
+            text-align: center !important;
+          }
+          
+          .sig-block { border-top: none !important; }
+          .sig-line { 
+            border-bottom: 2.5px solid #000 !important; 
+            margin-bottom: 3px !important; 
+          }
+          .sig-line input { 
+            border: none !important; 
+            text-align: center !important; 
+            font-size: 1rem !important; 
+            font-weight: 900 !important;
+            text-transform: uppercase !important;
+          }
+          .sig-block label { 
+            font-size: 0.65rem !important; 
+            font-weight: 900 !important; 
+            text-transform: uppercase !important;
+            color: #000 !important;
+          }
+          
+          /* Force single page */
+          .form-section, .signature-section { break-inside: avoid; }
         }
       `}</style>
     </div>

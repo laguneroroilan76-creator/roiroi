@@ -1,972 +1,590 @@
-import { useState, useRef, useEffect } from 'react';
-import axios from 'axios';
-import api from '../services/api';
-import { useToast } from '../context/ToastContext';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-
-const INITIAL_FIELDS = {};
+import { useToast } from '../context/ToastContext';
+import api from '../services/api';
 
 export default function RRFForm() {
   const { showToast, confirm } = useToast();
   const location = useLocation();
+  const navigate = useNavigate();
+
   const initialData = location.state?.initialData;
   const isReviewMode = !!initialData;
-
-  const [fields, setFields] = useState(() => {
-    if (initialData) {
-      const savedLayout = typeof initialData.layout === 'string' ? JSON.parse(initialData.layout) : initialData.layout;
-      const base = savedLayout || { ...INITIAL_FIELDS };
-      Object.keys(base).forEach(key => {
-        if (initialData[key] !== undefined && !base[key].isExtra) {
-          base[key].value = initialData[key];
-        }
-      });
-      return base;
-    }
-    const saved = localStorage.getItem('RRFLayoutClean');
-    const base = saved ? JSON.parse(saved) : { ...INITIAL_FIELDS };
-    Object.keys(base).forEach(key => { if (!base[key].value) base[key].value = ''; });
-    return base;
-  });
-
-  const [appMode, setAppMode] = useState('view');
-  const [status, setStatus] = useState(initialData?.status || 'Pending');
-  const [showReasonModal, setShowReasonModal] = useState(false);
-  const [disReason, setDisReason] = useState('');
-  const [checklist, setChecklist] = useState([
-    { id: 1, text: 'Stock Availability Verified', checked: false },
-    { id: 2, text: 'Replacement Reason Validated', checked: false },
-    { id: 3, text: 'Item Specifications Confirmed', checked: false },
-    { id: 4, text: 'Department Head Endorsement Checked', checked: false }
-  ]);
-  const [isAddingField, setIsAddingField] = useState(false);
-  const [draggingField, setDraggingField] = useState(null);
-  const [draggingStart, setDraggingStart] = useState(null);
-  const [resizingField, setResizingField] = useState(null);
-  const [resizeHandle, setResizeHandle] = useState(null);
-  const [resizingStart, setResizingStart] = useState(null);
-  const [rotatingField, setRotatingField] = useState(null);
-  const [selectedField, setSelectedField] = useState(null);
-  const [zoom, setZoom] = useState(1.2);
-  const containerRef = useRef(null);
-  const navigate = useNavigate();
+  const isReadOnly = location.state?.readOnly;
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user?.role === 'Admin' || user?.canApprove;
-  const isPending = status === 'Pending' && !!initialData;
-  const effectiveReadOnly = location.state?.readOnly || (status === 'Approved' || status === 'Archived' || status === 'Disapproved') || isPending;
+  
+  const [status, setStatus] = useState(initialData?.status || 'Pending');
+  const [showReasonModal, setShowReasonModal] = useState(false);
+  const [disReason, setDisReason] = useState('');
 
-  const handleDragStart = (e, key) => {
-    if (appMode !== 'layout') return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const field = fields[key];
-    const mouseX = ((e.clientX - rect.left) / rect.width) * 100;
-    const mouseY = ((e.clientY - rect.top) / rect.height) * 100;
-
-    setDraggingField(key);
-    setDraggingStart({
-      offsetX: mouseX - field.x,
-      offsetY: mouseY - field.y
-    });
-  };
-
-  const handleRotateStart = (e, key) => {
-    if (appMode !== 'layout') return;
-    e.stopPropagation();
-    setRotatingField(key);
-  };
-
-  const handleResizeStart = (e, key, handle) => {
-    if (appMode !== 'layout') return;
-    e.stopPropagation();
-    const field = fields[key];
-    setResizingField(key);
-    setResizeHandle(handle);
-    setResizingStart({
-      x: e.clientX,
-      y: e.clientY,
-      width: field.width || 15,
-      height: field.height || 3, // New % height
-      crop: field.crop || { top: 0, right: 0, bottom: 0, left: 0 },
-      fieldX: field.x,
-      fieldY: field.y
-    });
-  };
-
-  const handleMouseMove = (e) => {
-    if (appMode !== 'layout') return;
-    const rect = containerRef.current.getBoundingClientRect();
-
-    if (draggingField && draggingStart) {
-      const mouseX = ((e.clientX - rect.left) / rect.width) * 100;
-      const mouseY = ((e.clientY - rect.top) / rect.height) * 100;
-
-      setFields(prev => ({
-        ...prev,
-        [draggingField]: {
-          ...prev[draggingField],
-          x: mouseX - draggingStart.offsetX,
-          y: mouseY - draggingStart.offsetY
-        }
-      }));
-    } else if (resizingField && resizingStart) {
-      const deltaX = ((e.clientX - resizingStart.x) / rect.width) * 100;
-      const deltaY = ((e.clientY - resizingStart.y) / rect.height) * 100;
-      const isSignature = fields[resizingField].isSignature;
-
-      setFields(prev => {
-        const field = prev[resizingField];
-        const newField = { ...field };
-
-        // Handle Side Handles (Resize Container)
-        if (['right', 'bottom', 'left', 'top'].includes(resizeHandle)) {
-          if (resizeHandle === 'right') newField.width = Math.max(1, resizingStart.width + deltaX);
-          if (resizeHandle === 'bottom') newField.height = Math.max(0.5, resizingStart.height + deltaY);
-          if (resizeHandle === 'left') {
-            newField.x = resizingStart.fieldX + deltaX;
-            newField.width = Math.max(1, resizingStart.width - deltaX);
-          }
-          if (resizeHandle === 'top') {
-            newField.y = resizingStart.fieldY + deltaY;
-            newField.height = Math.max(0.5, resizingStart.height - deltaY);
-          }
-
-          if (isSignature) {
-            const newCrop = { ...(field.crop || { top: 0, right: 0, bottom: 0, left: 0 }) };
-          }
-        }
-
-        // Handle Corner Resizing (Standard Canva Scaling)
-        if (['se', 'sw', 'ne', 'nw'].includes(resizeHandle)) {
-          if (['se', 'ne'].includes(resizeHandle)) {
-            newField.width = Math.max(1, resizingStart.width + deltaX);
-          } else {
-            newField.x = resizingStart.fieldX + deltaX;
-            newField.width = Math.max(1, resizingStart.width - deltaX);
-          }
-
-          if (['se', 'sw'].includes(resizeHandle)) {
-            newField.height = Math.max(0.5, resizingStart.height + deltaY);
-          } else {
-            newField.y = resizingStart.fieldY + deltaY;
-            newField.height = Math.max(0.5, resizingStart.height - deltaY);
-          }
-        }
-
-        return { ...prev, [resizingField]: newField };
-      });
-    } else if (rotatingField) {
-      const field = fields[rotatingField];
-      const centerX = rect.left + (field.x + field.width / 2) * rect.width / 100;
-      const centerY = rect.top + (field.y + field.height / 2) * rect.height / 100;
-
-      const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * 180 / Math.PI;
-
-      setFields(prev => ({
-        ...prev,
-        [rotatingField]: { ...prev[rotatingField], rotate: angle }
-      }));
-    }
-  };
-
-  const handleMouseUp = () => {
-    setDraggingField(null);
-    setDraggingStart(null);
-    setResizingField(null);
-    setResizeHandle(null);
-    setResizingStart(null);
-    setRotatingField(null);
-  };
-
-  const handleValueChange = (key, val) => {
-    setFields(prev => ({
-      ...prev,
-      [key]: { ...prev[key], value: val }
-    }));
-  };
-
-  const handleClickCanvas = (e) => {
-    if (!isAddingField) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    const id = `extra_${Date.now()}`;
-
-    setFields(prev => ({
-      ...prev,
-      [id]: { label: 'New Text', x, y, width: 15, height: 2.2, value: '', isExtra: true }
-    }));
-    setIsAddingField(false);
-  };
-
-  const handleAddSignature = () => {
-    const userStr = localStorage.getItem('user');
-    if (!userStr) return alert('Please log in first');
-    const user = JSON.parse(userStr);
-
-    if (!user.signatureUrl) {
-      return showToast('please upload the signature', 'error');
-    }
-
-    const id = `sig_${Date.now()}`;
-    setFields(prev => ({
-      ...prev,
-      [id]: {
-        label: 'Signature',
-        x: 40, y: 80, width: 15, height: 6.5,
-        isSignature: true,
-        signatureUrl: user.signatureUrl,
-        crop: { top: 0, right: 0, bottom: 0, left: 0 },
-        isExtra: true
+  const [formData, setFormData] = useState(() => {
+    const base = {
+      rrfNo: '',
+      dateRequested: new Date().toISOString().split('T')[0],
+      dateNeeded: '',
+      requestor: user?.name || '',
+      to: '',
+      from: '',
+      department: '',
+      company: '',
+      remarks: '',
+      preparedBy: user?.name || '',
+      verifiedBy: '',
+      approvedBy: '',
+      items: Array(15).fill().map(() => ({
+        qty: '',
+        unit: '',
+        particulars: '',
+        estimatedCost: '',
+        availableStocks: ''
+      }))
+    };
+    if (initialData) {
+      const mergedItems = [...base.items];
+      if (initialData.items) {
+        initialData.items.forEach((item, idx) => {
+          if (idx < 15) mergedItems[idx] = { ...item };
+        });
       }
-    }));
-    setAppMode('layout');
-  };
-
-
-  const handleFontSize = (key, val) => {
-    setFields(prev => ({
-      ...prev,
-      [key]: { ...prev[key], fontSize: parseFloat(val) || 8.5 }
-    }));
-  };
-
-  const handleSelectField = (key) => {
-    if (appMode !== 'layout') return;
-    setSelectedField(key);
-  };
-
-  const handleToggleStyle = (key, prop) => {
-    setFields(prev => ({
-      ...prev,
-      [key]: { ...prev[key], [prop]: !prev[key][prop] }
-    }));
-  };
-
-  const handleColorChange = (key, color) => {
-    setFields(prev => ({
-      ...prev,
-      [key]: { ...prev[key], color }
-    }));
-  };
-
-  const handleApprove = async () => {
-    const confirmed = await confirm('Are you sure you want to approve this RRF?');
-    if (!confirmed) return;
-    try {
-      const payload = {
-        ...initialData,
-        layout: fields,
-        status: 'Approved',
-        ...Object.keys(fields).reduce((acc, key) => {
-          if (!fields[key].isExtra) acc[key] = fields[key].value;
-          return acc;
-        }, {}),
-        items: Array(15).fill().map((_, i) => ({
-          qty: fields[`qty_${i}`]?.value || '',
-          unit: fields[`unit_${i}`]?.value || '',
-          particulars: fields[`part_${i}`]?.value || '',
-          estimatedCost: fields[`cost_${i}`]?.value || '',
-          availableStocks: fields[`stocks_${i}`]?.value || '',
-        })).filter(it => it.particulars.trim() !== '')
-      };
-
-      await api.put(`/rrfs/${initialData.id}`, payload);
-      showToast('RRF Approved successfully!', 'success');
-      navigate('/dashboard');
-    } catch (err) {
-      console.error(err);
-      const errMsg = err.response?.data?.error || err.message || 'Error approving RRF';
-      showToast(`Error: ${errMsg}`, 'error');
+      return { ...base, ...initialData, items: mergedItems };
     }
+    return base;
+  });
+
+  const isFieldDisabled = (fieldName, baseDisabled = false) => {
+    if (status === 'Approved' || status === 'Archived' || status === 'Disapproved') return true;
+    if (status === 'Pending' && isReviewMode) return true;
+    return baseDisabled;
   };
 
-  const handleDrop = async () => {
-    const confirmed = await confirm('Are you sure you want to DROP (delete) this pending RRF? This cannot be undone.');
-    if (!confirmed) return;
-    try {
-      await api.delete(`/rrfs/${initialData.id}`);
-      showToast('RRF Deleted successfully!', 'info');
-      navigate('/dashboard');
-    } catch (err) {
-      console.error(err);
-      showToast('Error deleting RRF', 'error');
-    }
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleDisapprove = () => {
-    setShowReasonModal(true);
-  };
-
-  const confirmDisapprove = async () => {
-    const confirmed = await confirm('Are you sure you want to disapprove this RRF?');
-    if (!confirmed) return;
-    try {
-      const payload = {
-        ...initialData,
-        layout: fields,
-        status: 'Disapproved',
-        disapprovalReason: disReason,
-        ...Object.keys(fields).reduce((acc, key) => {
-          if (!fields[key].isExtra) acc[key] = fields[key].value;
-          return acc;
-        }, {}),
-        items: Array(15).fill().map((_, i) => ({
-          qty: fields[`qty_${i}`]?.value || '',
-          unit: fields[`unit_${i}`]?.value || '',
-          particulars: fields[`part_${i}`]?.value || '',
-          estimatedCost: fields[`cost_${i}`]?.value || '',
-          availableStocks: fields[`stocks_${i}`]?.value || '',
-        })).filter(it => it.particulars.trim() !== '')
-      };
-
-      await api.put(`/rrfs/${initialData.id}`, payload);
-      showToast('RRF Disapproved and moved to Archive', 'info');
-      navigate('/archived');
-    } catch (err) {
-      console.error(err);
-      const errMsg = err.response?.data?.error || err.message || 'Error disapproving RRF';
-      showToast(`Error: ${errMsg}`, 'error');
-    }
-  };
-
-  const handleArchive = async () => {
-    const confirmed = await confirm('Are you sure you want to archive this RRF?');
-    if (!confirmed) return;
-    try {
-      const payload = {
-        ...initialData,
-        layout: fields,
-        status: 'Archived',
-        ...Object.keys(fields).reduce((acc, key) => {
-          if (!fields[key].isExtra) acc[key] = fields[key].value;
-          return acc;
-        }, {}),
-        items: Array(15).fill().map((_, i) => ({
-          qty: fields[`qty_${i}`]?.value || '',
-          unit: fields[`unit_${i}`]?.value || '',
-          particulars: fields[`part_${i}`]?.value || '',
-          estimatedCost: fields[`cost_${i}`]?.value || '',
-          availableStocks: fields[`stocks_${i}`]?.value || '',
-        })).filter(it => it.particulars.trim() !== '')
-      };
-
-      await api.put(`/rrfs/${initialData.id}`, payload);
-      showToast('RRF Archived successfully!', 'success');
-      navigate('/archived');
-    } catch (err) {
-      console.error(err);
-      const errMsg = err.response?.data?.error || err.message || 'Error archiving RRF';
-      showToast(`Error: ${errMsg}`, 'error');
-    }
+  const handleItemChange = (index, field, value) => {
+    const newItems = [...formData.items];
+    newItems[index][field] = value;
+    setFormData(prev => ({ ...prev, items: newItems }));
   };
 
   const handleSave = async () => {
     try {
-      localStorage.setItem('RRFLayoutClean', JSON.stringify(fields));
-
       const payload = {
-        ...Object.keys(fields).reduce((acc, key) => {
-          if (!fields[key].isExtra) acc[key] = fields[key].value;
-          return acc;
-        }, {}),
-        layout: fields,
-        status,
-        requestor: user?.name || 'Unknown',
-        items: Array(15).fill().map((_, i) => ({
-          qty: fields[`qty_${i}`]?.value || '',
-          unit: fields[`unit_${i}`]?.value || '',
-          particulars: fields[`part_${i}`]?.value || '',
-          estimatedCost: fields[`cost_${i}`]?.value || '',
-          availableStocks: fields[`stocks_${i}`]?.value || '',
-        })).filter(it => it.particulars.trim() !== '')
+        ...formData,
+        status: 'Pending',
+        items: formData.items.filter(it => it.particulars.trim() !== '')
       };
 
       if (isReviewMode && initialData?.id) {
         await api.put(`/rrfs/${initialData.id}`, payload);
-        alert('Updated Successfully!');
+        showToast('Purchase Requisition Updated!', 'success');
       } else {
         await api.post('/rrfs', payload);
-        alert('Saved Successfully!');
+        showToast('Purchase Requisition Created!', 'success');
       }
       navigate('/dashboard');
     } catch (err) {
       console.error(err);
-      alert('Error saving data');
+      showToast('Error saving Purchase Requisition', 'error');
     }
   };
 
-  useEffect(() => {
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [draggingField, draggingStart, resizingField, resizingStart, resizeHandle, rotatingField, appMode]);
+  const handleApprove = async () => {
+    const confirmed = await confirm('Are you sure you want to approve this Purchase Requisition (PRF)?');
+    if (!confirmed) return;
+    try {
+      const payload = { 
+        ...formData, 
+        status: 'Approved', 
+        approvedBy: user.name,
+        items: formData.items.filter(it => it.particulars.trim() !== '')
+      };
+      await api.put(`/rrfs/${initialData.id}`, payload);
+      showToast('Purchase Requisition Approved!', 'success');
+      navigate('/dashboard');
+    } catch (err) {
+      console.error(err);
+      showToast('Error approving Purchase Requisition', 'error');
+    }
+  };
+
+  const handleDisapprove = () => setShowReasonModal(true);
+
+  const confirmDisapprove = async () => {
+    const confirmed = await confirm('Are you sure you want to disapprove this Purchase Requisition?');
+    if (!confirmed) return;
+    try {
+      const payload = { 
+        ...formData, 
+        status: 'Disapproved', 
+        disapprovalReason: disReason,
+        items: formData.items.filter(it => it.particulars.trim() !== '')
+      };
+      await api.put(`/rrfs/${initialData.id}`, payload);
+      showToast('Purchase Requisition Disapproved', 'info');
+      navigate('/archived');
+    } catch (err) {
+      console.error(err);
+      showToast('Error disapproving Purchase Requisition', 'error');
+    }
+  };
+
+  const handleArchive = async () => {
+    const confirmed = await confirm('Are you sure you want to archive this record?');
+    if (!confirmed) return;
+    try {
+      await api.put(`/rrfs/${initialData.id}`, { ...formData, status: 'Archived' });
+      showToast('Record Archived', 'success');
+      navigate('/archived');
+    } catch (err) {
+      showToast('Error archiving record', 'error');
+    }
+  };
 
   return (
-    <div className="smart-canvas-page">
+    <div className="custom-form-page">
+      <div className="sticky-toolbar glass no-print">
+        <div className="tool-group">
+          <button className="tool-btn back" onClick={() => navigate(-1)}>
+            ← Back
+          </button>
+        </div>
+        
+        <div className="tool-group">
+          {!isReviewMode && (
+            <button className="tool-btn save" onClick={handleSave}>
+              💾 Submit Request
+            </button>
+          )}
+          {status === 'Pending' && isReviewMode && isAdmin && (
+            <>
+              <button className="tool-btn approve" onClick={handleApprove}>
+                ✅ Approve
+              </button>
+              <button className="tool-btn disapprove" onClick={handleDisapprove}>
+                ❌ Disapprove
+              </button>
+            </>
+          )}
+          {status === 'Approved' && isAdmin && (
+            <button className="tool-btn archive-btn" onClick={handleArchive}>
+              📥 Archive
+            </button>
+          )}
+          <button className="tool-btn print-btn" onClick={() => window.print()}>
+            🖨️ Print Form
+          </button>
+        </div>
+      </div>
+
+      <div className="form-container glass">
+        <div className="printable-form prf-form-theme">
+          {/* Header */}
+          <div className="form-header">
+            <div className="header-main">
+              <img src="/HDI Primary Logo .png" alt="HDI Logo" className="form-logo" />
+              <div className="company-info">
+                <h1>PURCHASE REQUISITION FORM</h1>
+              </div>
+            </div>
+            <div className="header-meta">
+              <div className="meta-row">
+                <label>PRF No.:</label>
+                <input type="text" name="rrfNo" value={formData.rrfNo} onChange={handleChange} disabled={isFieldDisabled('rrfNo')} placeholder="AUTO" />
+              </div>
+              <div className="meta-row">
+                <label>Date Requested:</label>
+                <input type="date" name="dateRequested" value={formData.dateRequested} onChange={handleChange} disabled={isFieldDisabled('dateRequested')} />
+              </div>
+              <div className="meta-row">
+                <label>Date Needed:</label>
+                <input type="date" name="dateNeeded" value={formData.dateNeeded} onChange={handleChange} disabled={isFieldDisabled('dateNeeded')} />
+              </div>
+            </div>
+          </div>
+
+          <div className="form-section-row">
+            <div className="form-group flex-1">
+              <label>TO:</label>
+              <input type="text" name="to" value={formData.to} onChange={handleChange} disabled={isFieldDisabled('to')} />
+            </div>
+            <div className="form-group flex-1">
+              <label>FROM:</label>
+              <input type="text" name="from" value={formData.from} onChange={handleChange} disabled={isFieldDisabled('from')} placeholder="Requester Name" />
+            </div>
+          </div>
+
+          <div className="form-section-row" style={{ marginTop: '-0.5rem' }}>
+            <div className="form-group flex-1">
+              <label>DEPT:</label>
+              <input type="text" name="department" value={formData.department} onChange={handleChange} disabled={isFieldDisabled('department')} placeholder="e.g. IT, Finance" />
+            </div>
+            <div className="form-group flex-1">
+              <label>CO:</label>
+              <input type="text" name="company" value={formData.company} onChange={handleChange} disabled={isFieldDisabled('company')} placeholder="e.g. HDI Adventures" />
+            </div>
+          </div>
+
+          {/* Items Table */}
+          <div className="items-table-container">
+            <table className="prf-items-table">
+              <thead>
+                <tr>
+                  <th width="5%">No.</th>
+                  <th width="8%">Qty</th>
+                  <th width="10%">Unit</th>
+                  <th width="47%">Particulars / Purpose</th>
+                  <th width="15%">Estimated Cost</th>
+                  <th width="15%">Stock/s as of...</th>
+                </tr>
+              </thead>
+              <tbody>
+                {formData.items.map((item, idx) => (
+                  <tr key={idx}>
+                    <td className="text-center">{idx + 1}</td>
+                    <td>
+                      <input 
+                        type="text" 
+                        value={item.qty} 
+                        onChange={(e) => handleItemChange(idx, 'qty', e.target.value)} 
+                        disabled={isFieldDisabled('items')}
+                      />
+                    </td>
+                    <td>
+                      <input 
+                        type="text" 
+                        value={item.unit} 
+                        onChange={(e) => handleItemChange(idx, 'unit', e.target.value)} 
+                        disabled={isFieldDisabled('items')}
+                      />
+                    </td>
+                    <td>
+                      <input 
+                        type="text" 
+                        value={item.particulars} 
+                        onChange={(e) => handleItemChange(idx, 'particulars', e.target.value)} 
+                        disabled={isFieldDisabled('items')}
+                        placeholder={idx === 0 ? "Enter item description..." : ""}
+                      />
+                    </td>
+                    <td>
+                      <input 
+                        type="text" 
+                        value={item.estimatedCost} 
+                        onChange={(e) => handleItemChange(idx, 'estimatedCost', e.target.value)} 
+                        disabled={isFieldDisabled('items')}
+                      />
+                    </td>
+                    <td>
+                      <input 
+                        type="text" 
+                        value={item.availableStocks} 
+                        onChange={(e) => handleItemChange(idx, 'availableStocks', e.target.value)} 
+                        disabled={isFieldDisabled('items')}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="form-section mt-4">
+            <label>Remarks:</label>
+            <textarea 
+              name="remarks" 
+              className="remarks-area"
+              value={formData.remarks} 
+              onChange={handleChange} 
+              disabled={isFieldDisabled('remarks')}
+              rows="4"
+              placeholder="Additional instructions or notes..."
+            ></textarea>
+          </div>
+
+          {/* Signatures */}
+          <div className="form-signatures prf-sigs">
+            <div className="sig-column">
+              <div className="sig-box">
+                <input type="text" name="preparedBy" value={formData.preparedBy} onChange={handleChange} disabled={isFieldDisabled('preparedBy')} />
+                <label>Requested By</label>
+              </div>
+              <div className="sig-box">
+                <input type="text" name="verifiedBy" value={formData.verifiedBy} onChange={handleChange} disabled={isFieldDisabled('verifiedBy')} />
+                <label>Verified By</label>
+              </div>
+            </div>
+            <div className="sig-column">
+              <div className="sig-box">
+                <input type="text" name="approvedBy" value={formData.approvedBy} onChange={handleChange} disabled={isFieldDisabled('approvedBy')} />
+                <label>Approved By</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {showReasonModal && (
-        <div className="reason-modal-overlay no-print">
-          <div className="reason-modal glass">
-            <h3 style={{ margin: '0 0 1rem 0', color: 'var(--text-main)' }}>❌ Disapproval Reason</h3>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-dim)', marginBottom: '1.5rem' }}>
-              Optional: Please provide a reason for disapproving this document.
-            </p>
+        <div className="modal-overlay">
+          <div className="modal-content glass">
+            <h3>Disapproval Reason</h3>
             <textarea 
               value={disReason} 
               onChange={(e) => setDisReason(e.target.value)}
-              placeholder="Enter reason for disapproval here..."
-              style={{ 
-                width: '100%', 
-                minHeight: '120px', 
-                padding: '1rem', 
-                borderRadius: '12px', 
-                border: '1px solid var(--glass-border)',
-                background: 'rgba(0,0,0,0.02)',
-                color: 'var(--text-main)',
-                fontSize: '1rem',
-                marginBottom: '1.5rem',
-                resize: 'vertical'
-              }}
-            />
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-              <button 
-                onClick={() => setShowReasonModal(false)}
-                style={{ 
-                  padding: '0.8rem 1.5rem', 
-                  borderRadius: '10px', 
-                  border: '1px solid var(--glass-border)',
-                  background: 'transparent',
-                  color: 'var(--text-dim)',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }}
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={confirmDisapprove}
-                style={{ 
-                  padding: '0.8rem 1.5rem', 
-                  borderRadius: '10px', 
-                  border: 'none',
-                  background: '#ef4444',
-                  color: 'white',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }}
-              >
-                Disapprove
-              </button>
+              placeholder="Why is this being disapproved?"
+              rows="5"
+            ></textarea>
+            <div className="modal-actions">
+              <button className="tool-btn cancel" onClick={() => setShowReasonModal(false)}>Cancel</button>
+              <button className="tool-btn disapprove" onClick={confirmDisapprove}>Confirm Disapprove</button>
             </div>
           </div>
         </div>
       )}
 
-      <div className="no-print sticky-toolbar">
-        <div className="tool-group">
-          <button className="tool-btn back" onClick={() => navigate('/dashboard')}>← Back</button>
-          {status === 'Archived' && initialData?.archivedBy && (
-            <span style={{ fontSize: '0.8rem', color: '#f59e0b', fontWeight: 700, marginLeft: '1rem' }}>
-              🗄️ ARCHIVED BY: {initialData.archivedBy.toUpperCase()}
-            </span>
-          )}
-
-          <button className={`tool-btn ${appMode === 'view' ? 'active-mode' : ''}`} onClick={() => { setAppMode('view'); setIsAddingField(false); setSelectedField(null); }}>
-            📄 View Mode
-          </button>
-          {status !== 'Approved' && status !== 'Archived' && !isPending && (
-            <button className={`tool-btn ${appMode === 'layout' ? 'active-mode' : ''}`} onClick={() => setAppMode('layout')}>
-              🛠️ Layout & Edit
-            </button>
-          )}
-
-          {appMode === 'layout' && (
-            <div className="layout-tools">
-              <button className={`tool-btn ${isAddingField ? 'active-tool' : 'inactive-tool'}`} onClick={() => setIsAddingField(!isAddingField)}>
-                {isAddingField ? '🎯 Click on Map' : '➕ Add Field'}
-              </button>
-              <button className="tool-btn sig-tool" onClick={handleAddSignature}>
-                ✍️ Add My Signature
-              </button>
-
-              {selectedField && (
-                <div className="styling-bar">
-                  <div className="divider-v"></div>
-                  <button className={`style-btn ${fields[selectedField]?.isBold ? 'active' : ''}`} onClick={() => handleToggleStyle(selectedField, 'isBold')}>B</button>
-                  <button className={`style-btn ${fields[selectedField]?.isUnderline ? 'active' : ''}`} onClick={() => handleToggleStyle(selectedField, 'isUnderline')}>U</button>
-
-                  <input
-                    type="color"
-                    className="color-picker-mini"
-                    value={fields[selectedField]?.color || '#000000'}
-                    onChange={(e) => handleColorChange(selectedField, e.target.value)}
-                  />
-
-                  <div className="divider-v"></div>
-
-                  <div className="size-group">
-                    <span className="small-label">PX:</span>
-                    <input
-                      type="number"
-                      className="font-size-input"
-                      value={fields[selectedField]?.fontSize || 8.5}
-                      onChange={(e) => handleFontSize(selectedField, e.target.value)}
-                    />
-                  </div>
-
-                  <button className="tool-btn delete" onClick={() => {
-                    const newFields = { ...fields };
-                    delete newFields[selectedField];
-                    setFields(newFields);
-                    setSelectedField(null);
-                  }}>🗑️ Delete</button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="tool-group zoom-control">
-          <span style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: 600 }}>ZOOM: {Math.round(zoom * 100)}%</span>
-          <input
-            type="range"
-            min="0.5"
-            max="2"
-            step="0.1"
-            value={zoom}
-            onChange={(e) => setZoom(parseFloat(e.target.value))}
-            className="zoom-slider"
-          />
-        </div>
-        <div className="tool-group">
-          {isReviewMode && status === 'Pending' && (
-            <>
-              {user?.canApprove && (
-                <>
-                  <button className="tool-btn approve" onClick={handleApprove}>
-                    ✅ Approve
-                  </button>
-                  <button className="tool-btn disapprove-btn" onClick={handleDisapprove}>
-                    ❌ Disapprove
-                  </button>
-                </>
-              )}
-              {(user?.canApprove || initialData?.userId === user?.id) && (
-                <button className="tool-btn delete" onClick={handleDrop} style={{ background: '#4b5563', color: 'white' }}>
-                  🗑️ Drop
-                </button>
-              )}
-            </>
-          )}
-          {!isReviewMode && status !== 'Approved' && status !== 'Archived' && (
-            <button className="tool-btn save" onClick={handleSave}>
-              Finalize & Save
-            </button>
-          )}
-          {status === 'Approved' && user?.canApprove && (
-            <button className="tool-btn" style={{ background: '#f59e0b', color: 'white' }} onClick={handleArchive}>
-              📥 Archive
-            </button>
-          )}
-          <button className="tool-btn print-btn" style={{ background: '#334155', color: 'white' }} onClick={() => window.print()}>
-            🖨️ Print Form
-          </button>
-        </div>
-      </div>
-      <div className="no-print">
-          {isReviewMode && user?.canApprove && status === 'Pending' && (
-            <div style={{ 
-              position: 'fixed',
-              bottom: '2rem',
-              right: '2rem',
-              width: '350px',
-              border: '2px dashed var(--primary)', 
-              padding: '1.5rem', 
-              borderRadius: '20px', 
-              background: 'var(--card-bg)',
-              boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
-              zIndex: 1000,
-              animation: 'modalAppear 0.3s ease'
-            }}>
-              <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                📋 Admin Checklist
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                {checklist.map(item => (
-                  <label key={item.id} style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '10px', 
-                    cursor: 'pointer', 
-                    padding: '10px', 
-                    background: 'rgba(0,0,0,0.02)', 
-                    borderRadius: '10px', 
-                    border: '1px solid var(--glass-border)',
-                    transition: 'all 0.2s ease',
-                    borderColor: item.checked ? 'var(--primary)' : 'var(--glass-border)'
-                  }}>
-                    <input 
-                      type="checkbox" 
-                      checked={item.checked}
-                      onChange={() => setChecklist(prev => prev.map(i => i.id === item.id ? { ...i, checked: !i.checked } : i))}
-                      style={{ accentColor: 'var(--primary)' }}
-                    />
-                    <span style={{ 
-                      fontSize: '0.85rem', 
-                      fontWeight: 700, 
-                      color: item.checked ? 'var(--primary)' : 'var(--text-main)',
-                      textDecoration: item.checked ? 'line-through' : 'none'
-                    }}>
-                      {item.text}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-      </div>
-
-      <div
-        className={`canvas-wrapper ${isAddingField ? 'adding-cursor' : ''}`}
-        ref={containerRef}
-        onClick={handleClickCanvas}
-        style={{
-          transform: `scale(${zoom})`,
-          transformOrigin: 'top center',
-          marginBottom: `${(zoom - 1) * 300}mm` // Provide space for scaled content
-        }}
-      >
-        <img
-          src="/Purchase Requisition Form.jpg"
-          className="form-image"
-          alt="form"
-          style={{ width: '100%', height: 'auto', display: 'block', pointerEvents: 'none' }}
-        />
-
-        {Object.entries(fields).map(([key, field]) => (
-          <div
-            key={key}
-            className={`draggable-field ${draggingField === key ? 'dragging' : ''} ${selectedField === key ? 'selected' : ''} ${appMode}`}
-            style={{
-              left: `${field.x}%`,
-              top: `${field.y}%`,
-              width: `${field.width}%`,
-              height: `${field.height}%`,
-              transform: `rotate(${field.rotate || 0}deg)`
-            }}
-            onClick={(e) => { e.stopPropagation(); handleSelectField(key); }}
-          >
-            {appMode === 'layout' && (
-              <div className="drag-handle" onMouseDown={(e) => handleDragStart(e, key)}>☩</div>
-            )}
-
-            {/* Signature Rendering (Consolidated) */}
-            {field.isSignature ? (
-              <div
-                className="signature-container"
-                style={{
-                  height: '100%',
-                  overflow: 'hidden'
-                }}
-              >
-                <img
-                  src={field.signatureUrl.startsWith('http') ? field.signatureUrl : `http://localhost:5000${field.signatureUrl}`}
-                  alt="Signature"
-                  className="sig-img"
-                  style={{
-                    clipPath: `inset(${field.crop?.top || 0}% ${field.crop?.right || 0}% ${field.crop?.bottom || 0}% ${field.crop?.left || 0}%)`,
-                    height: '100%',
-                    objectFit: 'contain'
-                  }}
-                />
-              </div>
-            ) : (
-              <>
-                {/* Always render text for printing */}
-                <div
-                  className={`view-text ${appMode === 'view' ? '' : 'print-only'}`}
-                  style={{
-                    fontSize: `${field.fontSize || 8.5}pt`,
-                    fontWeight: field.isBold ? 'bold' : 'normal',
-                    textDecoration: field.isUnderline ? 'underline' : 'none',
-                    color: field.color || '#000000',
-                    height: '100%'
-                  }}
-                >
-                  {field.value || " "}
-                </div>
-              </>
-            )}
-
-            {/* Resize Handles (Layout Mode Only) */}
-            {appMode === 'layout' && selectedField === key && (
-              <>
-                <div className="resizer ne" onMouseDown={(e) => handleResizeStart(e, key, 'ne')}></div>
-                <div className="resizer nw" onMouseDown={(e) => handleResizeStart(e, key, 'nw')}></div>
-                <div className="resizer sw" onMouseDown={(e) => handleResizeStart(e, key, 'sw')}></div>
-                <div className="resizer se" onMouseDown={(e) => handleResizeStart(e, key, 'se')}></div>
-
-                {/* Side Handles for Cropping/Sizing */}
-                <div className="resizer-side r" onMouseDown={(e) => handleResizeStart(e, key, 'right')}></div>
-                <div className="resizer-side b" onMouseDown={(e) => handleResizeStart(e, key, 'bottom')}></div>
-                <div className="resizer-side l" onMouseDown={(e) => handleResizeStart(e, key, 'left')}></div>
-                <div className="resizer-side t" onMouseDown={(e) => handleResizeStart(e, key, 'top')}></div>
-
-                {/* Rotation Handle */}
-                <div className="rotate-handle" onMouseDown={(e) => handleRotateStart(e, key)}>
-                  <div className="rotate-line"></div>
-                  <div className="rotate-circle">🔄</div>
-                </div>
-              </>
-            )}
-
-            {/* Inputs only for screen and when not in view mode */}
-            {(appMode !== 'view' && !field.isSignature) && (
-              field.isTextarea ? (
-                <textarea
-                  value={field.value}
-                  onChange={(e) => handleValueChange(key, e.target.value)}
-                  disabled={appMode === 'view' || effectiveReadOnly}
-                  placeholder={field.label}
-                  className="no-print"
-                  style={{
-                    height: '100%',
-                    fontSize: `${field.fontSize || 8.5}pt`,
-                    fontWeight: field.isBold ? 'bold' : 'normal',
-                    textDecoration: field.isUnderline ? 'underline' : 'none',
-                    color: field.color || '#000000'
-                  }}
-                />
-              ) : (
-                <input
-                  value={field.value}
-                  onChange={(e) => handleValueChange(key, e.target.value)}
-                  disabled={appMode === 'view' || effectiveReadOnly}
-                  placeholder={field.label}
-                  className={`no-print ${field.isSignature ? 'sig-input' : ''}`}
-                  style={{
-                    height: '100%',
-                    fontSize: `${field.fontSize || 8.5}pt`,
-                    fontWeight: field.isBold ? 'bold' : 'normal',
-                    textDecoration: field.isUnderline ? 'underline' : 'none',
-                    color: field.color || '#000000'
-                  }}
-                />
-              )
-            )}
-
-          </div>
-        ))}
-      </div>
-
       <style>{`
-        @page { size: A4; margin: 0; }
-        .smart-canvas-page { background: var(--bg-gradient); min-height: 100vh; padding: 100px 20px 40px; display: flex; flex-direction: column; align-items: center; font-family: 'Outfit', sans-serif; overflow-x: auto; }
-        
-        .sticky-toolbar { 
-          position: fixed; top: 0; left: 280px; right: 0; background: var(--glass); backdrop-filter: blur(20px); 
-          padding: 1rem 3rem; display: flex; justify-content: space-between; align-items: center; z-index: 900; border-bottom: 1px solid var(--glass-border);
+        .custom-form-page {
+          background: var(--bg-gradient);
+          min-height: 100vh;
+          padding: 100px 20px 60px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          font-family: 'Outfit', sans-serif;
+          color: var(--text-main);
+        }
+        .sticky-toolbar {
+          position: fixed; top: 0; left: 280px; right: 0;
+          padding: 1rem 3rem; display: flex; justify-content: space-between; align-items: center;
+          z-index: 900; border-bottom: 1px solid var(--glass-border);
           box-shadow: 0 4px 30px rgba(0,0,0,0.03);
           transition: var(--transition-smooth);
         }
         .tool-group { display: flex; gap: 12px; align-items: center; }
-        .tool-btn { padding: 10px 20px; border-radius: 12px; border: none; cursor: pointer; font-weight: 700; transition: var(--transition-smooth); font-size: 0.95rem; display: flex; align-items: center; gap: 8px; }
+        .tool-btn { padding: 10px 20px; border-radius: 12px; border: none; cursor: pointer; font-weight: 700; transition: var(--transition-smooth); font-size: 0.95rem; }
         .tool-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         .tool-btn.back { background: var(--primary-light); color: var(--primary); }
-        .tool-btn.active-mode { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
-        .tool-btn.active-tool { background: #ef4444; color: white; animation: pulse 1.5s infinite; }
-        .tool-btn.inactive-tool { background: var(--card-bg); color: var(--text-dim); border: 1px solid var(--glass-border); }
-        .tool-btn.reset { background: #475569; color: white; }
-        .tool-btn.save { background: #10b981; color: white; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
+        .tool-btn.save { background: var(--primary); color: white; }
+        .tool-btn.approve { background: #10b981; color: white; }
+        .tool-btn.disapprove { background: #ef4444; color: white; }
+        .tool-btn.archive-btn { background: #f59e0b; color: white; }
+        .tool-btn.print-btn { background: #334155; color: white; }
+
+        .form-container {
+          width: 100%;
+          max-width: 1000px;
+          background: var(--card-bg);
+          border-radius: 24px;
+          padding: 3rem;
+          box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+          border: 1px solid var(--glass-border);
+        }
+        .form-logo {
+          height: 50px;
+          width: auto;
+          object-fit: contain;
+        }
+        .header-main {
+          display: flex;
+          align-items: center;
+          gap: 1.2rem;
+        }
+        .company-info h1 {
+          margin: 0;
+          font-size: 1.3rem;
+          font-weight: 900;
+          color: var(--primary);
+          letter-spacing: -0.5px;
+        }
+        .header-meta {
+          display: flex;
+          flex-direction: column;
+          gap: 0.4rem;
+        }
+        .meta-row {
+          display: flex;
+          justify-content: flex-end;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.8rem;
+        }
+        .meta-row label {
+          font-weight: 700;
+          color: var(--text-dim);
+          text-transform: uppercase;
+          font-size: 0.7rem;
+        }
+        .meta-row input {
+          border: 1px solid var(--glass-border);
+          border-radius: 8px;
+          padding: 6px 10px;
+          width: 130px;
+          background: rgba(0,0,0,0.2);
+          color: var(--text-main);
+        }
+        .form-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding-bottom: 1rem;
+          border-bottom: 2px solid var(--primary);
+          margin-bottom: 2rem;
+        }
+        .form-group {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          margin-bottom: 0.75rem;
+        }
+        .form-group label {
+          font-weight: 700;
+          font-size: 0.8rem;
+          color: var(--text-dim);
+          min-width: 60px;
+          text-transform: uppercase;
+        }
+        .form-group input, .form-group textarea {
+          flex: 1;
+          border: 1px solid var(--glass-border);
+          border-radius: 10px;
+          padding: 10px 14px;
+          font-size: 0.95rem;
+          background: rgba(0,0,0,0.2);
+          color: var(--text-main);
+          transition: all 0.3s ease;
+        }
+        .form-group input:focus, .form-group textarea:focus {
+          border-color: var(--primary);
+          background: rgba(37, 99, 235, 0.05);
+          outline: none;
+        }
+        .form-section {
+          margin-top: 1.5rem;
+        }
+        .form-section label {
+          display: block;
+          font-weight: 800;
+          font-size: 0.75rem;
+          text-transform: uppercase;
+          color: var(--primary);
+          margin-bottom: 0.75rem;
+          letter-spacing: 1px;
+        }
+        .remarks-area {
+          width: 100%;
+          border: 1px solid var(--glass-border);
+          border-radius: 12px;
+          padding: 14px;
+          font-size: 0.95rem;
+          background: rgba(0,0,0,0.2);
+          color: var(--text-main);
+          transition: all 0.3s ease;
+          resize: vertical;
+          min-height: 100px;
+        }
+        .remarks-area:focus {
+          border-color: var(--primary);
+          background: rgba(37, 99, 235, 0.05);
+          outline: none;
+        }
+        .prf-form-theme {
+          color: #334155;
+          font-family: 'Inter', sans-serif;
+        }
+        .form-section-row {
+          display: flex;
+          gap: 2rem;
+          margin: 1.5rem 0;
+        }
+        .flex-1 { flex: 1; }
         
-        @media (max-width: 1024px) {
-            .sticky-toolbar { left: 0; padding: 1rem; }
+        .items-table-container {
+          margin: 1.5rem 0;
+          border: 1px solid var(--glass-border);
+          border-radius: 12px;
+          overflow: hidden;
+          background: rgba(0,0,0,0.1);
         }
-        .tool-btn.approve { background: #10b981; color: white; border: 2px solid #fff; }
-        .tool-btn.disapprove-btn { background: #ef4444; color: white; }
+        .prf-items-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 0.8rem;
+        }
+        .prf-items-table th {
+          background: rgba(0,0,0,0.2);
+          padding: 12px;
+          border-bottom: 1px solid var(--glass-border);
+          border-right: 1px solid var(--glass-border);
+          text-align: left;
+          font-weight: 700;
+          text-transform: uppercase;
+          color: var(--primary);
+          letter-spacing: 0.5px;
+        }
+        .prf-items-table td {
+          padding: 0;
+          border-bottom: 1px solid var(--glass-border);
+          border-right: 1px solid var(--glass-border);
+        }
+        .prf-items-table input {
+          width: 100%;
+          border: none;
+          padding: 6px 10px;
+          background: transparent;
+          font-size: 0.85rem;
+          color: var(--text-main);
+        }
+        .prf-items-table input:focus {
+          background: rgba(99, 102, 241, 0.05);
+          outline: none;
+        }
+        .text-center { text-align: center; padding: 8px !important; }
 
-        .zoom-control { background: rgba(0,0,0,0.03); padding: 6px 15px; border-radius: 30px; border: 1px solid var(--glass-border); }
-        .zoom-slider { cursor: pointer; accent-color: var(--primary); width: 100px; }
-
-        @keyframes pulse {
-          0% { transform: scale(1); }
-          50% { transform: scale(1.05); }
-          100% { transform: scale(1); }
+        .prf-sigs {
+          margin-top: 3rem;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 4rem;
         }
-
-        .layout-tools { display: flex; align-items: center; gap: 10px; }
-        .styling-bar { display: flex; align-items: center; gap: 8px; background: rgba(30, 41, 59, 0.7); padding: 4px 12px; border-radius: 30px; border: 1px solid #334155; }
-        
-        .font-size-input { 
-          width: 50px; background: #0f172a; border: 1px solid #475569; color: white; padding: 4px 6px; border-radius: 4px; 
-          font-weight: bold; font-family: 'monospace'; outline: none; text-align: center;
+        .sig-column {
+          display: flex;
+          flex-direction: column;
+          gap: 2rem;
         }
-        .font-size-input:focus { border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2); }
-        .small-label { font-size: 0.65rem; color: #94a3b8; font-weight: 800; }
-        .size-group { display: flex; align-items: center; gap: 5px; }
-
-        .canvas-wrapper { 
-          position: relative; width: 210mm; height: fit-content; background: white; 
-          box-shadow: 0 30px 60px rgba(0,0,0,0.6); 
-          user-select: none; -webkit-user-select: none; 
+        .sig-box {
+          border-bottom: 2px solid #334155;
+          text-align: center;
+          padding-bottom: 4px;
         }
-        .form-image { width: 100%; display: block; pointer-events: none; }
-
-        .drag-handle { 
-          position: absolute; top: -18px; left: 50%; transform: translateX(-50%);
-          background: #6366f1; color: white; width: 22px; height: 22px; display: flex; 
-          align-items: center; justify-content: center; cursor: move; border-radius: 50%; font-size: 14px; 
-          opacity: 0; transition: opacity 0.2s; z-index: 110;
+        .sig-box input {
+          width: 100%;
+          border: none;
+          text-align: center;
+          font-weight: 700;
+          font-size: 1.1rem;
+          background: transparent;
+          text-transform: uppercase;
         }
-        .draggable-field:hover .drag-handle { opacity: 1; }
-        
-        .style-btn { 
-          width: 28px; height: 28px; border-radius: 4px; border: none; cursor: pointer; font-size: 12px; font-weight: bold; 
-          display: flex; align-items: center; justify-content: center; color: white; transition: all 0.1s; background: #475569;
+        .sig-box label {
+          display: block;
+          font-size: 0.75rem;
+          font-weight: 800;
+          text-transform: uppercase;
+          color: #64748b;
+          margin-top: 4px;
         }
-        .style-btn.active { background: #6366f1; box-shadow: 0 0 0 1px white; }
-        .style-btn:hover { transform: scale(1.1); }
-        
-        .tool-btn.delete { background: #ef4444; color: white; font-size: 0.75rem; padding: 4px 10px; }
-        .tool-btn.delete:hover { background: #dc2626; }
-
-        .color-picker-mini { width: 28px; height: 28px; border: 1px solid #475569; padding: 0; background: none; cursor: pointer; border-radius: 4px; overflow: hidden; }
-        .divider-v { width: 1px; height: 18px; background: #334155; margin: 0 5px; }
-
-        .draggable-field { 
-          position: absolute; display: flex; flex-direction: column; z-index: 100; border: 2px solid transparent; transition: border-color 0.2s; 
-          user-select: none; -webkit-user-select: none;
-        }
-        .draggable-field.selected { border-color: #6366f1; border-radius: 4px; background: rgba(99, 102, 241, 0.05); }
-
-        .draggable-field input, .draggable-field textarea {
-          width: 100%; border: none; background: transparent; outline: none; font-family: Arial, sans-serif;
-          padding: 2px 4px; transition: all 0.2s; color: #000;
-        }
-        
-        .draggable-field.layout input, .draggable-field.layout textarea { 
-          background: rgba(99, 102, 241, 0.03); border: 1px dashed rgba(99, 102, 241, 0.25); cursor: text;
-        }
-        .draggable-field.layout:hover input, .draggable-field.layout:hover textarea { 
-          border: 1px dashed rgba(99, 102, 241, 0.6); background: rgba(99, 102, 241, 0.05);
-        }
-        
-        .view-text {
-          font-family: Arial, sans-serif; min-height: 1.2em; white-space: pre-wrap; pointer-events: none;
-        }
-        
-        .sig-input { font-weight: bold; text-align: center; font-size: 9.5pt !important; }
-        .sig-tool { background: #10b981 !important; color: white; }
-        .signature-container { width: 100%; display: flex; align-items: center; justify-content: center; }
-        .sig-img { 
-            width: 100%; 
-            display: block; 
-            mix-blend-mode: multiply; 
-            filter: contrast(120%) brightness(105%);
-            pointer-events: none;
-            transition: none;
-        }
-
-        .resizer {
-          position: absolute; width: 8px; height: 8px; background: white; border: 2px solid #6366f1;
-          border-radius: 50%; z-index: 120;
-        }
-        .resizer.nw { top: -4px; left: -4px; cursor: nwse-resize; }
-        .resizer.ne { top: -4px; right: -4px; cursor: nesw-resize; }
-        .resizer.sw { bottom: -4px; left: -4px; cursor: nesw-resize; }
-        .resizer.se { bottom: -4px; right: -4px; cursor: nwse-resize; }
-
-        .resizer-side {
-          position: absolute; z-index: 115;
-        }
-        .resizer-side.r { top: 0; right: -2px; width: 4px; height: 100%; cursor: ew-resize; }
-        .resizer-side.l { top: 0; left: -2px; width: 4px; height: 100%; cursor: ew-resize; }
-        .resizer-side.b { bottom: -2px; left: 0; width: 100%; height: 4px; cursor: ns-resize; }
-        .resizer-side.t { top: -2px; left: 0; width: 100%; height: 4px; cursor: ns-resize; }
-
-        .resizer-side:hover { background: rgba(99, 102, 241, 0.3); }
-
-        .print-only { display: none; }
 
         @media print {
-          @page { size: A4; margin: 0; }
-          .no-print { display: none !important; }
-          .print-only { display: block !important; }
-          .smart-canvas-page { padding: 0 !important; background: white !important; min-height: auto !important; display: block !important; }
-          .canvas-wrapper { 
-            box-shadow: none !important; width: 210mm !important; height: 297mm !important; 
-            transform: none !important; margin: 0 auto !important; overflow: hidden !important;
-            background: white !important;
+          .printable-form {
+            padding: 0 !important;
+            margin: 0 !important;
+            box-shadow: none !important;
           }
-          .form-image { width: 100% !important; height: 100% !important; object-fit: contain !important; }
-          .view-text { background: transparent !important; border: none !important; }
-          .draggable-field { pointer-events: none; background: transparent !important; border: none !important; }
-          .draggable-field.layout { border: none !important; background: transparent !important; }
-          .draggable-field.layout input, .draggable-field.layout textarea { border: none !important; background: transparent !important; }
-          .drag-handle, .rotate-handle, .resizer, .resizer-side { display: none !important; }
-        }
-
-        .rotate-handle {
-          position: absolute;
-          top: 50%;
-          right: -50px;
-          transform: translateY(-50%);
-          display: flex;
-          align-items: center;
-          cursor: grab;
-          z-index: 130;
-        }
-        .rotate-handle:active { cursor: grabbing; }
-        .rotate-line {
-          width: 25px;
-          height: 2px;
-          background: #6366f1;
-        }
-        .rotate-circle {
-          width: 26px;
-          height: 26px;
-          background: white;
-          border: 2px solid #6366f1;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 14px;
-          box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-        }
-
-        .reason-modal-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.4);
-          backdrop-filter: blur(8px);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 10000;
-          padding: 1rem;
-        }
-
-        .reason-modal {
-          width: 100%;
-          max-width: 500px;
-          padding: 2rem;
-          border-radius: 24px;
-          background: var(--card-bg);
-          box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
-          border: 1px solid var(--glass-border);
-          animation: modalAppear 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-
-        @keyframes modalAppear {
-          from { opacity: 0; transform: translateY(20px) scale(0.95); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
+          .prf-items-table th { background: #eee !important; -webkit-print-color-adjust: exact; }
+          .sig-box { border-bottom-color: #000 !important; }
         }
       `}</style>
     </div>

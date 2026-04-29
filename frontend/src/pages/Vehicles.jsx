@@ -17,7 +17,7 @@ export default function Vehicles() {
   const fetchVehicles = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/vehicles', {
+      const response = await axios.get('http://172.16.28.96:5000/api/vehicles', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setVehicles(response.data);
@@ -46,10 +46,10 @@ export default function Vehicles() {
       const config = { headers: { 'Authorization': `Bearer ${token}` } };
       
       if (editingVehicle) {
-        await axios.put(`http://localhost:5000/api/vehicles/${editingVehicle.id}`, formData, config);
+        await axios.put(`http://172.16.28.96:5000/api/vehicles/${editingVehicle.id}`, formData, config);
         showToast('Vehicle updated successfully', 'success');
       } else {
-        await axios.post('http://localhost:5000/api/vehicles', formData, config);
+        await axios.post('http://172.16.28.96:5000/api/vehicles', formData, config);
         showToast('Vehicle added successfully', 'success');
       }
       setIsModalOpen(false);
@@ -63,7 +63,7 @@ export default function Vehicles() {
     if (!window.confirm('Are you sure you want to delete this vehicle?')) return;
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`http://localhost:5000/api/vehicles/${id}`, {
+      await axios.delete(`http://172.16.28.96:5000/api/vehicles/${id}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       showToast('Vehicle deleted successfully', 'success');

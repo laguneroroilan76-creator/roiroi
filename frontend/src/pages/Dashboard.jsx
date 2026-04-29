@@ -142,7 +142,7 @@ export default function Dashboard() {
             {/* PRF Chart */}
             <div className={`section-card ${isDarkMode ? 'dark-box' : 'light-box'}`}>
                 <div className="section-header">
-                    <h3>Payment Requests (PRF)</h3>
+                    <h3>Request For Payment (RFP)</h3>
                 </div>
                 <div className="chart-container">
                     {prfData.length > 0 ? (
@@ -170,7 +170,7 @@ export default function Dashboard() {
             {/* RRF Chart */}
             <div className={`section-card ${isDarkMode ? 'dark-box' : 'light-box'}`}>
                 <div className="section-header">
-                    <h3>Request Requisition (RRF)</h3>
+                    <h3>Purchase Requisition (PRF)</h3>
                 </div>
                 <div className="chart-container">
                     {rrfData.length > 0 ? (

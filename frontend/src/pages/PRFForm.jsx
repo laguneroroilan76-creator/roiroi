@@ -251,7 +251,7 @@ export default function PRFForm() {
   };
 
   const handleApprove = async () => {
-    const confirmed = await confirm('Are you sure you want to approve this PRF?');
+    const confirmed = await confirm('Are you sure you want to approve this RFP?');
     if (!confirmed) return;
     try {
       const payload = {
@@ -272,11 +272,11 @@ export default function PRFForm() {
       };
 
       await api.put(`/prfs/${initialData.id}`, payload);
-      showToast('PRF Approved successfully!', 'success');
+      showToast('RFP Approved successfully!', 'success');
       navigate('/dashboard');
     } catch (err) {
       console.error(err);
-      const errMsg = err.response?.data?.error || err.message || 'Error approving PRF';
+      const errMsg = err.response?.data?.error || err.message || 'Error approving RFP';
       showToast(`Error: ${errMsg}`, 'error');
     }
   };
@@ -286,7 +286,7 @@ export default function PRFForm() {
   };
 
   const confirmDisapprove = async () => {
-    const confirmed = await confirm('Are you sure you want to disapprove this PRF?');
+    const confirmed = await confirm('Are you sure you want to disapprove this RFP?');
     if (!confirmed) return;
     try {
       const payload = {
@@ -308,30 +308,30 @@ export default function PRFForm() {
       };
 
       await api.put(`/prfs/${initialData.id}`, payload);
-      showToast('PRF Disapproved and moved to Archive', 'info');
+      showToast('RFP Disapproved and moved to Archive', 'info');
       navigate('/archived');
     } catch (err) {
       console.error(err);
-      const errMsg = err.response?.data?.error || err.message || 'Error disapproving PRF';
+      const errMsg = err.response?.data?.error || err.message || 'Error disapproving RFP';
       showToast(`Error: ${errMsg}`, 'error');
     }
   };
 
   const handleDrop = async () => {
-    const confirmed = await confirm('Are you sure you want to DROP (delete) this pending PRF? This cannot be undone.');
+    const confirmed = await confirm('Are you sure you want to DROP (delete) this pending RFP? This cannot be undone.');
     if (!confirmed) return;
     try {
       await api.delete(`/prfs/${initialData.id}`);
-      showToast('PRF Deleted successfully!', 'info');
+      showToast('RFP Deleted successfully!', 'info');
       navigate('/dashboard');
     } catch (err) {
       console.error(err);
-      showToast('Error deleting PRF', 'error');
+      showToast('Error deleting RFP', 'error');
     }
   };
 
   const handleArchive = async () => {
-    const confirmed = await confirm('Are you sure you want to archive this PRF?');
+    const confirmed = await confirm('Are you sure you want to archive this RFP?');
     if (!confirmed) return;
     try {
       const payload = {
@@ -352,11 +352,11 @@ export default function PRFForm() {
       };
 
       await api.put(`/prfs/${initialData.id}`, payload);
-      showToast('PRF Archived successfully!', 'success');
+      showToast('RFP Archived successfully!', 'success');
       navigate('/archived');
     } catch (err) {
       console.error(err);
-      const errMsg = err.response?.data?.error || err.message || 'Error archiving PRF';
+      const errMsg = err.response?.data?.error || err.message || 'Error archiving RFP';
       showToast(`Error: ${errMsg}`, 'error');
     }
   };
@@ -620,7 +620,7 @@ export default function PRFForm() {
                   }}
                 >
                     <img 
-                      src={field.signatureUrl.startsWith('http') ? field.signatureUrl : `http://localhost:5000${field.signatureUrl}`} 
+                      src={field.signatureUrl.startsWith('http') ? field.signatureUrl : `http://172.16.28.96:5000${field.signatureUrl}`} 
                       alt="Signature"
                       className="sig-img"
                       style={{

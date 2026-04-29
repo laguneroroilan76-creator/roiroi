@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [showForms, setShowForms] = useState(false);
@@ -18,7 +18,7 @@ export default function Sidebar() {
   const isGuard = user?.role === 'Guard';
   const isAdmin = user?.role === 'Admin';
   const isDriver = user?.role === 'Driver';
-  
+
   // Helper to check permission
   const canView = (module) => {
     if (isAdmin) return true;
@@ -48,103 +48,103 @@ export default function Sidebar() {
 
       <nav className="sidebar-nav">
         {!isGuard && (
-          <div className={`nav-item ${isActive('/dashboard') ? 'active' : ''}`} onClick={() => navigate('/dashboard')}>
+          <div className={`nav-item ${isActive('/dashboard') ? 'active' : ''}`} onClick={() => { navigate('/dashboard'); onClose(); }}>
             <span className="icon">🏠</span> Dashboard
           </div>
         )}
 
         {isGuard && (
-          <div className={`nav-item ${isActive('/guard-dashboard') ? 'active' : ''}`} onClick={() => navigate('/guard-dashboard')}>
+          <div className={`nav-item ${isActive('/guard-dashboard') ? 'active' : ''}`} onClick={() => { navigate('/guard-dashboard'); onClose(); }}>
             <span className="icon">🛡️</span> Trip Ticket Log
           </div>
         )}
 
         {!isGuard && (canView('tripTicket') || canView('prf') || canView('rrf')) && (
-        <div className="nav-group">
-          <div 
-            className={`nav-item ${['/trip-ticket', '/prf', '/rrf'].includes(location.pathname) ? 'active' : ''}`} 
-            onClick={() => setShowForms(!showForms)}
-          >
-            <span className="icon">📄</span> Forms
-            <span className={`chevron ${showForms ? 'open' : ''}`}>›</span>
-          </div>
-          {showForms && (
-            <div className="sub-nav">
-              {canView('tripTicket') && (
-                <div 
-                  className={`sub-item ${location.pathname === '/trip-ticket' ? 'active' : ''}`}
-                  onClick={() => navigate('/trip-ticket')}
-                >
-                  Trip Ticket
-                </div>
-              )}
-              {canView('prf') && (
-                <div 
-                  className={`sub-item ${location.pathname === '/prf' ? 'active' : ''}`}
-                  onClick={() => navigate('/prf')}
-                >
-                  Payment Request Form
-                </div>
-              )}
-              {canView('rrf') && (
-                <div 
-                  className={`sub-item ${location.pathname === '/rrf' ? 'active' : ''}`}
-                  onClick={() => navigate('/rrf')}
-                >
-                  Request Requisition Form
-                </div>
-              )}
+          <div className="nav-group">
+            <div
+              className={`nav-item ${['/trip-ticket', '/prf', '/rrf'].includes(location.pathname) ? 'active' : ''}`}
+              onClick={() => setShowForms(!showForms)}
+            >
+              <span className="icon">📄</span> Forms
+              <span className={`chevron ${showForms ? 'open' : ''}`}>›</span>
             </div>
-          )}
-        </div>
+            {showForms && (
+              <div className="sub-nav">
+                {canView('tripTicket') && (
+                  <div
+                    className={`sub-item ${location.pathname === '/trip-ticket' ? 'active' : ''}`}
+                    onClick={() => { navigate('/trip-ticket'); onClose(); }}
+                  >
+                    Trip Ticket
+                  </div>
+                )}
+                {canView('prf') && (
+                  <div
+                    className={`sub-item ${location.pathname === '/prf' ? 'active' : ''}`}
+                    onClick={() => { navigate('/prf'); onClose(); }}
+                  >
+                    Request For Payment (RFP)
+                  </div>
+                )}
+                {canView('rrf') && (
+                  <div
+                    className={`sub-item ${location.pathname === '/rrf' ? 'active' : ''}`}
+                    onClick={() => { navigate('/rrf'); onClose(); }}
+                  >
+                    Purchase Requisition Form (PRF)
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         )}
 
         {user?.canApprove && !isGuard && (
-          <div className={`nav-item ${isActive('/pending') ? 'active' : ''}`} onClick={() => navigate('/pending')}>
+          <div className={`nav-item ${isActive('/pending') ? 'active' : ''}`} onClick={() => { navigate('/pending'); onClose(); }}>
             <span className="icon">⏳</span> Pending Approvals
           </div>
         )}
 
-        <div className={`nav-item ${isActive('/approved') ? 'active' : ''}`} onClick={() => navigate('/approved')}>
+        <div className={`nav-item ${isActive('/approved') ? 'active' : ''}`} onClick={() => { navigate('/approved'); onClose(); }}>
           <span className="icon">✅</span> Approved Records
         </div>
 
         {(isAdmin || isDriver) && (
-          <div className={`nav-item ${isActive('/driver-schedule') ? 'active' : ''}`} onClick={() => navigate('/driver-schedule')}>
+          <div className={`nav-item ${isActive('/driver-schedule') ? 'active' : ''}`} onClick={() => { navigate('/driver-schedule'); onClose(); }}>
             <span className="icon">🗓️</span> Driving Schedule
           </div>
         )}
 
         {!isGuard && canView('history') && (
-          <div className={`nav-item ${isActive('/history') ? 'active' : ''}`} onClick={() => navigate('/history')}>
+          <div className={`nav-item ${isActive('/history') ? 'active' : ''}`} onClick={() => { navigate('/history'); onClose(); }}>
             <span className="icon">📂</span> {user?.canApprove ? "History & Activity" : "My Requests"}
           </div>
         )}
 
-        {!isGuard && canView('archived') && (
-          <div className={`nav-item ${isActive('/archived') ? 'active' : ''}`} onClick={() => navigate('/archived')}>
+        {isAdmin && !isGuard && canView('archived') && (
+          <div className={`nav-item ${isActive('/archived') ? 'active' : ''}`} onClick={() => { navigate('/archived'); onClose(); }}>
             <span className="icon">📦</span> Archived Records
           </div>
         )}
 
         {isAdmin && !isGuard && canView('vehicles') && (
-          <div className={`nav-item ${isActive('/vehicles') ? 'active' : ''}`} onClick={() => navigate('/vehicles')}>
+          <div className={`nav-item ${isActive('/vehicles') ? 'active' : ''}`} onClick={() => { navigate('/vehicles'); onClose(); }}>
             <span className="icon">🚙</span> Vehicles Management
           </div>
         )}
 
         {isAdmin && !isGuard && canView('users') && (
-          <div className={`nav-item ${isActive('/users') ? 'active' : ''}`} onClick={() => navigate('/users')}>
+          <div className={`nav-item ${isActive('/users') ? 'active' : ''}`} onClick={() => { navigate('/users'); onClose(); }}>
             <span className="icon">👥</span> User Management
           </div>
         )}
       </nav>
 
       <div className="sidebar-footer">
-        <div className="user-info clickable-profile" onClick={() => navigate('/profile')} title="View Profile & Signature">
+        <div className="user-info clickable-profile" onClick={() => { navigate('/profile'); onClose(); }} title="View Profile & Signature">
           <div className="user-avatar">
             {user?.avatarUrl ? (
-              <img src={user.avatarUrl.startsWith('http') ? user.avatarUrl : `http://localhost:5000${user.avatarUrl}`} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '10px' }} />
+              <img src={user.avatarUrl.startsWith('http') ? user.avatarUrl : `http://172.16.28.96:5000${user.avatarUrl}`} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '10px' }} />
             ) : (
               user?.name?.[0] || 'U'
             )}
@@ -174,6 +174,13 @@ export default function Sidebar() {
             z-index: 1000;
             box-shadow: 10px 0 30px rgba(0, 0, 0, 0.02);
             transition: var(--transition-smooth);
+        }
+
+        @media (max-width: 1024px) {
+          .glass-sidebar {
+            transform: translateX(${isOpen ? '0' : '-100%'});
+            box-shadow: ${isOpen ? '20px 0 50px rgba(0,0,0,0.2)' : 'none'};
+          }
         }
 
         .sidebar-header { padding: 3rem 2rem; }

@@ -25,7 +25,16 @@ const TicketTable = ({ tickets, onView, typeLabel }) => {
           </td>
           <td><span className="dim">{typeLabel || 'Trip Ticket'}</span></td>
           <td><span className="dim">{new Date(ticket.createdAt).toLocaleDateString()}</span></td>
-          <td><StatusPill status={ticket.status} /></td>
+          <td>
+            <StatusPill status={(() => {
+              const currentStatus = ticket.status?.toLowerCase();
+              if (currentStatus === 'approved') {
+                if (ticket.dateTimeReturn && ticket.dateTimeReturn.trim() !== '') return 'Completed';
+                if (ticket.dateTimeDeparture && ticket.dateTimeDeparture.trim() !== '') return 'Ongoing';
+              }
+              return ticket.status;
+            })()} />
+          </td>
           <td style={{ textAlign: 'right' }}>
             <button className="row-action-btn" onClick={() => onView(ticket)}>
               View Details

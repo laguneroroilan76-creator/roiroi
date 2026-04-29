@@ -12,6 +12,7 @@ export default function ApprovedRecords() {
   const { showToast, confirm } = useToast();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isGuard = user.role === 'Guard';
+  const isAdmin = user.role === 'Admin' || user.canApprove;
 
   useEffect(() => {
     fetchData();
@@ -82,6 +83,20 @@ export default function ApprovedRecords() {
     }
   };
 
+  const handleCancel = async (record) => {
+    const confirmed = await confirm('Are you sure you want to CANCEL this approved trip? This will release the driver and vehicle for other bookings.');
+    if (!confirmed) return;
+    try {
+      await api.put(`/trip-tickets/${record.id}`, { status: 'Cancelled' });
+      showToast('Trip Ticket Cancelled!', 'info');
+      setSelectedRecord(null);
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to cancel trip', 'error');
+    }
+  };
+
   const getRecordType = (record) => {
     return record.type || record.docType || record.formType || (
       record.prfNo ? 'PRF' : (record.rrfNo ? 'RRF' : 'TRIP_TICKET')
@@ -128,7 +143,7 @@ export default function ApprovedRecords() {
                             color: type === 'TRIP_TICKET' ? '#818cf8' : (type === 'PRF' ? '#10b981' : '#f59e0b'),
                             border: `1px solid ${type === 'TRIP_TICKET' ? 'rgba(99, 102, 241, 0.2)' : (type === 'PRF' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)')}`
                         }}>
-                            {type === 'TRIP_TICKET' ? '🚗 TRIP TICKET' : (type === 'PRF' ? '📄 PRF' : '📄 RRF')}
+                            {type === 'TRIP_TICKET' ? '🚗 TRIP TICKET' : (type === 'PRF' ? '📄 RFP' : '📄 PRF')}
                         </span>
                         {type === 'TRIP_TICKET' && record.dateTimeDeparture && !record.dateTimeReturn && (
                             <span style={{ padding: '2px 8px', borderRadius: '6px', background: '#6366f1', color: 'white', fontSize: '0.65rem', fontWeight: 900 }}>ONGOING</span>
@@ -182,42 +197,51 @@ export default function ApprovedRecords() {
                 borderBottomLeftRadius: '20px',
                 borderBottomRightRadius: '20px'
             }}>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    <span style={{ 
-                        color: (type === 'TRIP_TICKET' && record.dateTimeDeparture && !record.dateTimeReturn) ? '#6366f1' : ((type === 'TRIP_TICKET' && record.dateTimeReturn) ? '#10b981' : '#22c55e'), 
-                        fontWeight: 700, 
-                        fontSize: '0.8rem' 
-                    }}>
-                        {(() => {
-                            if (type !== 'TRIP_TICKET') return '✅ AUTHORIZED';
-                            if (record.dateTimeDeparture && !record.dateTimeReturn) return '🛰️ DISPATCHED';
-                            if (record.dateTimeDeparture && record.dateTimeReturn) return '🏁 COMPLETED';
-                            return '✅ AUTHORIZED';
-                        })()}
-                    </span>
-                </div>
 
                 <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                    {!isGuard && (
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); handleArchive(record); }}
-                            style={{ 
-                                background: 'rgba(245, 158, 11, 0.1)', 
-                                border: '1px solid rgba(245, 158, 11, 0.2)', 
-                                borderRadius: '8px', 
-                                padding: '6px 12px', 
-                                cursor: 'pointer',
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
-                                color: '#f59e0b',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                transition: 'all 0.2s'
-                            }}
-                        >
-                            📥 Archive
-                        </button>
+                    {isAdmin && (
+                        <>
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); handleArchive(record); }}
+                                style={{ 
+                                    background: 'rgba(245, 158, 11, 0.1)', 
+                                    border: '1px solid rgba(245, 158, 11, 0.2)', 
+                                    borderRadius: '8px', 
+                                    padding: '6px 12px', 
+                                    cursor: 'pointer',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 700,
+                                    color: '#f59e0b',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                📥 Archive
+                            </button>
+                            {type === 'TRIP_TICKET' && record.status === 'Approved' && !record.dateTimeDeparture && (isAdmin || record.userId === user.id || record.requestedBy === user.name) && (
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); handleCancel(record); }}
+                                    style={{ 
+                                        background: 'rgba(249, 115, 22, 0.1)', 
+                                        border: '1px solid rgba(249, 115, 22, 0.2)', 
+                                        borderRadius: '8px', 
+                                        padding: '6px 12px', 
+                                        cursor: 'pointer',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 700,
+                                        color: '#f97316',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    🚫 Cancel
+                                </button>
+                            )}
+                        </>
                     )}
                     <span style={{ color: 'var(--primary)', fontWeight: 700, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
                         View Full Document ›
@@ -264,7 +288,7 @@ export default function ApprovedRecords() {
             }}
           >
             {selectedRecord.type === 'TRIP_TICKET' ? (
-              <TripTicketPreview record={selectedRecord} onClose={() => setSelectedRecord(null)} guards={guards} onUpdate={handleUpdateRecord} onArchive={handleArchive} />
+              <TripTicketPreview record={selectedRecord} onClose={() => setSelectedRecord(null)} guards={guards} onUpdate={handleUpdateRecord} onArchive={handleArchive} onCancel={handleCancel} />
             ) : (
               <GenericPreview record={selectedRecord} onClose={() => setSelectedRecord(null)} onArchive={handleArchive} />
             )}
@@ -726,7 +750,7 @@ export default function ApprovedRecords() {
   );
 }
 
-function TripTicketPreview({ record, onClose, guards, onUpdate, onArchive }) {
+function TripTicketPreview({ record, onClose, guards, onUpdate, onArchive, onCancel }) {
   const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -775,7 +799,7 @@ function TripTicketPreview({ record, onClose, guards, onUpdate, onArchive }) {
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
     const departureTime = now.toISOString().slice(0, 16);
     
-    const updatedData = { ...formData, dateTimeDeparture: departureTime };
+    const updatedData = { ...formData, dateTimeDeparture: departureTime, status: 'Ongoing' };
     
     try {
       const response = await api.put(`/trip-tickets/${record.id}`, updatedData);
@@ -795,7 +819,7 @@ function TripTicketPreview({ record, onClose, guards, onUpdate, onArchive }) {
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
     const returnTime = now.toISOString().slice(0, 16);
     
-    const updatedData = { ...formData, dateTimeReturn: returnTime };
+    const updatedData = { ...formData, dateTimeReturn: returnTime, status: 'Completed' };
     
     try {
       const response = await api.put(`/trip-tickets/${record.id}`, updatedData);
@@ -937,22 +961,7 @@ function TripTicketPreview({ record, onClose, guards, onUpdate, onArchive }) {
           gap: '1rem',
           alignItems: 'center'
         }}>
-          {!canEdit ? (
-            <span style={{ 
-              fontSize: '0.8rem', 
-              color: '#10b981', 
-              fontWeight: 800, 
-              padding: '0.6rem 1.2rem', 
-              background: 'rgba(16, 185, 129, 0.1)', 
-              borderRadius: '100px',
-              border: '1px solid rgba(16, 185, 129, 0.2)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}>
-              🔒 COMPLETED & LOCKED
-            </span>
-          ) : (
+          {!canEdit ? null : (
             <>
               {isGuard && !formData.dateTimeDeparture && (
                 <button 
@@ -994,6 +1003,15 @@ function TripTicketPreview({ record, onClose, guards, onUpdate, onArchive }) {
               📥 Archive
             </button>
           )}
+
+          {(isAdmin || record.userId === user.id || record.requestedBy === user.name) && record.status === 'Approved' && !record.dateTimeDeparture && (
+            <button 
+              onClick={() => onCancel(record)}
+              style={{ background: '#f97316', color: 'white', border: 'none', borderRadius: '12px', padding: '0.8rem 1.5rem', fontWeight: 700, cursor: 'pointer' }}
+            >
+              🚫 Cancel Trip
+            </button>
+          )}
           <button 
             onClick={onClose}
             style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '0.8rem 1.5rem', fontWeight: 700, cursor: 'pointer' }}
@@ -1024,7 +1042,7 @@ function GenericPreview({ record, onClose, onArchive }) {
           <h2 style={{ margin: 0, color: 'var(--text-main)' }}>
             {type === 'PRF'
               ? (record.prfNo ? `PRF #${record.prfNo}` : 'Approved PRF')
-              : (record.rrfNo ? `RRF #${record.rrfNo}` : 'Approved RRF')}
+              : (record.rrfNo ? `RRF #${record.rrfNo}` : 'Approved Purchase Requisition')}
           </h2>
           <p style={{ margin: '0.35rem 0 0', color: 'var(--text-dim)' }}>{type} • {statusLabel}</p>
         </div>
