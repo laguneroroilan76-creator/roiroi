@@ -12,6 +12,7 @@ import ApprovedRecords from './pages/ApprovedRecords';
 import ArchivedRecords from './pages/ArchivedRecords';
 import PendingRecords from './pages/PendingRecords';
 import Vehicles from './pages/Vehicles';
+import DriverSchedule from './pages/DriverSchedule';
 import Layout from './components/Layout';
 import { ToastProvider } from './context/ToastContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -98,6 +99,10 @@ function App() {
             <Route 
               path="/vehicles" 
               element={<ProtectedRoute><Layout><Vehicles /></Layout></ProtectedRoute>} 
+            />
+            <Route 
+              path="/driver-schedule" 
+              element={<ProtectedRoute><Layout><DriverSchedule /></Layout></ProtectedRoute>} 
             />
           </Routes>
         </Router>

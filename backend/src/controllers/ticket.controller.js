@@ -28,7 +28,7 @@ const createTicket = async (req, res) => {
 
 const getTickets = async (req, res) => {
   try {
-    const tickets = await ticketService.getTickets();
+    const tickets = await ticketService.getTickets(req.user.id, req.user.canApprove, req.user.role === 'Guard');
     res.json(tickets);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -60,15 +60,26 @@ const updateTicket = async (req, res) => {
     }
     // Non-guards (Admins/Approvers) can now update both status and guarded fields.
 
+    if (req.body.status === 'Archived') {
+      req.body.archivedBy = req.user.name || 'Unknown';
+    } else if (req.body.status === 'Approved') {
+      req.body.archivedBy = null;
+    }
+
     const ticket = await ticketService.updateTicket(req.params.id, req.body);
     
     let actionType = 'UPDATE';
     let message = `${req.user.name || 'Unknown User'} updated status to ${ticket.status}`;
 
-    if (ticket.status === 'Approved') {
+    if (req.user.role === 'Guard') {
+      actionType = 'UPDATE';
+      message = `${req.user.name || 'Unknown User'} updated Trip Ticket guard log`;
+    }
+
+    if (req.user.role !== 'Guard' && ticket.status === 'Approved') {
       actionType = 'APPROVE';
       message = `${req.user.name || 'Unknown User'} approved Trip Ticket`;
-    } else if (ticket.status === 'Archived') {
+    } else if (req.user.role !== 'Guard' && ticket.status === 'Archived') {
       actionType = 'ARCHIVE';
       message = `${req.user.name || 'Unknown User'} archived Trip Ticket`;
     }
@@ -103,4 +114,25 @@ const deleteTicket = async (req, res) => {
   }
 };
 
-module.exports = { createTicket, getTickets, getTicketById, updateTicket, deleteTicket };
+const getDriverSchedule = async (req, res) => {
+  try {
+    const isAdmin = req.user.role === 'Admin' || req.user.canApprove;
+    const driverName = req.user.name;
+    const tickets = await ticketService.getDriverSchedule(driverName, isAdmin);
+    res.json(tickets);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+const checkOccupancy = async (req, res) => {
+  try {
+    const { start, end } = req.query;
+    const occupied = await ticketService.getOccupiedResources(start, end);
+    res.json(occupied);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+module.exports = { createTicket, getTickets, getTicketById, updateTicket, deleteTicket, getDriverSchedule, checkOccupancy };

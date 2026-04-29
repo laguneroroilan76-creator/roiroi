@@ -21,7 +21,7 @@ const createPRF = async (req, res) => {
 
 const getPRFs = async (req, res) => {
   try {
-    const prfs = await prfService.getPRFs(req.user.id, req.user.canApprove);
+    const prfs = await prfService.getPRFs(req.user.id, req.user.canApprove, req.user.role === 'Guard');
     res.json(prfs);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -40,6 +40,12 @@ const getPRFById = async (req, res) => {
 
 const updatePRF = async (req, res) => {
   try {
+    if (req.body.status === 'Archived') {
+      req.body.archivedBy = req.user.name || 'Unknown';
+    } else if (req.body.status === 'Approved') {
+      req.body.archivedBy = null;
+    }
+
     const prf = await prfService.updatePRF(req.params.id, req.body);
     
     let actionType = 'UPDATE';

@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,32 +7,115 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum UserRole {
-  User
-  Admin
-  Driver
-  Guard
+model ActivityLog {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  action     String
+  resource   String
+  resourceId Int
+  details    String?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "ActivityLog_userId_fkey")
+
+  @@index([userId], map: "ActivityLog_userId_fkey")
+  @@map("activitylog")
 }
 
-model User {
+model Driver {
   id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  name         String?
-  role         UserRole @default(User)
-  canApprove   Boolean  @default(false)
-  signatureUrl String?
-  avatarUrl    String?
-  themeColor   String?  @default("#6366f1")
-  isDarkMode   Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  tasks        Task[]
-  tripTickets  TripTicket[]
-  prfs         Prf[]
-  rrfs         Rrf[]
-  activityLogs ActivityLog[]
-  reminders    Reminder[]
+  name      String
+  status    String   @default("Active")
+  createdAt DateTime @default(now())
+  @@map("driver")
+}
+
+model Prf {
+  id               Int       @id @default(autoincrement())
+  prfNo            String?
+  dateRequested    String?
+  dateNeeded       String?
+  to               String?
+  from             String?
+  remarks          String?
+  quotationSummary String?
+  preparedBy       String?
+  verifiedBy       String?
+  notedBy          String?
+  approvedBy       String?
+  createdAt        DateTime  @default(now())
+  layout           String?   @db.LongText
+  status           String    @default("Pending")
+  authorId         Int?
+  requestor        String?
+  archivedBy       String?
+  disapprovalReason String?
+  author           User?     @relation(fields: [authorId], references: [id], onDelete: Cascade, map: "Prf_authorId_fkey")
+  items            PrfItem[]
+  @@index([authorId], map: "Prf_authorId_fkey")
+  @@map("prf")
+}
+
+model PrfItem {
+  id              Int     @id @default(autoincrement())
+  qty             String?
+  unit            String?
+  particulars     String?
+  estimatedCost   String?
+  availableStocks String?
+  prfId           Int
+  prf             Prf     @relation(fields: [prfId], references: [id], onDelete: Cascade, map: "PrfItem_prfId_fkey")
+
+  @@index([prfId], map: "PrfItem_prfId_fkey")
+  @@map("prfitem")
+}
+
+model Reminder {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  date      String
+  text      String   @db.Text
+  createdAt DateTime @default(now())
+  endDate   String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Reminder_userId_fkey")
+
+  @@index([userId], map: "Reminder_userId_fkey")
+  @@map("reminder")
+}
+
+model Rrf {
+  id            Int       @id @default(autoincrement())
+  rrfNo         String?
+  requestor     String?
+  dateRequested String?
+  dateNeeded    String?
+  remarks       String?
+  preparedBy    String?
+  verifiedBy    String?
+  approvedBy    String?
+  layout        String?   @db.LongText
+  status        String    @default("Pending")
+  authorId      Int?
+  createdAt     DateTime  @default(now())
+  archivedBy    String?
+  disapprovalReason String?
+  author           User?     @relation(fields: [authorId], references: [id], onDelete: Cascade, map: "Rrf_authorId_fkey")
+  items         RrfItem[]
+
+  @@index([authorId], map: "Rrf_authorId_fkey")
+  @@map("rrf")
+}
+
+model RrfItem {
+  id            Int     @id @default(autoincrement())
+  qty           String?
+  unit          String?
+  particulars   String?
+  estimatedCost String?
+  rrfId         Int
+  rrf           Rrf     @relation(fields: [rrfId], references: [id], onDelete: Cascade, map: "RrfItem_rrfId_fkey")
+
+  @@index([rrfId], map: "RrfItem_rrfId_fkey")
+  @@map("rrfitem")
 }
 
 model Task {
@@ -44,9 +124,12 @@ model Task {
   description String?
   completed   Boolean  @default(false)
   userId      Int
-  user        User     @relation(fields: [userId], references: [id])
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  updatedAt   DateTime
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Task_userId_fkey")
+
+  @@index([userId], map: "Task_userId_fkey")
+  @@map("task")
 }
 
 model TripTicket {
@@ -61,9 +144,6 @@ model TripTicket {
   etaDestination    String?
   dateTimeDeparture String?
   dateTimeReturn    String?
-  passengerCount    String?
-  hdiPassengers     String?
-  outsidePassengers String?
   passengersDetail  String?
   destination       String?
   purpose           String?
@@ -71,104 +151,46 @@ model TripTicket {
   requestedBy       String?
   endorsedBy        String?
   approvedBy        String?
-  kmOut             String?
-  kmIn              String?
-  guardOut          String?
-  guardIn           String?
-  layout            Json?
+  createdAt         DateTime @default(now())
+  layout            String?  @db.LongText
   status            String   @default("Pending")
   authorId          Int?
-  author            User?    @relation(fields: [authorId], references: [id])
-  createdAt         DateTime @default(now())
+  guardIn           String?
+  guardOut          String?
+  kmIn              String?
+  kmOut             String?
+  hdiPassengers     String?
+  outsidePassengers String?
+  passengerCount    String?
+  archivedBy        String?
+  disapprovalReason String?
+  author            User?    @relation(fields: [authorId], references: [id], onDelete: Cascade, map: "TripTicket_authorId_fkey")
+
+  @@index([authorId], map: "TripTicket_authorId_fkey")
+  @@map("tripticket")
 }
 
-model Prf {
-  id               Int       @id @default(autoincrement())
-  prfNo            String?
-  requestor        String?
-  dateRequested    String?
-  dateNeeded       String?
-  to               String?
-  from             String?
-  remarks          String?
-  quotationSummary String?
-  preparedBy       String?
-  verifiedBy       String?
-  notedBy          String?
-  approvedBy       String?
-  layout           Json?
-  status           String    @default("Pending")
-  authorId         Int?
-  author           User?     @relation(fields: [authorId], references: [id])
-  items            PrfItem[]
-  createdAt        DateTime  @default(now())
-}
-
-model PrfItem {
-  id              Int     @id @default(autoincrement())
-  qty             String?
-  unit            String?
-  particulars     String?
-  estimatedCost   String?
-  availableStocks String?
-  prfId           Int
-  prf             Prf     @relation(fields: [prfId], references: [id], onDelete: Cascade)
-}
-
-model ActivityLog {
-  id         Int      @id @default(autoincrement())
-  userId     Int
-  user       User     @relation(fields: [userId], references: [id])
-  action     String   // e.g. "CREATED", "APPROVED", "REJECTED", "DELETED"
-  resource   String   // e.g. "TRIP_TICKET", "PRF"
-  resourceId Int
-  details    String?  // e.g. "Juan Dela Cruz created Trip Ticket #1"
-  createdAt  DateTime @default(now())
-}
-
-model Reminder {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id])
-  date      String   // Start date ISO string YYYY-MM-DD
-  endDate   String?  // End date ISO string YYYY-MM-DD
-  text      String   @db.Text
-  createdAt DateTime @default(now())
-}
-
-model Rrf {
-  id               Int       @id @default(autoincrement())
-  rrfNo            String?
-  requestor        String?
-  dateRequested    String?
-  dateNeeded       String?
-  remarks          String?
-  preparedBy       String?
-  verifiedBy       String?
-  approvedBy       String?
-  layout           Json?
-  status           String    @default("Pending")
-  authorId         Int?
-  author           User?     @relation(fields: [authorId], references: [id])
-  items            RrfItem[]
-  createdAt        DateTime  @default(now())
-}
-
-model RrfItem {
-  id              Int     @id @default(autoincrement())
-  qty             String?
-  unit            String?
-  particulars     String?
-  estimatedCost   String?
-  rrfId           Int
-  rrf             Rrf     @relation(fields: [rrfId], references: [id], onDelete: Cascade)
-}
-
-model Driver {
-  id        Int      @id @default(autoincrement())
-  name      String
-  status    String   @default("Active")
-  createdAt DateTime @default(now())
+model User {
+  id           Int           @id @default(autoincrement())
+  email        String        @unique(map: "User_email_key")
+  password     String
+  name         String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  canApprove   Boolean       @default(false)
+  signatureUrl String?
+  avatarUrl    String?
+  themeColor   String?       @default("#6366f1")
+  isDarkMode   Boolean       @default(false)
+  role         UserRole      @default(User)
+  permissions  Json?
+  activitylog  ActivityLog[]
+  prf          Prf[]
+  reminder     Reminder[]
+  rrf          Rrf[]
+  task         Task[]
+  tripticket   TripTicket[]
+  @@map("user")
 }
 
 model Vehicle {
@@ -177,4 +199,13 @@ model Vehicle {
   plateNumber String
   status      String   @default("Active")
   createdAt   DateTime @default(now())
+  @@map("vehicle")
+}
+
+enum UserRole {
+  User
+  Admin
+  Driver
+  Guard
+  @@map("user_role")
 }

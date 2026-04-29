@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import GuardEditModal from '../components/GuardEditModal';
 import { useToast } from '../context/ToastContext';
 
 export default function GuardDashboard() {
@@ -10,7 +9,6 @@ export default function GuardDashboard() {
 
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTicket, setSelectedTicket] = useState(null);
 
   const user = JSON.parse(localStorage.getItem('user') || 'null');
 
@@ -54,168 +52,207 @@ export default function GuardDashboard() {
     if (!value) return 'N/A';
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) return value;
-    return parsed.toLocaleDateString();
+    return parsed.toLocaleString('en-US', {
+      month: 'numeric',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
   };
 
   return (
     <div className="guard-dashboard-page">
       <header className="guard-header">
-        <h1>Guard Dashboard</h1>
-        <p>Approved trip tickets are visible. You can update only KM readings and guard sign-off fields.</p>
+        <h1>Approved Trip Ticket Log</h1>
+        <p>Log mileage and actual travel times for authorized trip tickets.</p>
       </header>
 
-      <section className="guard-table-wrap glass">
+      <div className="guard-list">
         {loading ? (
           <div className="guard-empty">Loading trip tickets...</div>
         ) : sortedTickets.length === 0 ? (
-          <div className="guard-empty">No trip tickets available.</div>
+          <div className="guard-empty">No approved trip tickets available right now.</div>
         ) : (
-          <table className="guard-table">
-            <thead>
-              <tr>
-                <th>Date Requested</th>
-                <th>Driver</th>
-                <th>Vehicle</th>
-                <th>Destination</th>
-                <th>Current Status</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedTickets.map((ticket) => (
-                <tr key={ticket.id}>
-                  <td>{formatDate(ticket.dateRequested || ticket.createdAt)}</td>
-                  <td>{ticket.driver || 'N/A'}</td>
-                  <td>{ticket.vehicle || 'N/A'}</td>
-                  <td>{ticket.destination || 'N/A'}</td>
-                  <td>
-                    <span className={`guard-status ${String(ticket.status || 'Pending').toLowerCase()}`}>
-                      {ticket.status || 'Pending'}
-                    </span>
-                  </td>
-                  <td style={{ textAlign: 'right' }}>
-                    <button className="guard-edit-btn" onClick={() => setSelectedTicket(ticket)}>
-                      Edit KM & Signature
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          sortedTickets.map((ticket) => (
+            <div 
+              key={ticket.id} 
+              className="guard-list-item glass"
+            >
+              <div className="item-main">
+                <span className="item-no">#{ticket.id.toString().padStart(4, '0')}</span>
+                <div className="item-info">
+                  <span className="item-driver">
+                    {ticket.driver || 'No Driver'}
+                    {ticket.dateTimeDeparture && !ticket.dateTimeReturn && (
+                      <span className="ongoing-badge">ONGOING</span>
+                    )}
+                    {ticket.dateTimeDeparture && ticket.dateTimeReturn && (
+                      <span className="completed-badge">COMPLETED</span>
+                    )}
+                    {!ticket.dateTimeDeparture && (
+                      <span className="authorized-badge">AUTHORIZED</span>
+                    )}
+                  </span>
+                  <span className="item-vehicle">{ticket.vehicle || 'No Vehicle'} • {ticket.destination || 'No Destination'}</span>
+                </div>
+              </div>
+              <div className="item-meta">
+                <span className="item-date">{formatDate(ticket.dateRequested || ticket.createdAt)}</span>
+                <span className="item-arrow">›</span>
+              </div>
+            </div>
+          ))
         )}
-      </section>
-
-      <GuardEditModal
-        isOpen={!!selectedTicket}
-        ticket={selectedTicket}
-        onClose={() => setSelectedTicket(null)}
-        onSaved={fetchTickets}
-      />
+      </div>
 
       <style>{`
         .guard-dashboard-page {
-          padding: 2rem;
+          padding: 1.5rem;
           color: var(--text-main);
+          max-width: 1000px;
+          margin: 0 auto;
         }
 
         .guard-header {
-          margin-bottom: 1.35rem;
+          margin-bottom: 2rem;
+          text-align: left;
         }
 
         .guard-header h1 {
-          margin: 0;
           font-size: 2rem;
+          font-weight: 800;
+          color: var(--primary);
           letter-spacing: -0.04em;
         }
 
         .guard-header p {
-          margin-top: 0.45rem;
+          font-size: 1rem;
+          color: var(--text-dim);
+          margin-top: 0.3rem;
+        }
+
+        .guard-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .guard-list-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1.25rem 1.5rem;
+          border-radius: 16px;
+          border: 1px solid var(--glass-border);
+          transition: all 0.2s ease;
+        }
+
+        .guard-list-item:hover {
+          transform: translateX(5px);
+          border-color: var(--primary);
+          background: var(--primary-light);
+        }
+
+        .item-main {
+          display: flex;
+          align-items: center;
+          gap: 1.5rem;
+        }
+
+        .item-no {
+          font-size: 1.25rem;
+          font-weight: 900;
+          color: var(--primary);
+          font-family: 'JetBrains Mono', monospace;
+        }
+
+        .item-info {
+          display: flex;
+          flex-direction: column;
+          gap: 0.2rem;
+        }
+
+        .item-driver {
+          font-size: 1.15rem;
+          font-weight: 700;
+          color: var(--text-main);
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .ongoing-badge {
+          background: rgba(99, 102, 241, 0.15);
+          color: #6366f1;
+          font-size: 0.65rem;
+          padding: 0.15rem 0.45rem;
+          border-radius: 6px;
+          letter-spacing: 0.05em;
+        }
+
+        .completed-badge {
+          background: rgba(16, 185, 129, 0.15);
+          color: #10b981;
+          font-size: 0.65rem;
+          padding: 0.15rem 0.45rem;
+          border-radius: 6px;
+          letter-spacing: 0.05em;
+        }
+
+        .authorized-badge {
+          background: rgba(34, 197, 94, 0.15);
+          color: #22c55e;
+          font-size: 0.65rem;
+          padding: 0.15rem 0.45rem;
+          border-radius: 6px;
+          letter-spacing: 0.05em;
+        }
+
+        .item-vehicle {
+          font-size: 0.9rem;
           color: var(--text-dim);
           font-weight: 600;
         }
 
-        .guard-table-wrap {
-          border: 1px solid var(--glass-border);
-          border-radius: 18px;
-          overflow: hidden;
-          background: var(--card-bg);
+        .item-meta {
+          display: flex;
+          align-items: center;
+          gap: 1.5rem;
         }
 
-        .guard-table {
-          width: 100%;
-          border-collapse: collapse;
-        }
-
-        .guard-table th,
-        .guard-table td {
-          padding: 0.95rem;
-          border-bottom: 1px solid var(--glass-border);
+        .item-date {
           font-size: 0.9rem;
-        }
-
-        .guard-table th {
-          background: var(--primary-light);
-          text-transform: uppercase;
-          letter-spacing: 0.06em;
-          font-size: 0.74rem;
-          color: var(--primary);
-          font-weight: 800;
-        }
-
-        .guard-status {
-          display: inline-block;
-          border-radius: 999px;
-          padding: 0.25rem 0.6rem;
-          font-size: 0.72rem;
-          font-weight: 800;
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
-        }
-
-        .guard-status.approved {
-          background: rgba(16, 185, 129, 0.12);
-          color: #059669;
-        }
-
-        .guard-status.pending {
-          background: rgba(245, 158, 11, 0.14);
-          color: #d97706;
-        }
-
-        .guard-status.archived {
-          background: rgba(100, 116, 139, 0.16);
-          color: #64748b;
-        }
-
-        .guard-edit-btn {
-          border: none;
-          border-radius: 10px;
-          padding: 0.55rem 0.8rem;
-          background: var(--primary);
-          color: white;
-          font-size: 0.78rem;
           font-weight: 700;
-          cursor: pointer;
+          color: var(--text-dim);
+          background: rgba(0,0,0,0.05);
+          padding: 0.3rem 0.7rem;
+          border-radius: 8px;
+        }
+
+        .item-arrow {
+          display: none;
+        }
+
+        .guard-list-item:hover .item-arrow {
+          opacity: 1;
         }
 
         .guard-empty {
-          padding: 2.5rem 1rem;
+          padding: 5rem 2rem;
           text-align: center;
+          font-size: 1.25rem;
           color: var(--text-dim);
           font-weight: 600;
         }
 
-        @media (max-width: 920px) {
-          .guard-dashboard-page {
-            padding: 1rem;
+        @media (max-width: 600px) {
+          .item-main {
+            gap: 1rem;
           }
-
-          .guard-table-wrap {
-            overflow-x: auto;
-          }
-
-          .guard-table {
-            min-width: 860px;
+          .item-meta {
+            display: none;
           }
         }
       `}</style>

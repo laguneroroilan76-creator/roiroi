@@ -21,7 +21,7 @@ const createRRF = async (req, res) => {
 
 const getRRFs = async (req, res) => {
   try {
-    const rrfs = await rrfService.getRRFs(req.user.id, req.user.canApprove);
+    const rrfs = await rrfService.getRRFs(req.user.id, req.user.canApprove, req.user.role === 'Guard');
     res.json(rrfs);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -40,6 +40,12 @@ const getRRFById = async (req, res) => {
 
 const updateRRF = async (req, res) => {
   try {
+    if (req.body.status === 'Archived') {
+      req.body.archivedBy = req.user.name || 'Unknown';
+    } else if (req.body.status === 'Approved') {
+      req.body.archivedBy = null;
+    }
+
     const rrf = await rrfService.updateRRF(req.params.id, req.body);
     
     let actionType = 'UPDATE';

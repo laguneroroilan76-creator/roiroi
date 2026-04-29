@@ -7,7 +7,7 @@ export default function Users() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
-  const [formData, setFormData] = useState({ name: '', email: '', password: '', canApprove: false, role: 'User' });
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', canApprove: false, role: 'User', permissions: {} });
   const { showToast } = useToast();
   const currentUser = JSON.parse(localStorage.getItem('user') || 'null');
 
@@ -37,11 +37,12 @@ export default function Users() {
         email: user.email, 
         password: '', 
         canApprove: user.canApprove || false,
-        role: user.role || 'User'
+        role: user.role || 'User',
+        permissions: typeof user.permissions === 'string' ? JSON.parse(user.permissions) : (user.permissions || {})
       });
     } else {
       setEditingUser(null);
-      setFormData({ name: '', email: '', password: '', canApprove: false, role: 'User' });
+      setFormData({ name: '', email: '', password: '', canApprove: false, role: 'User', permissions: {} });
     }
     setIsModalOpen(true);
   };
@@ -59,8 +60,12 @@ export default function Users() {
       const config = { headers: { 'Authorization': `Bearer ${token}` } };
       
       if (editingUser) {
-        await axios.put(`http://localhost:5000/api/users/${editingUser.id}`, formData, config);
+        const res = await axios.put(`http://localhost:5000/api/users/${editingUser.id}`, formData, config);
         showToast('User updated successfully', 'success');
+        if (editingUser.id === currentUser?.id) {
+            localStorage.setItem('user', JSON.stringify({ ...currentUser, ...res.data }));
+            window.location.reload();
+        }
       } else {
         await axios.post('http://localhost:5000/api/auth/register', formData, config);
         showToast('User created successfully', 'success');
@@ -200,18 +205,72 @@ export default function Users() {
                 </select>
               </div>
 
-              {formData.role !== 'Admin' && formData.role !== 'Driver' && formData.role !== 'Guard' && (
-                <div className="checkbox-group">
-                  <label className="checkbox-label">
-                    <input 
-                      type="checkbox" 
-                      checked={formData.canApprove}
-                      onChange={(e) => setFormData({...formData, canApprove: e.target.checked})}
-                    />
-                    <span>Can Approve Forms</span>
-                  </label>
-                </div>
+              {formData.role === 'User' && (
+                <>
+                  <div className="checkbox-group">
+                    <label className="checkbox-label">
+                      <input 
+                        type="checkbox" 
+                        checked={formData.canApprove}
+                        onChange={(e) => setFormData({...formData, canApprove: e.target.checked})}
+                      />
+                      <span>Can Approve Forms</span>
+                    </label>
+                  </div>
+
+                  {/* Permissions Checklist */}
+                  <div className="permissions-section" style={{ display: 'block', visibility: 'visible', opacity: 1, marginTop: '2rem' }}>
+                    <h3 className="perm-title">Feature Access Controls</h3>
+                    <div className="perm-grid">
+                      {[
+                        { key: 'tripTicket', label: 'Trip Ticket' },
+                        { key: 'prf', label: 'PRF' },
+                        { key: 'rrf', label: 'RRF' },
+                        { key: 'vehicles', label: 'Vehicles' },
+                        { key: 'users', label: 'User Mgt' },
+                        { key: 'history', label: 'History' },
+                        { key: 'archived', label: 'Archived' }
+                      ].map(module => (
+                        <div key={module.key} className="perm-item">
+                          <span className="perm-label">{module.label}</span>
+                          <div className="perm-options">
+                            <label className="chip-check">
+                              <input 
+                                type="checkbox" 
+                                checked={formData.permissions?.[module.key]?.view || false} 
+                                onChange={(e) => {
+                                  const perms = { ...formData.permissions };
+                                  if (!perms[module.key]) perms[module.key] = {};
+                                  perms[module.key].view = e.target.checked;
+                                  setFormData({ ...formData, permissions: perms });
+                                }}
+                              />
+                              <span className="chip">View</span>
+                            </label>
+                            {['tripTicket', 'prf', 'rrf', 'vehicles', 'users'].includes(module.key) && (
+                              <label className="chip-check">
+                                <input 
+                                  type="checkbox" 
+                                  checked={formData.permissions?.[module.key]?.edit || formData.permissions?.[module.key]?.manage || false} 
+                                  onChange={(e) => {
+                                    const perms = { ...formData.permissions };
+                                    if (!perms[module.key]) perms[module.key] = {};
+                                    const key = module.key === 'users' || module.key === 'vehicles' ? 'manage' : 'edit';
+                                    perms[module.key][key] = e.target.checked;
+                                    setFormData({ ...formData, permissions: perms });
+                                  }}
+                                />
+                                <span className="chip">Edit</span>
+                              </label>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
               )}
+
               <div className="modal-actions">
                 <button type="button" className="btn cancel" onClick={() => setIsModalOpen(false)}>Cancel</button>
                 <button type="submit" className="btn submit">{editingUser ? 'Save Changes' : 'Create User'}</button>
@@ -260,7 +319,7 @@ export default function Users() {
             background: rgba(0,0,0,0.4); backdrop-filter: blur(12px);
             display: flex; align-items: center; justify-content: center; z-index: 1100;
         }
-        .modal-content { width: 100%; max-width: 480px; padding: 3.5rem; border-radius: 32px; background: var(--card-bg); border: 1px solid var(--glass-border); box-shadow: var(--premium-shadow); animation: modalIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .modal-content { width: 100%; max-width: 650px; min-height: 500px; padding: 2rem; border-radius: 32px; background: var(--card-bg); border: 2px solid var(--primary); box-shadow: var(--premium-shadow); animation: modalIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); max-height: 90vh; overflow-y: auto; z-index: 10001; }
         @keyframes modalIn { from { opacity: 0; transform: scale(0.9) translateY(20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 
         .modal-content h2 { margin-bottom: 2.5rem; text-align: center; color: var(--text-main); font-size: 2rem; font-weight: 800; letter-spacing: -0.5px; }
@@ -305,9 +364,26 @@ export default function Users() {
         .dark-mode .users-table th { background: rgba(255,255,255,0.03); color: var(--text-dim); }
         .dark-mode .users-table tr:hover td { background: rgba(255,255,255,0.03); }
         .dark-mode .action-btn.delete:hover { background: rgba(239, 68, 68, 0.1); }
-        .dark-mode .checkbox-group { background: rgba(255,255,255,0.02); }
-        .dark-mode .role-select { color-scheme: dark; }
-        .dark-mode .role-select option { background: #0f172a; color: white; }
+         .permissions-section { margin-top: 2rem; padding: 1.5rem; background: var(--primary-light); border-radius: 20px; border: 1px solid var(--glass-border); }
+        .perm-title { font-size: 0.9rem; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1.5rem; }
+        .perm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .perm-item { display: flex; flex-direction: column; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .perm-label { font-size: 0.8rem; font-weight: 700; color: var(--text-main); }
+        .perm-options { display: flex; gap: 8px; }
+        
+        .chip-check { cursor: pointer; }
+        .chip-check input { display: none; }
+        .chip { 
+            padding: 4px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 700; 
+            background: var(--card-bg); border: 1px solid var(--glass-border); color: var(--text-dim);
+            transition: all 0.2s;
+        }
+        .chip-check input:checked + .chip { 
+            background: var(--primary); color: white; border-color: var(--primary); 
+        }
+
+        .dark-mode .permissions-section { background: rgba(255,255,255,0.02); }
+        .dark-mode .perm-item { border-bottom-color: rgba(255,255,255,0.05); }
       `}</style>
     </div>
   );

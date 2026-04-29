@@ -4,7 +4,7 @@ import { useToast } from '../context/ToastContext';
 import api from '../services/api';
 
 export default function TripTicketForm() {
-  const { showToast } = useToast();
+  const { showToast, confirm } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -16,15 +16,42 @@ export default function TripTicketForm() {
   const isGuard = user?.role === 'Guard';
   const guardEditableFields = ['kmOut', 'kmIn', 'guardOut', 'guardIn'];
 
+  const [status, setStatus] = useState(initialData?.status || 'Pending');
+  const [showReasonModal, setShowReasonModal] = useState(false);
+  const [disReason, setDisReason] = useState('');
+  const [checklist, setChecklist] = useState([
+    { id: 1, text: 'Vehicle Availability Checked', checked: false },
+    { id: 2, text: 'Driver Schedule Verified', checked: false },
+    { id: 3, text: 'Destination Purpose Validated', checked: false },
+    { id: 4, text: 'Safety Protocols Acknowledged', checked: false }
+  ]);
+  const [drivers, setDrivers] = useState([]);
+  const [vehicles, setVehicles] = useState([]);
+  const [guards, setGuards] = useState([]);
+  const [occupiedDrivers, setOccupiedDrivers] = useState([]);
+  const [occupiedVehicles, setOccupiedVehicles] = useState([]);
+
   const isFieldDisabled = (fieldName, baseDisabled = false) => {
+    // If it's already Approved or Archived, everything is locked for everyone except Guard-specific fields (for Guard)
+    if (status === 'Approved' || status === 'Archived' || status === 'Disapproved') {
+       // Only Guards can edit their fields if it's NOT Completed (checked in ApproveRecords logic usually, but here too)
+       const guardOnlyFields = ['kmOut', 'kmIn', 'guardOut', 'guardIn', 'dateTimeDeparture', 'dateTimeReturn'];
+       if (isGuard && guardOnlyFields.includes(fieldName)) return false;
+       return true;
+    }
+
+    // If status is Pending and in Review Mode, locked for everyone
+    if (status === 'Pending' && isReviewMode) {
+      return true;
+    }
+
+    // Default behavior for new forms
     const guardOnlyFields = ['kmOut', 'kmIn', 'guardOut', 'guardIn', 'dateTimeDeparture', 'dateTimeReturn'];
-    // Guard-only fields should be editable only by Guard
     if (guardOnlyFields.includes(fieldName)) {
       return baseDisabled || !isGuard;
     }
 
     if (isGuard) {
-      // Guards can only edit checkpoint-related fields in the form
       return baseDisabled || !guardEditableFields.includes(fieldName);
     }
 
@@ -59,10 +86,6 @@ export default function TripTicketForm() {
     ...initialData
   });
 
-  const [status, setStatus] = useState(initialData?.status || 'Pending');
-  const [drivers, setDrivers] = useState([]);
-  const [vehicles, setVehicles] = useState([]);
-  const [guards, setGuards] = useState([]);
 
   useEffect(() => {
     if (isGuard && !initialData) {
@@ -97,6 +120,23 @@ export default function TripTicketForm() {
     if (!isReadOnly) fetchOptions();
   }, [isReadOnly, isGuard]);
 
+  useEffect(() => {
+    const checkAvailability = async () => {
+      if (formData.etdOffice && formData.etaDestination && !isReadOnly) {
+        try {
+          const res = await api.get(`/trip-tickets/check-occupancy?start=${formData.etdOffice}&end=${formData.etaDestination}`);
+          // If we are editing, we should filter out our own record's usage
+          const filtered = res.data.filter(t => t.id !== initialData?.id);
+          setOccupiedDrivers(filtered.map(t => t.driver));
+          setOccupiedVehicles(filtered.map(t => t.vehicle));
+        } catch (err) {
+          console.error("Availability check failed", err);
+        }
+      }
+    };
+    checkAvailability();
+  }, [formData.etdOffice, formData.etaDestination, isReadOnly, initialData?.id]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     if (name === 'vehicle') {
@@ -127,6 +167,18 @@ export default function TripTicketForm() {
         });
       }
 
+      // Check for occupancy conflicts before submitting
+      if (formData.etdOffice && formData.etaDestination && !isGuard) {
+        if (formData.driver && occupiedDrivers.includes(formData.driver)) {
+          showToast(`Driver ${formData.driver} is already booked for this schedule.`, 'error');
+          return;
+        }
+        if (formData.vehicle && occupiedVehicles.includes(formData.vehicle)) {
+          showToast(`Vehicle ${formData.vehicle} is already booked for this schedule.`, 'error');
+          return;
+        }
+      }
+
       if (isReviewMode && initialData?.id) {
         await api.put(`/trip-tickets/${initialData.id}`, payload);
         showToast('Trip Ticket Updated Successfully!', 'success');
@@ -143,7 +195,8 @@ export default function TripTicketForm() {
   };
 
   const handleApprove = async () => {
-    if (!window.confirm('Are you sure you want to approve this Trip Ticket?')) return;
+    const confirmed = await confirm('Are you sure you want to approve this Trip Ticket?');
+    if (!confirmed) return;
     try {
       const payload = { ...formData, status: 'Approved', approvedBy: user.name };
       await api.put(`/trip-tickets/${initialData.id}`, payload);
@@ -156,7 +209,8 @@ export default function TripTicketForm() {
   };
 
   const handleArchive = async () => {
-    if (!window.confirm('Are you sure you want to archive this document?')) return;
+    const confirmed = await confirm('Are you sure you want to archive this document?');
+    if (!confirmed) return;
     try {
       const payload = { ...formData, status: 'Archived' };
       await api.put(`/trip-tickets/${initialData.id}`, payload);
@@ -168,10 +222,15 @@ export default function TripTicketForm() {
     }
   };
 
-  const handleDisapprove = async () => {
-    if (!window.confirm('Are you sure you want to disapprove this Trip Ticket?')) return;
+  const handleDisapprove = () => {
+    setShowReasonModal(true);
+  };
+
+  const confirmDisapprove = async () => {
+    const confirmed = await confirm('Are you sure you want to disapprove this Trip Ticket?');
+    if (!confirmed) return;
     try {
-      const payload = { ...formData, status: 'Disapproved' };
+      const payload = { ...formData, status: 'Disapproved', disapprovalReason: disReason };
       await api.put(`/trip-tickets/${initialData.id}`, payload);
       showToast('Trip Ticket Disapproved and moved to Archive', 'info');
       navigate('/archived');
@@ -181,22 +240,102 @@ export default function TripTicketForm() {
     }
   };
 
+  const handleDrop = async () => {
+    const confirmed = await confirm('Are you sure you want to DROP (delete) this pending request? This cannot be undone.');
+    if (!confirmed) return;
+    try {
+      await api.delete(`/trip-tickets/${initialData.id}`);
+      showToast('Trip Ticket Deleted successfully!', 'info');
+      navigate('/dashboard');
+    } catch (err) {
+      console.error(err);
+      showToast('Error deleting Trip Ticket', 'error');
+    }
+  };
+
   return (
     <div className="custom-form-page">
+      {showReasonModal && (
+        <div className="reason-modal-overlay no-print">
+          <div className="reason-modal glass">
+            <h3 style={{ margin: '0 0 1rem 0', color: 'var(--text-main)' }}>❌ Disapproval Reason</h3>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-dim)', marginBottom: '1.5rem' }}>
+              Optional: Please provide a reason for disapproving this document.
+            </p>
+            <textarea 
+              value={disReason} 
+              onChange={(e) => setDisReason(e.target.value)}
+              placeholder="Enter reason for disapproval here..."
+              style={{ 
+                width: '100%', 
+                minHeight: '120px', 
+                padding: '1rem', 
+                borderRadius: '12px', 
+                border: '1px solid var(--glass-border)',
+                background: 'rgba(0,0,0,0.02)',
+                color: 'var(--text-main)',
+                fontSize: '1rem',
+                marginBottom: '1.5rem',
+                resize: 'vertical'
+              }}
+            />
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => setShowReasonModal(false)}
+                style={{ 
+                  padding: '0.8rem 1.5rem', 
+                  borderRadius: '10px', 
+                  border: '1px solid var(--glass-border)',
+                  background: 'transparent',
+                  color: 'var(--text-dim)',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDisapprove}
+                style={{ 
+                  padding: '0.8rem 1.5rem', 
+                  borderRadius: '10px', 
+                  border: 'none',
+                  background: '#ef4444',
+                  color: 'white',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Disapprove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="no-print sticky-toolbar glass">
         <div className="tool-group">
           <button className="tool-btn back" onClick={() => navigate(-1)}>← Back</button>
         </div>
 
         <div className="tool-group">
-          {isReviewMode && user?.canApprove && status === 'Pending' && (
+          {isReviewMode && status === 'Pending' && (
             <>
-              <button className="tool-btn approve" onClick={handleApprove}>
-                ✅ Approve
-              </button>
-              <button className="tool-btn disapprove-btn" onClick={handleDisapprove}>
-                ❌ Disapprove
-              </button>
+              {user?.canApprove && (
+                <>
+                  <button className="tool-btn approve" onClick={handleApprove}>
+                    ✅ Approve
+                  </button>
+                  <button className="tool-btn disapprove-btn" onClick={handleDisapprove}>
+                    ❌ Disapprove
+                  </button>
+                </>
+              )}
+              {(user?.canApprove || initialData?.userId === user?.id || formData?.requestedBy === user?.name) && (
+                <button className="tool-btn delete" onClick={handleDrop} style={{ background: '#4b5563' }}>
+                  🗑️ Drop
+                </button>
+              )}
             </>
           )}
           {!isReviewMode && status !== 'Approved' && status !== 'Archived' && (
@@ -209,18 +348,30 @@ export default function TripTicketForm() {
               📥 Archive
             </button>
           )}
+          <button className="tool-btn print-btn" onClick={() => window.print()}>
+            🖨️ Print Form
+          </button>
         </div>
       </div>
 
       <div className="form-container glass">
         <div className="form-header">
           <div className="company-info">
-            <h2>HDI ADVENTURES INC.</h2>
+            <img 
+              src="/HDI Primary Logo .png" 
+              alt="HDI Logo" 
+              className="company-logo"
+            />
             <p>Trip Ticket Form</p>
           </div>
           {initialData?.id && (
             <div className="form-status">
               <span className={`status-badge ${status.toLowerCase()}`}>{status}</span>
+              {status === 'Archived' && initialData?.archivedBy && (
+                <p style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '4px', fontStyle: 'italic' }}>
+                  Archived by: {initialData.archivedBy}
+                </p>
+              )}
               <p>Ticket #{initialData.id.toString().padStart(4, '0')}</p>
             </div>
           )}
@@ -284,7 +435,7 @@ export default function TripTicketForm() {
               </div>
             </div>
             <div className="form-group mt-3">
-              <label>Passengers Details</label>
+              <label>Passengers Names</label>
               <textarea name="passengersDetail" value={formData.passengersDetail} onChange={handleChange} disabled={isFieldDisabled('passengersDetail', isReadOnly)} placeholder="Names of all passengers" rows="2"></textarea>
             </div>
           </div>
@@ -297,7 +448,14 @@ export default function TripTicketForm() {
                 <label>Assigned Driver</label>
                 <select name="driver" value={formData.driver} onChange={handleChange} disabled={isFieldDisabled('driver', isReadOnly)}>
                   <option value="">Select Driver</option>
-                  {drivers.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                  {drivers.map(d => {
+                    const isOccupied = occupiedDrivers.includes(d.name);
+                    return (
+                      <option key={d.id} value={d.name} disabled={isOccupied}>
+                        {d.name} {isOccupied ? '(OCCUPIED)' : ''}
+                      </option>
+                    );
+                  })}
                   {isReadOnly && !drivers.find(d => d.name === formData.driver) && formData.driver && (
                     <option value={formData.driver}>{formData.driver}</option>
                   )}
@@ -307,7 +465,14 @@ export default function TripTicketForm() {
                 <label>Vehicle</label>
                 <select name="vehicle" value={formData.vehicle} onChange={handleChange} disabled={isFieldDisabled('vehicle', isReadOnly)}>
                   <option value="">Select Vehicle</option>
-                  {vehicles.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
+                  {vehicles.map(v => {
+                    const isOccupied = occupiedVehicles.includes(v.name);
+                    return (
+                      <option key={v.id} value={v.name} disabled={isOccupied}>
+                        {v.name} {isOccupied ? '(OCCUPIED)' : ''}
+                      </option>
+                    );
+                  })}
                   {isReadOnly && !vehicles.find(v => v.name === formData.vehicle) && formData.vehicle && (
                     <option value={formData.vehicle}>{formData.vehicle}</option>
                   )}
@@ -394,7 +559,60 @@ export default function TripTicketForm() {
             </div>
           </div>
 
-          {/* SECTION 5: Signatures */}
+          {/* SECTION 5: Admin Verification Checklist (Visible only during Review) */}
+          {isReviewMode && user?.canApprove && status === 'Pending' && (
+            <div className="form-section no-print" style={{ 
+              marginTop: '1rem', 
+              border: '2px dashed var(--primary)', 
+              padding: '2rem', 
+              borderRadius: '20px', 
+              background: 'rgba(99, 102, 241, 0.05)',
+              boxShadow: 'inset 0 0 20px rgba(99, 102, 241, 0.02)'
+            }}>
+              <h3 className="section-title" style={{ color: 'var(--primary)', borderBottomColor: 'var(--primary)', marginBottom: '1rem' }}>📋 Admin Verification Checklist</h3>
+              <p style={{ fontSize: '0.9rem', color: 'var(--text-dim)', marginBottom: '1.5rem', fontWeight: 600 }}>Please verify the following before approving:</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.2rem' }}>
+                {checklist.map(item => (
+                  <label key={item.id} style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '15px', 
+                    cursor: 'pointer', 
+                    padding: '15px', 
+                    background: 'var(--card-bg)', 
+                    borderRadius: '14px', 
+                    border: '1px solid var(--glass-border)',
+                    transition: 'all 0.2s ease',
+                    boxShadow: item.checked ? '0 5px 15px rgba(99, 102, 241, 0.1)' : 'none',
+                    borderColor: item.checked ? 'var(--primary)' : 'var(--glass-border)'
+                  }}>
+                    <input 
+                      type="checkbox" 
+                      checked={item.checked}
+                      onChange={() => setChecklist(prev => prev.map(i => i.id === item.id ? { ...i, checked: !i.checked } : i))}
+                      style={{ 
+                        width: '22px', 
+                        height: '22px', 
+                        cursor: 'pointer',
+                        accentColor: 'var(--primary)'
+                      }}
+                    />
+                    <span style={{ 
+                      fontSize: '1rem', 
+                      fontWeight: 700, 
+                      color: item.checked ? 'var(--primary)' : 'var(--text-main)',
+                      textDecoration: item.checked ? 'line-through' : 'none',
+                      opacity: item.checked ? 0.7 : 1
+                    }}>
+                      {item.text}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* SECTION 6: Signatures */}
           <div className="form-section signature-section">
             <div className="sig-block">
               <div className="sig-line">
@@ -446,6 +664,7 @@ export default function TripTicketForm() {
         .tool-btn.approve { background: #10b981; color: white; border: 2px solid transparent; }
         .tool-btn.disapprove-btn { background: #ef4444; color: white; }
         .tool-btn.archive-btn { background: #f59e0b; color: white; }
+        .tool-btn.print-btn { background: #334155; color: white; }
 
         .form-container {
           width: 100%;
@@ -553,35 +772,101 @@ export default function TripTicketForm() {
           .form-container { padding: 1.5rem; }
         }
 
+        .company-info {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .company-logo {
+          height: 60px;
+          width: auto;
+          object-fit: contain;
+        }
+
+        .reason-modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.4);
+          backdrop-filter: blur(8px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 10000;
+          padding: 1rem;
+        }
+
+        .reason-modal {
+          width: 100%;
+          max-width: 500px;
+          padding: 2rem;
+          border-radius: 24px;
+          background: var(--card-bg);
+          box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+          border: 1px solid var(--glass-border);
+          animation: modalAppear 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes modalAppear {
+          from { opacity: 0; transform: translateY(20px) scale(0.95); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
         @media print {
-          @page { size: A4; margin: 1.5cm; }
+          .company-logo {
+            height: 50px; /* Slightly smaller for print to save space */
+          }
+          @page { size: A4; margin: 1cm 1.5cm; }
           body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .no-print { display: none !important; }
-          .custom-form-page { background: white !important; padding: 0 !important; color: black !important; }
+          .custom-form-page { background: white !important; padding: 0 !important; color: black !important; min-height: auto !important; }
           .form-container {
             box-shadow: none !important; border: none !important; padding: 0 !important; max-width: 100% !important; background: white !important;
           }
           
-          .company-info h2 { color: black !important; }
-          .company-info p { color: #555 !important; }
-          .section-title { color: black !important; border-bottom: 1px solid #ccc !important; }
-          .form-group label { color: #555 !important; }
-          .status-badge { display: none !important; }
+          .form-header { margin-bottom: 1rem; padding-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: flex-start; }
+          .company-info h2 { color: #000 !important; font-size: 1.4rem !important; margin: 0; }
+          .company-info p { color: #333 !important; font-size: 0.9rem !important; margin: 0; }
+          .form-status p { font-size: 0.8rem !important; margin: 0 !important; }
           
+          .form-section { margin-bottom: 0.6rem !important; }
+          .section-title { color: #000 !important; font-size: 0.85rem !important; margin-bottom: 0.6rem !important; padding-bottom: 2px !important; border-bottom: 2px solid #000 !important; text-transform: uppercase; }
+          
+          .grid-3, .grid-2 { gap: 0.8rem !important; }
+          .mt-3 { margin-top: 0.6rem !important; }
+
+          .form-group label { color: #444 !important; font-size: 0.6rem !important; margin-bottom: 1px !important; }
           .form-group input, .form-group select, .form-group textarea {
             background: transparent !important;
             border: none !important;
-            border-bottom: 1px solid #ccc !important;
+            border-bottom: 1px solid #000 !important;
             border-radius: 0 !important;
             color: black !important;
-            padding: 4px 0 !important;
+            padding: 1px 0 !important;
+            font-size: 0.8rem !important;
+            min-height: auto !important;
           }
 
-          .schedule-box { border: 1px solid #ccc !important; background: transparent !important; }
-          .schedule-box h4 { color: black !important; }
+          .schedule-box { 
+            border: 1px solid #000 !important; 
+            background: transparent !important; 
+            padding: 0.6rem !important; 
+            border-radius: 4px !important;
+          }
+          .schedule-box h4 { color: #000 !important; font-size: 0.75rem !important; margin-bottom: 0.4rem !important; text-decoration: underline; }
           
-          .sig-line input { color: black !important; }
-          .sig-block label { color: #555 !important; }
+          .signature-section { margin-top: 1.5rem !important; gap: 1rem !important; }
+          .sig-line { border-bottom-color: #000 !important; }
+          .sig-line input { color: #000 !important; font-size: 0.85rem !important; }
+          .sig-block label { color: #333 !important; font-size: 0.65rem !important; }
+
+          /* Prevent page breaks inside important blocks */
+          .form-section { break-inside: avoid; }
+          .form-header { break-inside: avoid; }
+          .signature-section { break-inside: avoid; }
         }
       `}</style>
     </div>

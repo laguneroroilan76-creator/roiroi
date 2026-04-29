@@ -16,6 +16,16 @@ export default function Sidebar() {
 
   const isActive = (path) => location.pathname === path;
   const isGuard = user?.role === 'Guard';
+  const isAdmin = user?.role === 'Admin';
+  const isDriver = user?.role === 'Driver';
+  
+  // Helper to check permission
+  const canView = (module) => {
+    if (isAdmin) return true;
+    if (!user?.permissions) return true; // Default to true if no permissions object (legacy)
+    const perms = typeof user.permissions === 'string' ? JSON.parse(user.permissions) : user.permissions;
+    return perms?.[module]?.view !== false;
+  };
 
   useEffect(() => {
     if (['/trip-ticket', '/prf', '/rrf'].includes(location.pathname)) {
@@ -31,12 +41,8 @@ export default function Sidebar() {
   return (
     <aside className="glass-sidebar">
       <div className="sidebar-header">
-        <div className="logo">
-          <span className="logo-icon">💠</span>
-          <div className="logo-text">
-            <h2>HDI</h2>
-            <span>Adventures</span>
-          </div>
+        <div className="logo" onClick={() => navigate('/dashboard')} style={{ cursor: 'pointer', padding: '0.5rem 0' }}>
+          <img src="/HDI Primary Logo .png" alt="HDI Logo" style={{ width: '140px', height: 'auto', display: 'block' }} />
         </div>
       </div>
 
@@ -49,11 +55,11 @@ export default function Sidebar() {
 
         {isGuard && (
           <div className={`nav-item ${isActive('/guard-dashboard') ? 'active' : ''}`} onClick={() => navigate('/guard-dashboard')}>
-            <span className="icon">🛡️</span> Guard Dashboard
+            <span className="icon">🛡️</span> Trip Ticket Log
           </div>
         )}
 
-        {!isGuard && (
+        {!isGuard && (canView('tripTicket') || canView('prf') || canView('rrf')) && (
         <div className="nav-group">
           <div 
             className={`nav-item ${['/trip-ticket', '/prf', '/rrf'].includes(location.pathname) ? 'active' : ''}`} 
@@ -64,24 +70,30 @@ export default function Sidebar() {
           </div>
           {showForms && (
             <div className="sub-nav">
-              <div 
-                className={`sub-item ${location.pathname === '/trip-ticket' ? 'active' : ''}`}
-                onClick={() => navigate('/trip-ticket')}
-              >
-                Trip Ticket
-              </div>
-              <div 
-                className={`sub-item ${location.pathname === '/prf' ? 'active' : ''}`}
-                onClick={() => navigate('/prf')}
-              >
-                Payment Request Form
-              </div>
-              <div 
-                className={`sub-item ${location.pathname === '/rrf' ? 'active' : ''}`}
-                onClick={() => navigate('/rrf')}
-              >
-                Request Requisition Form
-              </div>
+              {canView('tripTicket') && (
+                <div 
+                  className={`sub-item ${location.pathname === '/trip-ticket' ? 'active' : ''}`}
+                  onClick={() => navigate('/trip-ticket')}
+                >
+                  Trip Ticket
+                </div>
+              )}
+              {canView('prf') && (
+                <div 
+                  className={`sub-item ${location.pathname === '/prf' ? 'active' : ''}`}
+                  onClick={() => navigate('/prf')}
+                >
+                  Payment Request Form
+                </div>
+              )}
+              {canView('rrf') && (
+                <div 
+                  className={`sub-item ${location.pathname === '/rrf' ? 'active' : ''}`}
+                  onClick={() => navigate('/rrf')}
+                >
+                  Request Requisition Form
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -97,25 +109,31 @@ export default function Sidebar() {
           <span className="icon">✅</span> Approved Records
         </div>
 
-        {!isGuard && (
+        {(isAdmin || isDriver) && (
+          <div className={`nav-item ${isActive('/driver-schedule') ? 'active' : ''}`} onClick={() => navigate('/driver-schedule')}>
+            <span className="icon">🗓️</span> Driving Schedule
+          </div>
+        )}
+
+        {!isGuard && canView('history') && (
           <div className={`nav-item ${isActive('/history') ? 'active' : ''}`} onClick={() => navigate('/history')}>
             <span className="icon">📂</span> {user?.canApprove ? "History & Activity" : "My Requests"}
           </div>
         )}
 
-        {!isGuard && (
+        {!isGuard && canView('archived') && (
           <div className={`nav-item ${isActive('/archived') ? 'active' : ''}`} onClick={() => navigate('/archived')}>
             <span className="icon">📦</span> Archived Records
           </div>
         )}
 
-        {user?.role === 'Admin' && !isGuard && (
+        {isAdmin && !isGuard && canView('vehicles') && (
           <div className={`nav-item ${isActive('/vehicles') ? 'active' : ''}`} onClick={() => navigate('/vehicles')}>
             <span className="icon">🚙</span> Vehicles Management
           </div>
         )}
 
-        {user?.role === 'Admin' && !isGuard && (
+        {isAdmin && !isGuard && canView('users') && (
           <div className={`nav-item ${isActive('/users') ? 'active' : ''}`} onClick={() => navigate('/users')}>
             <span className="icon">👥</span> User Management
           </div>

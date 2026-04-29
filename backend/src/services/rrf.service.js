@@ -14,8 +14,8 @@ const createRRF = async (userId, rrfData) => {
   });
 };
 
-const getRRFs = async (userId, canApprove) => {
-  const where = canApprove ? {} : { authorId: userId };
+const getRRFs = async (userId, canApprove, isGuard = false) => {
+  const where = (canApprove || isGuard) ? {} : { authorId: userId };
   return await prisma.rrf.findMany({
     where,
     include: { items: true, author: { select: { name: true } } },

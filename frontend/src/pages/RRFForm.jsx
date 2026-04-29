@@ -7,12 +7,11 @@ import { useNavigate, useLocation } from 'react-router-dom';
 const INITIAL_FIELDS = {};
 
 export default function RRFForm() {
-  const { showToast } = useToast();
+  const { showToast, confirm } = useToast();
   const location = useLocation();
   const initialData = location.state?.initialData;
   const isReviewMode = !!initialData;
 
-  const user = JSON.parse(localStorage.getItem('user'));
   const [fields, setFields] = useState(() => {
     if (initialData) {
       const savedLayout = typeof initialData.layout === 'string' ? JSON.parse(initialData.layout) : initialData.layout;
@@ -32,6 +31,14 @@ export default function RRFForm() {
 
   const [appMode, setAppMode] = useState('view');
   const [status, setStatus] = useState(initialData?.status || 'Pending');
+  const [showReasonModal, setShowReasonModal] = useState(false);
+  const [disReason, setDisReason] = useState('');
+  const [checklist, setChecklist] = useState([
+    { id: 1, text: 'Stock Availability Verified', checked: false },
+    { id: 2, text: 'Replacement Reason Validated', checked: false },
+    { id: 3, text: 'Item Specifications Confirmed', checked: false },
+    { id: 4, text: 'Department Head Endorsement Checked', checked: false }
+  ]);
   const [isAddingField, setIsAddingField] = useState(false);
   const [draggingField, setDraggingField] = useState(null);
   const [draggingStart, setDraggingStart] = useState(null);
@@ -43,6 +50,11 @@ export default function RRFForm() {
   const [zoom, setZoom] = useState(1.2);
   const containerRef = useRef(null);
   const navigate = useNavigate();
+
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isAdmin = user?.role === 'Admin' || user?.canApprove;
+  const isPending = status === 'Pending' && !!initialData;
+  const effectiveReadOnly = location.state?.readOnly || (status === 'Approved' || status === 'Archived' || status === 'Disapproved') || isPending;
 
   const handleDragStart = (e, key) => {
     if (appMode !== 'layout') return;
@@ -239,7 +251,8 @@ export default function RRFForm() {
   };
 
   const handleApprove = async () => {
-    if (!window.confirm('Are you sure you want to approve this RRF?')) return;
+    const confirmed = await confirm('Are you sure you want to approve this RRF?');
+    if (!confirmed) return;
     try {
       const payload = {
         ...initialData,
@@ -268,13 +281,32 @@ export default function RRFForm() {
     }
   };
 
-  const handleDisapprove = async () => {
-    if (!window.confirm('Are you sure you want to disapprove this RRF?')) return;
+  const handleDrop = async () => {
+    const confirmed = await confirm('Are you sure you want to DROP (delete) this pending RRF? This cannot be undone.');
+    if (!confirmed) return;
+    try {
+      await api.delete(`/rrfs/${initialData.id}`);
+      showToast('RRF Deleted successfully!', 'info');
+      navigate('/dashboard');
+    } catch (err) {
+      console.error(err);
+      showToast('Error deleting RRF', 'error');
+    }
+  };
+
+  const handleDisapprove = () => {
+    setShowReasonModal(true);
+  };
+
+  const confirmDisapprove = async () => {
+    const confirmed = await confirm('Are you sure you want to disapprove this RRF?');
+    if (!confirmed) return;
     try {
       const payload = {
         ...initialData,
         layout: fields,
         status: 'Disapproved',
+        disapprovalReason: disReason,
         ...Object.keys(fields).reduce((acc, key) => {
           if (!fields[key].isExtra) acc[key] = fields[key].value;
           return acc;
@@ -299,7 +331,8 @@ export default function RRFForm() {
   };
 
   const handleArchive = async () => {
-    if (!window.confirm('Are you sure you want to archive this RRF?')) return;
+    const confirmed = await confirm('Are you sure you want to archive this RRF?');
+    if (!confirmed) return;
     try {
       const payload = {
         ...initialData,
@@ -374,14 +407,77 @@ export default function RRFForm() {
 
   return (
     <div className="smart-canvas-page">
+      {showReasonModal && (
+        <div className="reason-modal-overlay no-print">
+          <div className="reason-modal glass">
+            <h3 style={{ margin: '0 0 1rem 0', color: 'var(--text-main)' }}>❌ Disapproval Reason</h3>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-dim)', marginBottom: '1.5rem' }}>
+              Optional: Please provide a reason for disapproving this document.
+            </p>
+            <textarea 
+              value={disReason} 
+              onChange={(e) => setDisReason(e.target.value)}
+              placeholder="Enter reason for disapproval here..."
+              style={{ 
+                width: '100%', 
+                minHeight: '120px', 
+                padding: '1rem', 
+                borderRadius: '12px', 
+                border: '1px solid var(--glass-border)',
+                background: 'rgba(0,0,0,0.02)',
+                color: 'var(--text-main)',
+                fontSize: '1rem',
+                marginBottom: '1.5rem',
+                resize: 'vertical'
+              }}
+            />
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => setShowReasonModal(false)}
+                style={{ 
+                  padding: '0.8rem 1.5rem', 
+                  borderRadius: '10px', 
+                  border: '1px solid var(--glass-border)',
+                  background: 'transparent',
+                  color: 'var(--text-dim)',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDisapprove}
+                style={{ 
+                  padding: '0.8rem 1.5rem', 
+                  borderRadius: '10px', 
+                  border: 'none',
+                  background: '#ef4444',
+                  color: 'white',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Disapprove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="no-print sticky-toolbar">
         <div className="tool-group">
           <button className="tool-btn back" onClick={() => navigate('/dashboard')}>← Back</button>
+          {status === 'Archived' && initialData?.archivedBy && (
+            <span style={{ fontSize: '0.8rem', color: '#f59e0b', fontWeight: 700, marginLeft: '1rem' }}>
+              🗄️ ARCHIVED BY: {initialData.archivedBy.toUpperCase()}
+            </span>
+          )}
 
           <button className={`tool-btn ${appMode === 'view' ? 'active-mode' : ''}`} onClick={() => { setAppMode('view'); setIsAddingField(false); setSelectedField(null); }}>
             📄 View Mode
           </button>
-          {status !== 'Approved' && status !== 'Archived' && (
+          {status !== 'Approved' && status !== 'Archived' && !isPending && (
             <button className={`tool-btn ${appMode === 'layout' ? 'active-mode' : ''}`} onClick={() => setAppMode('layout')}>
               🛠️ Layout & Edit
             </button>
@@ -446,14 +542,23 @@ export default function RRFForm() {
           />
         </div>
         <div className="tool-group">
-          {isReviewMode && user?.canApprove && status === 'Pending' && (
+          {isReviewMode && status === 'Pending' && (
             <>
-              <button className="tool-btn approve" onClick={handleApprove}>
-                ✅ Approve
-              </button>
-              <button className="tool-btn disapprove-btn" onClick={handleDisapprove}>
-                ❌ Disapprove
-              </button>
+              {user?.canApprove && (
+                <>
+                  <button className="tool-btn approve" onClick={handleApprove}>
+                    ✅ Approve
+                  </button>
+                  <button className="tool-btn disapprove-btn" onClick={handleDisapprove}>
+                    ❌ Disapprove
+                  </button>
+                </>
+              )}
+              {(user?.canApprove || initialData?.userId === user?.id) && (
+                <button className="tool-btn delete" onClick={handleDrop} style={{ background: '#4b5563', color: 'white' }}>
+                  🗑️ Drop
+                </button>
+              )}
             </>
           )}
           {!isReviewMode && status !== 'Approved' && status !== 'Archived' && (
@@ -466,8 +571,64 @@ export default function RRFForm() {
               📥 Archive
             </button>
           )}
+          <button className="tool-btn print-btn" style={{ background: '#334155', color: 'white' }} onClick={() => window.print()}>
+            🖨️ Print Form
+          </button>
         </div>
       </div>
+      <div className="no-print">
+          {isReviewMode && user?.canApprove && status === 'Pending' && (
+            <div style={{ 
+              position: 'fixed',
+              bottom: '2rem',
+              right: '2rem',
+              width: '350px',
+              border: '2px dashed var(--primary)', 
+              padding: '1.5rem', 
+              borderRadius: '20px', 
+              background: 'var(--card-bg)',
+              boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
+              zIndex: 1000,
+              animation: 'modalAppear 0.3s ease'
+            }}>
+              <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                📋 Admin Checklist
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                {checklist.map(item => (
+                  <label key={item.id} style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '10px', 
+                    cursor: 'pointer', 
+                    padding: '10px', 
+                    background: 'rgba(0,0,0,0.02)', 
+                    borderRadius: '10px', 
+                    border: '1px solid var(--glass-border)',
+                    transition: 'all 0.2s ease',
+                    borderColor: item.checked ? 'var(--primary)' : 'var(--glass-border)'
+                  }}>
+                    <input 
+                      type="checkbox" 
+                      checked={item.checked}
+                      onChange={() => setChecklist(prev => prev.map(i => i.id === item.id ? { ...i, checked: !i.checked } : i))}
+                      style={{ accentColor: 'var(--primary)' }}
+                    />
+                    <span style={{ 
+                      fontSize: '0.85rem', 
+                      fontWeight: 700, 
+                      color: item.checked ? 'var(--primary)' : 'var(--text-main)',
+                      textDecoration: item.checked ? 'line-through' : 'none'
+                    }}>
+                      {item.text}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+      </div>
+
       <div
         className={`canvas-wrapper ${isAddingField ? 'adding-cursor' : ''}`}
         ref={containerRef}
@@ -568,6 +729,7 @@ export default function RRFForm() {
                 <textarea
                   value={field.value}
                   onChange={(e) => handleValueChange(key, e.target.value)}
+                  disabled={appMode === 'view' || effectiveReadOnly}
                   placeholder={field.label}
                   className="no-print"
                   style={{
@@ -582,6 +744,7 @@ export default function RRFForm() {
                 <input
                   value={field.value}
                   onChange={(e) => handleValueChange(key, e.target.value)}
+                  disabled={appMode === 'view' || effectiveReadOnly}
                   placeholder={field.label}
                   className={`no-print ${field.isSignature ? 'sig-input' : ''}`}
                   style={{
@@ -734,15 +897,16 @@ export default function RRFForm() {
           .print-only { display: block !important; }
           .smart-canvas-page { padding: 0 !important; background: white !important; min-height: auto !important; display: block !important; }
           .canvas-wrapper { 
-            box-shadow: none !important; width: 210mm !important; height: auto !important; 
-            transform: none !important; margin: 0 auto !important; overflow: visible !important;
+            box-shadow: none !important; width: 210mm !important; height: 297mm !important; 
+            transform: none !important; margin: 0 auto !important; overflow: hidden !important;
+            background: white !important;
           }
+          .form-image { width: 100% !important; height: 100% !important; object-fit: contain !important; }
           .view-text { background: transparent !important; border: none !important; }
           .draggable-field { pointer-events: none; background: transparent !important; border: none !important; }
           .draggable-field.layout { border: none !important; background: transparent !important; }
           .draggable-field.layout input, .draggable-field.layout textarea { border: none !important; background: transparent !important; }
-          .drag-handle { display: none !important; }
-          .rotate-handle { display: none !important; }
+          .drag-handle, .rotate-handle, .resizer, .resizer-side { display: none !important; }
         }
 
         .rotate-handle {
@@ -772,6 +936,37 @@ export default function RRFForm() {
           justify-content: center;
           font-size: 14px;
           box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .reason-modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.4);
+          backdrop-filter: blur(8px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 10000;
+          padding: 1rem;
+        }
+
+        .reason-modal {
+          width: 100%;
+          max-width: 500px;
+          padding: 2rem;
+          border-radius: 24px;
+          background: var(--card-bg);
+          box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+          border: 1px solid var(--glass-border);
+          animation: modalAppear 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes modalAppear {
+          from { opacity: 0; transform: translateY(20px) scale(0.95); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
         }
       `}</style>
     </div>

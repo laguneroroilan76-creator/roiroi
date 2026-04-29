@@ -13,10 +13,10 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
+
     try {
       const response = await axios.post(`http://localhost:5000/api/auth/login`, { email, password });
-      
+
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
       navigate('/dashboard');
@@ -31,39 +31,39 @@ export default function Login() {
     <div className="login-page-wrapper">
       <div className="login-glass-card">
         <div className="auth-header">
-          <div className="auth-logo-box">
-             <span className="logo-icon">💠</span>
+          <div className="auth-logo-box" style={{ background: 'transparent', boxShadow: 'none' }}>
+            <img src="/HDI Primary Logo .png" alt="HDI Logo" style={{ width: '180px', height: 'auto' }} />
           </div>
           <h1>Welcome Back</h1>
-          <p>Sign in to <span>HDI Adventures</span></p>
+          <p>Sign in to <span>HDI</span></p>
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="input-group">
             <label>Username or Email</label>
             <div className="input-wrapper">
-                <span className="input-icon">📧</span>
-                <input 
-                  type="text" 
-                  placeholder="admin@hdi.com" 
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
+              <span className="input-icon">📧</span>
+              <input
+                type="text"
+                placeholder="admin@hdi.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
             </div>
           </div>
 
           <div className="input-group">
             <label>Security Password</label>
             <div className="input-wrapper">
-                <span className="input-icon">🔒</span>
-                <input 
-                  type="password" 
-                  placeholder="••••••••" 
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+              <span className="input-icon">🔒</span>
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
             </div>
           </div>
 
@@ -74,16 +74,16 @@ export default function Login() {
 
           <button type="submit" className="login-submit-btn" disabled={loading}>
             {loading ? <div className="spinner-small" /> : (
-                <>
-                    <span>Access Dashboard</span>
-                    <span className="btn-arrow">→</span>
-                </>
+              <>
+                <span>Access Dashboard</span>
+                <span className="btn-arrow">→</span>
+              </>
             )}
           </button>
         </form>
-        
+
         <div className="auth-footer">
-            <p>© 2026 HDI Adventures • Internal Portal</p>
+          <p>© 2026 HDI • Internal Portal</p>
         </div>
       </div>
 
@@ -91,8 +91,8 @@ export default function Login() {
         .login-page-wrapper {
           display: flex; align-items: center; justify-content: center;
           min-height: 100vh; 
-          background: #0f172a;
-          background: radial-gradient(circle at top left, #1e293b 0%, #0f172a 100%);
+          background: #f8fafc;
+          background: radial-gradient(circle at top left, #ffffff 0%, #f1f5f9 100%);
           padding: 2rem; position: relative; overflow: hidden;
           font-family: 'Inter', -apple-system, sans-serif;
         }
@@ -100,12 +100,12 @@ export default function Login() {
         /* Ambient background blobs */
         .login-page-wrapper::before {
           content: ''; position: absolute; top: -15%; right: -10%; width: 600px; height: 600px;
-          background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+          background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
           filter: blur(80px); animation: float 20s infinite alternate;
         }
         .login-page-wrapper::after {
           content: ''; position: absolute; bottom: -20%; left: -10%; width: 500px; height: 500px;
-          background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%);
+          background: radial-gradient(circle, rgba(139, 92, 246, 0.05) 0%, transparent 70%);
           filter: blur(100px); animation: float 15s infinite alternate-reverse;
         }
 
@@ -117,12 +117,12 @@ export default function Login() {
         .login-glass-card { 
             max-width: 480px; width: 100%; 
             padding: 4rem 3.5rem; 
-            background: rgba(255, 255, 255, 0.03);
+            background: rgba(255, 255, 255, 0.7);
             backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.8);
             border-radius: 40px;
             z-index: 10;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08);
             animation: fadeInScale 0.6s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
@@ -142,9 +142,9 @@ export default function Login() {
         .logo-icon { font-size: 2.5rem; filter: drop-shadow(0 0 15px rgba(99, 102, 241, 0.5)); }
 
         .auth-header { text-align: center; margin-bottom: 3rem; }
-        .auth-header h1 { font-size: 3rem; font-weight: 800; color: white; letter-spacing: -2px; margin-bottom: 0.5rem; }
-        .auth-header p { font-size: 1.1rem; color: #94a3b8; font-weight: 500; }
-        .auth-header p span { color: #818cf8; font-weight: 700; }
+        .auth-header h1 { font-size: 3rem; font-weight: 800; color: #0f172a; letter-spacing: -2px; margin-bottom: 0.5rem; }
+        .auth-header p { font-size: 1.1rem; color: #64748b; font-weight: 500; }
+        .auth-header p span { color: #4f46e5; font-weight: 700; }
 
         .auth-form { display: flex; flex-direction: column; gap: 1.5rem; }
         
@@ -160,18 +160,18 @@ export default function Login() {
         .input-group input { 
             width: 100%; 
             padding: 1.2rem 1.2rem 1.2rem 3.2rem;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
             border-radius: 18px;
-            color: white;
+            color: #1e293b;
             font-size: 1rem;
             font-weight: 500;
             transition: all 0.3s;
         }
         .input-group input:focus { 
-            background: rgba(255, 255, 255, 0.07);
+            background: white;
             border-color: #6366f1;
-            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
             outline: none;
         }
 

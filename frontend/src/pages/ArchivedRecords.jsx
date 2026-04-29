@@ -8,7 +8,7 @@ export default function ArchivedRecords() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const { showToast } = useToast();
+  const { showToast, confirm } = useToast();
 
   const fetchData = async () => {
     setLoading(true);
@@ -54,7 +54,8 @@ export default function ArchivedRecords() {
 
   const handleRestore = async (e, record) => {
     e.stopPropagation();
-    if (!window.confirm('Are you sure you want to restore this document to Approved status?')) return;
+    const confirmed = await confirm('Are you sure you want to restore this document to Approved status?');
+    if (!confirmed) return;
     
     try {
       let endpoint = '';
@@ -73,7 +74,8 @@ export default function ArchivedRecords() {
 
   const handleDelete = async (e, record) => {
     e.stopPropagation();
-    if (!window.confirm('WARNING: This will permanently delete the document from the system. Are you sure?')) return;
+    const confirmed = await confirm('WARNING: This will permanently delete the document from the system. Are you sure?');
+    if (!confirmed) return;
     
     try {
       let endpoint = '';
@@ -88,6 +90,12 @@ export default function ArchivedRecords() {
       console.error(err);
       showToast('Failed to delete document', 'error');
     }
+  };
+
+  const getStatusLabel = (status) => {
+    if (status === 'Archived') return 'ARCHIVED';
+    if (status === 'Disapproved') return 'DISAPPROVED';
+    return (status || 'Archived').toUpperCase();
   };
 
   if (loading) return <div style={{ padding: '3rem', color: 'var(--text-main)' }}>Loading Archived Records...</div>;
@@ -113,9 +121,33 @@ export default function ArchivedRecords() {
                         {record.type === 'TRIP_TICKET' ? '🎫 TRIP TICKET' : (record.type === 'PRF' ? '💳 PRF' : '📄 RRF')}
                     </span>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                        {new Date(record.createdAt).toLocaleDateString()}
-                        {record.status === 'Disapproved' && (
-                            <span style={{ color: '#ef4444', fontWeight: 800, fontSize: '0.65rem' }}>❌ DISAPPROVED</span>
+                        {new Date(record.createdAt).toLocaleString('en-US', {
+                            month: 'numeric',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true
+                        })}
+                      {(record.status === 'Archived' || record.status === 'Disapproved') && (
+                        <span style={{ color: record.status === 'Archived' ? '#64748b' : '#ef4444', fontWeight: 800, fontSize: '0.65rem', textAlign: 'right' }}>
+                          {record.status === 'Archived' ? '🗄️ ARCHIVED' : '❌ DISAPPROVED'}
+                          {record.archivedBy && <div style={{ fontSize: '0.6rem', opacity: 0.8, marginTop: '2px', fontWeight: 600 }}>by {record.archivedBy}</div>}
+                          {record.disapprovalReason && (
+                            <div style={{ 
+                                color: '#ef4444', 
+                                fontSize: '0.65rem', 
+                                marginTop: '4px', 
+                                fontWeight: 700,
+                                background: 'rgba(239, 68, 68, 0.05)',
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                textAlign: 'left'
+                            }}>
+                                💡 Reason: {record.disapprovalReason}
+                            </div>
+                          )}
+                        </span>
                         )}
                     </span>
                 </div>
@@ -141,7 +173,7 @@ export default function ArchivedRecords() {
             <div style={{ 
                 padding: '1rem 1.5rem', 
                 borderTop: '1px solid var(--glass-border)', 
-                background: record.status === 'Disapproved' ? 'rgba(239, 68, 68, 0.05)' : 'rgba(245, 158, 11, 0.05)',
+              background: record.status === 'Archived' ? 'rgba(100, 116, 139, 0.05)' : (record.status === 'Disapproved' ? 'rgba(239, 68, 68, 0.05)' : 'rgba(245, 158, 11, 0.05)'),
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
@@ -164,7 +196,9 @@ export default function ArchivedRecords() {
                         🔄
                     </button>
                 </div>
-                <span style={{ color: 'var(--primary)', fontWeight: 600, fontSize: '0.8rem' }}>View Full Document ›</span>
+                <span style={{ color: record.status === 'Archived' ? '#64748b' : 'var(--primary)', fontWeight: 600, fontSize: '0.8rem' }}>
+                    {getStatusLabel(record.status)} {record.archivedBy && `BY ${record.archivedBy.toUpperCase()}`} • View Full Document ›
+                </span>
             </div>
           </div>
         ))}

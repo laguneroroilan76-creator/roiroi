@@ -9,7 +9,9 @@ export default function ApprovedRecords() {
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [guards, setGuards] = useState([]);
   const navigate = useNavigate();
-  const { showToast } = useToast();
+  const { showToast, confirm } = useToast();
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isGuard = user.role === 'Guard';
 
   useEffect(() => {
     fetchData();
@@ -27,8 +29,8 @@ export default function ApprovedRecords() {
 
       const allApproved = [
         ...ticketsRes.data.filter(t => t.status === 'Approved').map(t => ({ ...t, type: 'TRIP_TICKET' })),
-        ...prfsRes.data.filter(p => p.status === 'Approved').map(p => ({ ...p, type: 'PRF' })),
-        ...rrfsRes.data.filter(r => r.status === 'Approved').map(r => ({ ...r, type: 'RRF' }))
+        ...(!isGuard ? prfsRes.data.filter(p => p.status === 'Approved').map(p => ({ ...p, type: 'PRF' })) : []),
+        ...(!isGuard ? rrfsRes.data.filter(r => r.status === 'Approved').map(r => ({ ...r, type: 'RRF' })) : [])
       ];
 
       setRecords(allApproved.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
@@ -57,7 +59,12 @@ export default function ApprovedRecords() {
   };
 
   const handleArchive = async (record) => {
-    if (!window.confirm('Are you sure you want to archive this document?')) return;
+    if (isGuard) {
+      showToast('You do not have permission to archive records.', 'error');
+      return;
+    }
+    const confirmed = await confirm('Are you sure you want to archive this document?');
+    if (!confirmed) return;
     try {
       let endpoint = '';
       const type = getRecordType(record);
@@ -85,13 +92,26 @@ export default function ApprovedRecords() {
     setSelectedRecord({ ...record, type: getRecordType(record) });
   };
 
+  const getStatusLabel = (status) => {
+    if (!status) return 'APPROVED';
+    if (status === 'Archived') return 'ARCHIVED';
+    if (status === 'Disapproved') return 'DISAPPROVED';
+    return status.toUpperCase();
+  };
+
   if (loading) return <div style={{ padding: '3rem', color: 'var(--text-main)' }}>Loading Approved Records...</div>;
 
   return (
     <div className="approved-records-page" style={{ padding: '3rem' }}>
       <header style={{ marginBottom: '3rem' }}>
-        <h1 style={{ fontSize: '2.5rem', fontWeight: '800' }}>✅ Approved Records</h1>
-        <p style={{ color: 'var(--text-dim)', marginTop: '0.4rem' }}>View and print all authorized documents in one place.</p>
+        <h1 style={{ fontSize: '2.5rem', fontWeight: '800' }}>
+          {isGuard ? '✅ Approved Trip Tickets' : '✅ Approved Records'}
+        </h1>
+        <p style={{ color: 'var(--text-dim)', marginTop: '0.4rem' }}>
+          {isGuard 
+            ? 'View and print all authorized trip tickets for vehicle dispatching.' 
+            : 'View and print all authorized documents in one place.'}
+        </p>
       </header>
 
       <div className="records-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '2rem' }}>
@@ -101,16 +121,34 @@ export default function ApprovedRecords() {
           <div key={`${type}-${record.id}`} className="record-card glass" onClick={() => handleView(record)} style={{ cursor: 'pointer', transition: 'all 0.3s' }}>
             <div style={{ padding: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                    <span style={{ 
-                        padding: '4px 12px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 800,
-                background: type === 'TRIP_TICKET' ? 'rgba(99, 102, 241, 0.1)' : (type === 'PRF' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)'),
-                color: type === 'TRIP_TICKET' ? '#818cf8' : (type === 'PRF' ? '#10b981' : '#f59e0b'),
-                border: `1px solid ${type === 'TRIP_TICKET' ? 'rgba(99, 102, 241, 0.2)' : (type === 'PRF' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)')}`
-                    }}>
-                {type === 'TRIP_TICKET' ? '🚗 TRIP TICKET' : (type === 'PRF' ? '📄 PRF' : '📄 RRF')}
-                    </span>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <span style={{ 
+                            padding: '4px 12px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 800,
+                            background: type === 'TRIP_TICKET' ? 'rgba(99, 102, 241, 0.1)' : (type === 'PRF' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)'),
+                            color: type === 'TRIP_TICKET' ? '#818cf8' : (type === 'PRF' ? '#10b981' : '#f59e0b'),
+                            border: `1px solid ${type === 'TRIP_TICKET' ? 'rgba(99, 102, 241, 0.2)' : (type === 'PRF' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)')}`
+                        }}>
+                            {type === 'TRIP_TICKET' ? '🚗 TRIP TICKET' : (type === 'PRF' ? '📄 PRF' : '📄 RRF')}
+                        </span>
+                        {type === 'TRIP_TICKET' && record.dateTimeDeparture && !record.dateTimeReturn && (
+                            <span style={{ padding: '2px 8px', borderRadius: '6px', background: '#6366f1', color: 'white', fontSize: '0.65rem', fontWeight: 900 }}>ONGOING</span>
+                        )}
+                        {type === 'TRIP_TICKET' && record.dateTimeDeparture && record.dateTimeReturn && (
+                            <span style={{ padding: '2px 8px', borderRadius: '6px', background: '#10b981', color: 'white', fontSize: '0.65rem', fontWeight: 900 }}>COMPLETED</span>
+                        )}
+                        {type === 'TRIP_TICKET' && !record.dateTimeDeparture && (
+                            <span style={{ padding: '2px 8px', borderRadius: '6px', background: 'rgba(34, 197, 94, 0.2)', color: '#22c55e', fontSize: '0.65rem', fontWeight: 900 }}>AUTHORIZED</span>
+                        )}
+                    </div>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
-                        {new Date(record.createdAt).toLocaleDateString()}
+                        {new Date(record.createdAt).toLocaleString('en-US', {
+                            month: 'numeric',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true
+                        })}
                     </span>
                 </div>
 
@@ -135,7 +173,9 @@ export default function ApprovedRecords() {
             <div style={{ 
                 padding: '1rem 1.5rem', 
                 borderTop: '1px solid var(--glass-border)', 
-                background: 'rgba(34, 197, 94, 0.05)',
+                background: (type === 'TRIP_TICKET' && record.dateTimeDeparture && !record.dateTimeReturn) 
+                    ? 'rgba(99, 102, 241, 0.08)' 
+                    : 'rgba(34, 197, 94, 0.05)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
@@ -143,27 +183,46 @@ export default function ApprovedRecords() {
                 borderBottomRightRadius: '20px'
             }}>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    <span style={{ color: '#22c55e', fontWeight: 700, fontSize: '0.8rem' }}>AUTHORIZED</span>
-                    <button 
-                        onClick={(e) => { e.stopPropagation(); handleArchive(record); }}
-                        style={{ 
-                            background: 'rgba(245, 158, 11, 0.1)', 
-                            border: '1px solid rgba(245, 158, 11, 0.2)', 
-                            borderRadius: '8px', 
-                            padding: '4px 8px', 
-                            cursor: 'pointer',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            color: '#f59e0b',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                        }}
-                    >
-                        📥 Archive
-                    </button>
+                    <span style={{ 
+                        color: (type === 'TRIP_TICKET' && record.dateTimeDeparture && !record.dateTimeReturn) ? '#6366f1' : ((type === 'TRIP_TICKET' && record.dateTimeReturn) ? '#10b981' : '#22c55e'), 
+                        fontWeight: 700, 
+                        fontSize: '0.8rem' 
+                    }}>
+                        {(() => {
+                            if (type !== 'TRIP_TICKET') return '✅ AUTHORIZED';
+                            if (record.dateTimeDeparture && !record.dateTimeReturn) return '🛰️ DISPATCHED';
+                            if (record.dateTimeDeparture && record.dateTimeReturn) return '🏁 COMPLETED';
+                            return '✅ AUTHORIZED';
+                        })()}
+                    </span>
                 </div>
-                <span style={{ color: 'var(--primary)', fontWeight: 600, fontSize: '0.8rem' }}>View Full Document ›</span>
+
+                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                    {!isGuard && (
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); handleArchive(record); }}
+                            style={{ 
+                                background: 'rgba(245, 158, 11, 0.1)', 
+                                border: '1px solid rgba(245, 158, 11, 0.2)', 
+                                borderRadius: '8px', 
+                                padding: '6px 12px', 
+                                cursor: 'pointer',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                color: '#f59e0b',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            📥 Archive
+                        </button>
+                    )}
+                    <span style={{ color: 'var(--primary)', fontWeight: 700, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                        View Full Document ›
+                    </span>
+                </div>
             </div>
           </div>
         );})}
@@ -215,80 +274,150 @@ export default function ApprovedRecords() {
 
       <style>{`
         @media print {
+          @page { 
+            size: A4 portrait; 
+            margin: 0; /* Hides browser headers/footers */
+          }
           body {
             background: #fff !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
-            font-size: 12px;
+            font-family: 'Arial', sans-serif !important;
+            color: #000 !important;
+            font-size: 11px;
+            margin: 0 !important;
+            padding: 2.2cm 1.5cm 1.5cm !important; /* Increased top padding to 2.2cm */
           }
-
-          .approved-records-page > header,
-          .records-grid,
-          .record-card,
-          .ticket-preview-actions button:not(.print-action),
-          .ticket-preview-actions .ticket-preview-badge,
-          .ticket-preview-actions button:last-child {
+ 
+          header, footer, nav, aside, .no-print, button, .tool-btn, .ticket-preview-actions, .status-badge {
             display: none !important;
           }
-
-          .approved-records-page {
-            padding: 0 !important;
-            background: #fff !important;
+ 
+          * {
+            box-shadow: none !important;
+            text-shadow: none !important;
           }
-
-          .approved-records-page > div:first-of-type {
-            display: none !important;
-          }
-
+ 
+          .approved-records-page { padding: 0 !important; margin: 0 !important; background: #fff !important; }
+          .approved-records-page > header, .records-grid { display: none !important; }
+ 
           .approved-records-page > div[style*="position: fixed"] {
-            position: static !important;
-            inset: auto !important;
-            background: transparent !important;
+            position: absolute !important;
+            top: 1cm !important; /* Move the container down by 1cm */
+            top: 1cm !important; 
+            left: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            background: #fff !important;
             padding: 0 !important;
             display: block !important;
           }
-
+ 
           .approved-records-page > div[style*="position: fixed"] > div {
             box-shadow: none !important;
             background: #fff !important;
             border: none !important;
             padding: 0 !important;
-            max-width: none !important;
-            max-height: none !important;
+            margin: 0 !important;
+            width: 100% !important;
             overflow: visible !important;
-            transform: scale(0.94);
-            transform-origin: top left;
+            border-radius: 0 !important;
           }
-
-          .ticket-preview-shell {
-            gap: 0.9rem !important;
+ 
+          .ticket-preview-shell, 
+          .ticket-preview-shell * { 
+            background-color: transparent !important;
+            box-shadow: none !important;
           }
-
-          .ticket-preview-section-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-            gap: 0.6rem !important;
-          }
-
-          .ticket-preview-signatures {
-            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-            gap: 0.75rem !important;
+ 
+          .ticket-preview-shell { 
+            margin-top: 0 !important; 
             break-inside: avoid;
-          }
-
-          .ticket-preview-card,
-          .ticket-preview-value,
-          .signature-line {
             background: #fff !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 0.8rem !important; 
+            width: 100% !important;
+            transform: scale(0.91); 
+            transform-origin: top center;
+            box-shadow: none !important;
+          }
+ 
+          .ticket-preview-header {
+            margin-bottom: 0.6rem !important;
+            border-bottom: 2.5px solid #000 !important;
+            padding-bottom: 0.4rem !important;
+          }
+          .ticket-preview-header h2 { font-size: 1.4rem !important; margin: 0; color: #000 !important; }
+          .ticket-preview-header p { font-size: 0.85rem !important; margin: 0.1rem 0 0; color: #000 !important; text-transform: uppercase; letter-spacing: 2px; }
+          
+          .company-logo-preview {
+            height: 45px !important;
           }
 
-          .ticket-preview-card,
-          .ticket-preview-field,
-          .ticket-preview-signature,
-          .ticket-preview-section {
+          .ticket-preview-section { margin-bottom: 0.4rem !important; }
+          .ticket-preview-section h3 { 
+            font-size: 0.85rem !important; 
+            font-weight: 800 !important;
+            margin-bottom: 0.4rem !important; 
+            border-bottom: 2px solid #000 !important;
+            padding-bottom: 2px !important;
+            color: #000 !important;
+            text-transform: uppercase;
+          }
+ 
+          .ticket-preview-section-grid {
+            grid-template-columns: repeat(3, 1fr) !important;
+            gap: 0.7rem !important;
+          }
+          
+          .ticket-preview-field label { font-size: 0.6rem !important; font-weight: 700 !important; margin-bottom: 2px !important; color: #000 !important; }
+          .ticket-preview-value {
+            min-height: 20px !important;
+            padding: 1px 0 !important;
+            border-bottom: 1.5px solid #000 !important;
+            font-size: 0.9rem !important;
+            font-weight: 600 !important;
+            color: #000 !important;
+            background: transparent !important;
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+            appearance: none !important;
+          }
+ 
+          .ticket-preview-value::-webkit-calendar-picker-indicator,
+          .ticket-preview-value::-webkit-inner-spin-button,
+          .ticket-preview-value::-webkit-clear-button {
+            display: none !important;
+            -webkit-appearance: none !important;
+          }
+ 
+          .ticket-preview-card {
+            border: 1.5px solid #000 !important;
+            padding: 0.5rem !important;
+            border-radius: 6px !important;
+            background: transparent !important;
+          }
+          .ticket-preview-card h4 { font-size: 0.75rem !important; font-weight: 800 !important; margin-bottom: 0.2rem !important; text-decoration: underline; color: #000 !important; }
+ 
+          .ticket-preview-signatures {
+            grid-template-columns: repeat(3, 1fr) !important;
+            gap: 1.2rem !important;
+            margin-top: 1.5rem !important;
             break-inside: avoid;
           }
-          /* try to keep single-page by reducing gaps */
-          .ticket-preview-shell { gap: 0.6rem !important; }
+          .signature-line { 
+            border-bottom: 2px solid #000 !important; 
+            min-height: 25px !important; 
+            font-size: 0.95rem !important; 
+            font-weight: 800 !important;
+            margin-bottom: 0.4rem !important;
+            color: #000 !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: flex-end !important;
+          }
+          .ticket-preview-signature span { font-size: 0.7rem !important; font-weight: 800 !important; color: #000 !important; text-transform: uppercase; }
         }
 
         .record-card:hover { 
@@ -365,6 +494,21 @@ export default function ApprovedRecords() {
           text-transform: uppercase;
         }
 
+        .ticket-preview-badge.ongoing {
+          background: rgba(99, 102, 241, 0.15);
+          color: #6366f1;
+        }
+
+        .ticket-preview-badge.completed {
+          background: rgba(16, 185, 129, 0.15);
+          color: #10b981;
+        }
+
+        .ticket-preview-badge.approved {
+          background: rgba(34, 197, 94, 0.15);
+          color: #22c55e;
+        }
+
         .ticket-preview-actions button {
           border: none;
           border-radius: 10px;
@@ -417,7 +561,7 @@ export default function ApprovedRecords() {
         .ticket-preview-value {
           min-height: 46px;
           padding: 0.8rem 1rem;
-          border-radius: 12px;
+          border-radius: 4px;
           border: 1px solid var(--glass-border);
           background: rgba(0, 0, 0, 0.03);
           display: flex;
@@ -443,7 +587,7 @@ export default function ApprovedRecords() {
 
         .ticket-preview-card {
           border: 1px solid var(--glass-border);
-          border-radius: 18px;
+          border-radius: 8px;
           padding: 1rem;
           background: rgba(0, 0, 0, 0.03);
         }
@@ -482,14 +626,21 @@ export default function ApprovedRecords() {
 
         .signature-line {
           width: 100%;
-          min-height: 42px;
+          height: 48px;
           border-bottom: 2px solid var(--text-dim);
           font-weight: 700;
           color: var(--text-main);
           display: flex;
           justify-content: center;
           align-items: flex-end;
-          padding-bottom: 0.35rem;
+          padding-bottom: 0.5rem;
+        }
+
+        .company-logo-preview {
+          height: 50px;
+          width: auto;
+          object-fit: contain;
+          margin-bottom: 0.5rem;
         }
 
         .ticket-preview-signature span {
@@ -509,6 +660,55 @@ export default function ApprovedRecords() {
           .ticket-preview-section-grid,
           .ticket-preview-signatures {
             grid-template-columns: 1fr;
+          }
+        }
+
+        @media print {
+          .ticket-preview-actions,
+          .ticket-preview-footer-actions,
+          button,
+          .no-print {
+            display: none !important;
+          }
+          
+          .ticket-preview-shell {
+            padding: 0 !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+            background: white !important;
+          }
+
+          .ticket-preview-header {
+            margin-bottom: 2rem !important;
+            border-bottom: 2px solid #000 !important;
+            padding-bottom: 1rem !important;
+          }
+
+          .ticket-preview-grid {
+            gap: 1.5rem !important;
+          }
+
+          .ticket-preview-section h3 {
+            border-bottom: 2px solid #000 !important;
+            padding-bottom: 0.5rem !important;
+            margin-bottom: 1rem !important;
+          }
+
+          .ticket-preview-card {
+            background: white !important;
+            border: 1.5px solid #000 !important;
+            border-radius: 0 !important;
+          }
+
+          .ticket-preview-value {
+            background: white !important;
+            border: 1px solid #ccc !important;
+            color: #000 !important;
+            border-radius: 0 !important;
+          }
+
+          .signature-line {
+            border-bottom: 2px solid #000 !important;
           }
         }
 
@@ -532,7 +732,6 @@ function TripTicketPreview({ record, onClose, guards, onUpdate, onArchive }) {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isGuard = user.role === 'Guard';
   const isAdmin = user.role === 'Admin' || user.canApprove;
-  const canEdit = isGuard || isAdmin;
 
   const [formData, setFormData] = useState({
     dateTimeDeparture: record.dateTimeDeparture || '',
@@ -542,6 +741,15 @@ function TripTicketPreview({ record, onClose, guards, onUpdate, onArchive }) {
     guardOut: record.guardOut || '',
     guardIn: record.guardIn || ''
   });
+
+  const isTrip = record.type === 'TRIP_TICKET';
+  const isOngoing = isTrip && formData.dateTimeDeparture && !formData.dateTimeReturn;
+  const isCompleted = isTrip && record.dateTimeDeparture && record.dateTimeReturn;
+  const canEdit = !isCompleted; 
+
+  const currentStatusLabel = isTrip 
+    ? (isOngoing ? 'ONGOING' : (isCompleted ? 'COMPLETED' : 'APPROVED'))
+    : (record.status || 'APPROVED').toUpperCase();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -561,35 +769,66 @@ function TripTicketPreview({ record, onClose, guards, onUpdate, onArchive }) {
     }
   };
 
+  const handleStartTrip = async () => {
+    setSaving(true);
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    const departureTime = now.toISOString().slice(0, 16);
+    
+    const updatedData = { ...formData, dateTimeDeparture: departureTime };
+    
+    try {
+      const response = await api.put(`/trip-tickets/${record.id}`, updatedData);
+      setFormData(updatedData);
+      showToast('Trip started! Status is now ONGOING.', 'success');
+      onUpdate({ ...record, ...response.data });
+    } catch (error) {
+      showToast(error.response?.data?.error || 'Failed to start trip', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReturnTrip = async () => {
+    setSaving(true);
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    const returnTime = now.toISOString().slice(0, 16);
+    
+    const updatedData = { ...formData, dateTimeReturn: returnTime };
+    
+    try {
+      const response = await api.put(`/trip-tickets/${record.id}`, updatedData);
+      setFormData(updatedData);
+      showToast('Trip completed! Status is now COMPLETED.', 'success');
+      onUpdate({ ...record, ...response.data });
+    } catch (error) {
+      showToast(error.response?.data?.error || 'Failed to complete trip', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="ticket-preview-shell">
       <div className="ticket-preview-header">
         <div>
-          <h2>HDI ADVENTURES INC.</h2>
+          <img 
+            src="/HDI Primary Logo .png" 
+            alt="HDI Logo" 
+            className="company-logo-preview"
+          />
           <p>TRIP TICKET FORM</p>
         </div>
         <div className="ticket-preview-actions">
-          <span className="ticket-preview-badge">{record.status || 'Approved'}</span>
-          {canEdit && (
-            <button 
-              className="print-action" 
-              onClick={handleSaveLogs} 
-              disabled={saving}
-              style={{ background: '#10b981' }}
-            >
-              {saving ? 'Saving...' : '💾 Save Logs'}
+          <span className={`ticket-preview-badge ${currentStatusLabel.toLowerCase()}`}>
+            {currentStatusLabel}
+          </span>
+          {!isGuard && (
+            <button className="print-action" onClick={() => window.print()} style={{ background: '#6366f1' }}>
+              🖨️ Print
             </button>
           )}
-          {isAdmin && (
-            <button 
-              className="print-action" 
-              onClick={() => onArchive(record)}
-              style={{ background: '#f59e0b' }}
-            >
-              📥 Archive
-            </button>
-          )}
-          <button className="print-action" onClick={() => window.print()}>Print</button>
           <button onClick={onClose}>Close</button>
         </div>
       </div>
@@ -608,7 +847,7 @@ function TripTicketPreview({ record, onClose, guards, onUpdate, onArchive }) {
           <PreviewField label="Number of Passenger" value={record.passengerCount} />
           <PreviewField label="HDI Passengers" value={record.hdiPassengers} />
           <PreviewField label="Passengers Outside of HDI" value={record.outsidePassengers} />
-          <PreviewField label="Passengers Details" value={record.passengersDetail} fullWidth />
+          <PreviewField label="Passengers Names" value={record.passengersDetail} fullWidth />
         </PreviewSection>
 
         <PreviewSection title="Fleet Assignment">
@@ -626,7 +865,7 @@ function TripTicketPreview({ record, onClose, guards, onUpdate, onArchive }) {
             <PreviewField 
               label="Actual Departure" 
               value={formData.dateTimeDeparture} 
-              editable={canEdit} 
+              editable={canEdit && isGuard} 
               name="dateTimeDeparture" 
               type="datetime-local" 
               onChange={handleChange} 
@@ -634,7 +873,7 @@ function TripTicketPreview({ record, onClose, guards, onUpdate, onArchive }) {
             <PreviewField 
               label="Actual Return" 
               value={formData.dateTimeReturn} 
-              editable={canEdit} 
+              editable={canEdit && isGuard} 
               name="dateTimeReturn" 
               type="datetime-local" 
               onChange={handleChange} 
@@ -647,7 +886,7 @@ function TripTicketPreview({ record, onClose, guards, onUpdate, onArchive }) {
             <PreviewField 
               label="KM Reading (Out)" 
               value={formData.kmOut} 
-              editable={canEdit} 
+              editable={canEdit && isGuard} 
               name="kmOut" 
               type="number" 
               onChange={handleChange} 
@@ -655,7 +894,7 @@ function TripTicketPreview({ record, onClose, guards, onUpdate, onArchive }) {
             <PreviewField 
               label="Guard on Duty (Out)" 
               value={formData.guardOut} 
-              editable={canEdit} 
+              editable={canEdit && isGuard} 
               name="guardOut" 
               type="select" 
               options={guards} 
@@ -666,7 +905,7 @@ function TripTicketPreview({ record, onClose, guards, onUpdate, onArchive }) {
             <PreviewField 
               label="KM Reading (In)" 
               value={formData.kmIn} 
-              editable={canEdit} 
+              editable={canEdit && isGuard} 
               name="kmIn" 
               type="number" 
               onChange={handleChange} 
@@ -674,7 +913,7 @@ function TripTicketPreview({ record, onClose, guards, onUpdate, onArchive }) {
             <PreviewField 
               label="Guard on Duty (In)" 
               value={formData.guardIn} 
-              editable={canEdit} 
+              editable={canEdit && isGuard} 
               name="guardIn" 
               type="select" 
               options={guards} 
@@ -688,6 +927,80 @@ function TripTicketPreview({ record, onClose, guards, onUpdate, onArchive }) {
           <SignatureBlock label="Endorsed By" value={record.endorsedBy} />
           <SignatureBlock label="Approved By" value={record.approvedBy} />
         </div>
+
+        <div className="ticket-preview-footer-actions no-print" style={{ 
+          marginTop: '3rem', 
+          paddingTop: '2rem', 
+          borderTop: '2px dashed var(--glass-border)',
+          display: 'flex',
+          justifyContent: 'flex-end',
+          gap: '1rem',
+          alignItems: 'center'
+        }}>
+          {!canEdit ? (
+            <span style={{ 
+              fontSize: '0.8rem', 
+              color: '#10b981', 
+              fontWeight: 800, 
+              padding: '0.6rem 1.2rem', 
+              background: 'rgba(16, 185, 129, 0.1)', 
+              borderRadius: '100px',
+              border: '1px solid rgba(16, 185, 129, 0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              🔒 COMPLETED & LOCKED
+            </span>
+          ) : (
+            <>
+              {isGuard && !formData.dateTimeDeparture && (
+                <button 
+                  className="print-action" 
+                  onClick={handleStartTrip}
+                  disabled={saving}
+                  style={{ background: '#6366f1', color: 'white', border: 'none', borderRadius: '12px', padding: '0.8rem 1.5rem', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  {saving ? 'Starting...' : '🚀 Start Trip (Ongoing)'}
+                </button>
+              )}
+              {isGuard && formData.dateTimeDeparture && !formData.dateTimeReturn && (
+                <button 
+                  className="print-action" 
+                  onClick={handleReturnTrip}
+                  disabled={saving}
+                  style={{ background: '#10b981', color: 'white', border: 'none', borderRadius: '12px', padding: '0.8rem 1.5rem', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  {saving ? 'Completing...' : '🏁 Arrived / Returned'}
+                </button>
+              )}
+              {isGuard && (
+                <button 
+                  onClick={handleSaveLogs} 
+                  disabled={saving}
+                  style={{ background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '12px', padding: '0.8rem 1.5rem', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  {saving ? 'Saving...' : '💾 Save Changes'}
+                </button>
+              )}
+            </>
+          )}
+          
+          {isAdmin && (
+            <button 
+              onClick={() => onArchive(record)}
+              style={{ background: '#f59e0b', color: 'white', border: 'none', borderRadius: '12px', padding: '0.8rem 1.5rem', fontWeight: 700, cursor: 'pointer' }}
+            >
+              📥 Archive
+            </button>
+          )}
+          <button 
+            onClick={onClose}
+            style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '0.8rem 1.5rem', fontWeight: 700, cursor: 'pointer' }}
+          >
+            Close
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -697,6 +1010,13 @@ function GenericPreview({ record, onClose, onArchive }) {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'Admin' || user.canApprove;
   const type = record.type;
+  const statusLabel = record.status === 'Archived'
+    ? 'ARCHIVED'
+    : record.status === 'Disapproved'
+      ? 'DISAPPROVED'
+      : record.status === 'Approved'
+        ? 'APPROVED'
+        : (record.status || 'APPROVED').toUpperCase();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'flex-start' }}>
@@ -706,7 +1026,7 @@ function GenericPreview({ record, onClose, onArchive }) {
               ? (record.prfNo ? `PRF #${record.prfNo}` : 'Approved PRF')
               : (record.rrfNo ? `RRF #${record.rrfNo}` : 'Approved RRF')}
           </h2>
-          <p style={{ margin: '0.35rem 0 0', color: 'var(--text-dim)' }}>{type} • {record.status || 'Approved'}</p>
+          <p style={{ margin: '0.35rem 0 0', color: 'var(--text-dim)' }}>{type} • {statusLabel}</p>
         </div>
         {isAdmin && (
           <button
@@ -779,7 +1099,26 @@ function PreviewField({ label, value, fullWidth = false, editable = false, type 
           />
         )
       ) : (
-        <div className={`ticket-preview-value ${!value ? 'empty' : ''}`}>{value || 'N/A'}</div>
+        <div className={`ticket-preview-value ${!value ? 'empty' : ''}`}>
+          {(() => {
+            if (!value) return 'N/A';
+            if (type === 'datetime-local' || (typeof value === 'string' && value.includes('T') && !isNaN(Date.parse(value)))) {
+              try {
+                return new Date(value).toLocaleString('en-US', {
+                  month: 'numeric',
+                  day: 'numeric',
+                  year: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  hour12: true
+                });
+              } catch (e) {
+                return value;
+              }
+            }
+            return value;
+          })()}
+        </div>
       )}
     </div>
   );

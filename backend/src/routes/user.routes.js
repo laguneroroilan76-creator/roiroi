@@ -17,4 +17,8 @@ router.post('/profile/darkmode', userController.updateDarkMode);
 router.get('/activity-logs', userController.getActivityLogs);
 router.get('/activity-feed', userController.getActivityFeed);
 
+// Admin / User Management
+router.put('/:id', userController.updateUserData);
+router.delete('/:id', userController.deleteUser);
+
 module.exports = router;

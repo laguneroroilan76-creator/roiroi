@@ -22,7 +22,23 @@ const CalendarView = ({ tickets, onTicketClick }) => {
 
   const getTicketsForDay = (day) => {
     if (!day) return [];
+    
+    // Create a date for the current day being rendered, at noon to avoid DST issues
+    const dayDate = new Date(year, month, day, 12, 0, 0);
+    const dayStr = dayDate.toISOString().split('T')[0];
+
     return tickets.filter(t => {
+      // Show Approved and Completed (Ongoing) records in the Dispatch Calendar
+      if (!['Approved', 'Completed'].includes(t.status)) return false;
+
+      // If it's a Trip Ticket, check its date span
+      if (t.etdOffice && t.etaDestination) {
+        const startStr = t.etdOffice.split('T')[0];
+        const endStr = t.etaDestination.split('T')[0];
+        return dayStr >= startStr && dayStr <= endStr;
+      }
+      
+      // Fallback for other forms using createdAt
       const d = new Date(t.createdAt);
       return d.getDate() === day && d.getMonth() === month && d.getFullYear() === year;
     });
@@ -39,6 +55,7 @@ const CalendarView = ({ tickets, onTicketClick }) => {
         <div className="legend">
           <div className="legend-item"><span className="dot pending" /> Pending</div>
           <div className="legend-item"><span className="dot approved" /> Approved</div>
+          <div className="legend-item"><span className="dot archived" /> Archived</div>
         </div>
       </div>
 
@@ -55,9 +72,9 @@ const CalendarView = ({ tickets, onTicketClick }) => {
                   key={t.id} 
                   className={`ticket-chip ${t.status.toLowerCase()}`}
                   onClick={() => onTicketClick(t)}
-                  title={t.requestorName}
+                  title={`Requestor: ${t.requestorName || 'N/A'}\nDriver: ${t.driver || 'N/A'}\nVehicle: ${t.vehicle || 'N/A'}`}
                 >
-                  {t.requestorName}
+                  {t.driver ? `${t.driver} (${t.vehicle || 'No Car'})` : (t.requestorName || 'Unnamed')}
                 </div>
               ))}
             </div>
@@ -78,6 +95,7 @@ const CalendarView = ({ tickets, onTicketClick }) => {
         .dot { width: 8px; height: 8px; border-radius: 50%; }
         .dot.pending { background: #f97316; }
         .dot.approved { background: #22c55e; }
+        .dot.archived { background: #64748b; }
 
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--glass-border); border: 1px solid var(--glass-border); border-radius: 20px; overflow: hidden; }
         .day-name { background: rgba(0,0,0,0.02); padding: 1.2rem; text-align: center; font-size: 0.8rem; font-weight: 800; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
@@ -89,6 +107,7 @@ const CalendarView = ({ tickets, onTicketClick }) => {
         .ticket-chip { font-size: 0.65rem; font-weight: 800; padding: 4px 8px; border-radius: 6px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .ticket-chip.pending { background: rgba(249, 115, 22, 0.1); color: #f97316; border-left: 3px solid #f97316; }
         .ticket-chip.approved { background: rgba(34, 197, 94, 0.1); color: #22c55e; border-left: 3px solid #22c55e; }
+        .ticket-chip.archived { background: rgba(100, 116, 139, 0.1); color: #64748b; border-left: 3px solid #64748b; }
         .ticket-chip:hover { transform: scale(1.05); z-index: 10; }
       `}</style>
     </div>

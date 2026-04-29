@@ -5,7 +5,7 @@ const path = require('path');
 
 const getUsers = async (req, res) => {
   try {
-    if (!req.user.canApprove) return res.status(403).json({ error: 'Unauthorized' });
+    // Remove the canApprove check to allow drivers/users to see other users for selection
     const users = await userService.getAllUsers();
     res.json(users);
   } catch (err) {
@@ -91,7 +91,38 @@ const getActivityFeed = async (req, res) => {
   }
 };
 
+const updateUserData = async (req, res) => {
+  try {
+    if (!req.user.canApprove) return res.status(403).json({ error: 'Unauthorized' });
+    const { id } = req.params;
+    const data = { ...req.body };
+    if (data.password === '') delete data.password;
+    
+    // Hash password if it's being updated
+    if (data.password) {
+        const bcrypt = require('bcryptjs');
+        data.password = await bcrypt.hash(data.password, 10);
+    }
+
+    const user = await userService.updateUser(id, data);
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+const deleteUser = async (req, res) => {
+  try {
+    if (req.user.role !== 'Admin') return res.status(403).json({ error: 'Unauthorized' });
+    const { id } = req.params;
+    await userService.deleteUser(id);
+    res.json({ message: 'User deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 module.exports = { 
   getUsers, getGuardUsers, updateSignature, updateAvatar, updateTheme, 
-  updateDarkMode, getActivityLogs, getActivityFeed 
+  updateDarkMode, getActivityLogs, getActivityFeed, updateUserData, deleteUser
 };

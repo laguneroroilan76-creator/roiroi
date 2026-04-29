@@ -12,7 +12,14 @@ const login = async (email, password) => {
   if (!isValid) throw new Error('Invalid credentials');
 
   const token = jwt.sign(
-    { id: user.id, email: user.email, name: user.name, role: user.role, canApprove: user.canApprove },
+    { 
+      id: user.id, 
+      email: user.email, 
+      name: user.name, 
+      role: user.role, 
+      canApprove: user.canApprove,
+      permissions: user.permissions
+    },
     JWT_SECRET,
     { expiresIn: '24h' }
   );
@@ -24,11 +31,16 @@ const register = async (userData) => {
   const normalizedRole = VALID_ROLES.includes(userData.role) ? userData.role : 'User';
   const canApprove = normalizedRole === 'Admin' ? true : (normalizedRole === 'User' && !!userData.canApprove);
   const hashedPassword = await bcrypt.hash(userData.password, 10);
+  
+  // Default permissions if none provided
+  const permissions = userData.permissions || {};
+
   return await prisma.user.create({
     data: {
       ...userData,
       role: normalizedRole,
       canApprove,
+      permissions,
       password: hashedPassword
     }
   });

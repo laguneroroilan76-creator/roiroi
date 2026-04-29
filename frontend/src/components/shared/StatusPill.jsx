@@ -7,8 +7,11 @@ const StatusPill = ({ status }) => {
     switch (normalizedStatus) {
       case 'approved':
         return { background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', label: 'APPROVED' };
+      case 'archived':
+        return { background: 'rgba(100, 116, 139, 0.12)', color: '#64748b', label: 'ARCHIVED' };
+      case 'disapproved':
       case 'rejected':
-        return { background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', label: 'REJECTED' };
+        return { background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', label: 'DISAPPROVED' };
       default:
         return { background: 'rgba(249, 115, 22, 0.1)', color: '#f97316', label: 'PENDING' };
     }

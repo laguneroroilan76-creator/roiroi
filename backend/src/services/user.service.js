@@ -5,7 +5,7 @@ const getAllUsers = async () => {
     select: { 
       id: true, email: true, name: true, createdAt: true, 
       canApprove: true, role: true, avatarUrl: true, 
-      themeColor: true, isDarkMode: true 
+      themeColor: true, isDarkMode: true, permissions: true
     }
   });
 };
@@ -24,8 +24,21 @@ const updateUserProfile = async (userId, data) => {
   });
 };
 
-const getUserById = async (id) => {
-  return await prisma.user.findUnique({ where: { id } });
+const updateUser = async (id, data) => {
+  return await prisma.user.update({
+    where: { id: parseInt(id) },
+    data
+  });
 };
 
-module.exports = { getAllUsers, getGuardUsers, updateUserProfile, getUserById };
+const deleteUser = async (id) => {
+  return await prisma.user.delete({
+    where: { id: parseInt(id) }
+  });
+};
+
+const getUserById = async (id) => {
+  return await prisma.user.findUnique({ where: { id: parseInt(id) } });
+};
+
+module.exports = { getAllUsers, getGuardUsers, updateUserProfile, updateUser, deleteUser, getUserById };
