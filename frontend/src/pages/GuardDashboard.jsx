@@ -40,7 +40,7 @@ export default function GuardDashboard() {
 
   const sortedTickets = useMemo(() => {
     return tickets
-      .filter((ticket) => ticket.status === 'Approved')
+      .filter((ticket) => ticket.status === 'Approved' || ticket.status === 'DEPARTED')
       .sort((a, b) => {
       const aDate = new Date(a.createdAt || a.dateRequested || 0).getTime();
       const bDate = new Date(b.createdAt || b.dateRequested || 0).getTime();
@@ -79,6 +79,8 @@ export default function GuardDashboard() {
             <div 
               key={ticket.id} 
               className="guard-list-item glass"
+              onClick={() => navigate('/trip-ticket', { state: { initialData: ticket, isReviewMode: true } })}
+              style={{ cursor: 'pointer' }}
             >
               <div className="item-main">
                 <span className="item-no">#{ticket.id.toString().padStart(4, '0')}</span>

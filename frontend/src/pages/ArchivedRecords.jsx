@@ -9,6 +9,8 @@ export default function ArchivedRecords() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { showToast, confirm } = useToast();
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isAdmin = user.role === 'Admin' || user.canApprove;
 
   const fetchData = async () => {
     setLoading(true);
@@ -16,11 +18,10 @@ export default function ArchivedRecords() {
     if (!token) return navigate('/');
 
     try {
-      const headers = { Authorization: `Bearer ${token}` };
       const [ticketsRes, prfsRes, rrfsRes] = await Promise.all([
-        axios.get('http://172.16.28.96:5000/api/trip-tickets', { headers }).catch(() => ({ data: [] })),
-        axios.get('http://172.16.28.96:5000/api/prfs', { headers }).catch(() => ({ data: [] })),
-        axios.get('http://172.16.28.96:5000/api/rrfs', { headers }).catch(() => ({ data: [] }))
+        api.get('/trip-tickets').catch(() => ({ data: [] })),
+        api.get('/prfs').catch(() => ({ data: [] })),
+        api.get('/rfps').catch(() => ({ data: [] }))
       ]);
 
       const tickets = Array.isArray(ticketsRes.data) ? ticketsRes.data : [];
@@ -28,9 +29,9 @@ export default function ArchivedRecords() {
       const rrfs = Array.isArray(rrfsRes.data) ? rrfsRes.data : [];
 
       const allArchived = [
-        ...tickets.filter(t => t.status === 'Archived' || t.status === 'Disapproved').map(t => ({ ...t, type: 'TRIP_TICKET' })),
-        ...prfs.filter(p => p.status === 'Archived' || p.status === 'Disapproved').map(p => ({ ...p, type: 'PRF' })),
-        ...rrfs.filter(r => r.status === 'Archived' || r.status === 'Disapproved').map(r => ({ ...r, type: 'RRF' }))
+        ...tickets.filter(t => ['Archived', 'Disapproved', 'Cancelled'].includes(t.status)).map(t => ({ ...t, type: 'TRIP_TICKET' })),
+        ...prfs.filter(p => ['Archived', 'Disapproved', 'Cancelled'].includes(p.status)).map(p => ({ ...p, type: 'PRF' })),
+        ...rrfs.filter(r => ['Archived', 'Disapproved', 'Cancelled'].includes(r.status)).map(r => ({ ...r, type: 'RFP' }))
       ];
 
       setRecords(allArchived.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
@@ -48,8 +49,8 @@ export default function ArchivedRecords() {
   const handleView = (record) => {
     let path = '/trip-ticket';
     if (record.type === 'PRF') path = '/prf';
-    else if (record.type === 'RRF') path = '/rrf';
-    navigate(path, { state: { initialData: record, readOnly: true } });
+    else if (record.type === 'RRF' || record.type === 'RFP') path = '/rfp';
+    navigate(path, { state: { initialData: record, readOnly: true, isArchived: true } });
   };
 
   const handleRestore = async (e, record) => {
@@ -61,7 +62,7 @@ export default function ArchivedRecords() {
       let endpoint = '';
       if (record.type === 'TRIP_TICKET') endpoint = `/trip-tickets/${record.id}`;
       else if (record.type === 'PRF') endpoint = `/prfs/${record.id}`;
-      else if (record.type === 'RRF') endpoint = `/rrfs/${record.id}`;
+      else if (record.type === 'RFP') endpoint = `/rfps/${record.id}`;
 
       await api.put(endpoint, { status: 'Approved' });
       showToast('Document restored successfully', 'success');
@@ -81,7 +82,7 @@ export default function ArchivedRecords() {
       let endpoint = '';
       if (record.type === 'TRIP_TICKET') endpoint = `/trip-tickets/${record.id}`;
       else if (record.type === 'PRF') endpoint = `/prfs/${record.id}`;
-      else if (record.type === 'RRF') endpoint = `/rrfs/${record.id}`;
+      else if (record.type === 'RFP') endpoint = `/rfps/${record.id}`;
 
       await api.delete(endpoint);
       showToast('Document deleted permanently', 'success');
@@ -95,6 +96,7 @@ export default function ArchivedRecords() {
   const getStatusLabel = (status) => {
     if (status === 'Archived') return 'ARCHIVED';
     if (status === 'Disapproved') return 'DISAPPROVED';
+    if (status === 'Cancelled') return 'CANCELLED';
     return (status || 'Archived').toUpperCase();
   };
 
@@ -103,14 +105,14 @@ export default function ArchivedRecords() {
   return (
     <div className="archived-records-page" style={{ padding: '3rem' }}>
       <header style={{ marginBottom: '3rem' }}>
-        <h1 style={{ fontSize: '2.5rem', fontWeight: '800' }}>🗄️ Archived Records</h1>
+        <h1 style={{ fontSize: '2.5rem', fontWeight: '800' }}>Archived Records</h1>
         <p style={{ color: 'var(--text-dim)', marginTop: '0.4rem' }}>View past documents that have been filed away for safekeeping.</p>
       </header>
 
       <div className="records-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '2rem' }}>
         {records.map(record => (
-          <div key={`${record.type}-${record.id}`} className="record-card glass" onClick={() => handleView(record)} style={{ cursor: 'pointer', transition: 'all 0.3s' }}>
-            <div style={{ padding: '1.5rem' }}>
+          <div key={`${record.type}-${record.id}`} className="record-card glass" onClick={() => handleView(record)} style={{ cursor: 'pointer', transition: 'all 0.3s', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '1.5rem', flex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                     <span style={{ 
                         padding: '4px 12px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 800,
@@ -118,7 +120,7 @@ export default function ArchivedRecords() {
                         color: record.type === 'TRIP_TICKET' ? '#818cf8' : (record.type === 'PRF' ? '#10b981' : '#f59e0b'),
                         border: `1px solid ${record.type === 'TRIP_TICKET' ? 'rgba(99, 102, 241, 0.2)' : (record.type === 'PRF' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)')}`
                     }}>
-                        {record.type === 'TRIP_TICKET' ? '🎫 TRIP TICKET' : (record.type === 'PRF' ? '💳 PRF' : '📄 PRF')}
+                        {record.type === 'TRIP_TICKET' ? 'TRIP TICKET' : (record.type === 'PRF' ? 'PRF' : 'RFP')}
                     </span>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                         {new Date(record.createdAt).toLocaleString('en-US', {
@@ -129,9 +131,9 @@ export default function ArchivedRecords() {
                             minute: '2-digit',
                             hour12: true
                         })}
-                      {(record.status === 'Archived' || record.status === 'Disapproved') && (
+                      {(record.status === 'Archived' || record.status === 'Disapproved' || record.status === 'Cancelled') && (
                         <span style={{ color: record.status === 'Archived' ? '#64748b' : '#ef4444', fontWeight: 800, fontSize: '0.65rem', textAlign: 'right' }}>
-                          {record.status === 'Archived' ? '🗄️ ARCHIVED' : '❌ DISAPPROVED'}
+                          {record.status === 'Archived' ? 'ARCHIVED' : (record.status === 'Cancelled' ? 'CANCELLED' : 'DISAPPROVED')}
                           {record.archivedBy && <div style={{ fontSize: '0.6rem', opacity: 0.8, marginTop: '2px', fontWeight: 600 }}>by {record.archivedBy}</div>}
                           {record.disapprovalReason && (
                             <div style={{ 
@@ -144,7 +146,7 @@ export default function ArchivedRecords() {
                                 borderRadius: '6px',
                                 textAlign: 'left'
                             }}>
-                                💡 Reason: {record.disapprovalReason}
+                                REASON FOR REJECTION: {record.disapprovalReason}
                             </div>
                           )}
                         </span>
@@ -157,7 +159,7 @@ export default function ArchivedRecords() {
                         ? (record.requestorName || record.author?.name || 'Unnamed Request') 
                         : (record.type === 'PRF' 
                             ? (record.requestor || record.author?.name || (record.prfNo ? `PRF #${record.prfNo}` : 'Unnamed PRF'))
-                            : (record.requestor || record.author?.name || (record.rrfNo ? `RRF #${record.rrfNo}` : 'Unnamed RRF'))
+                            : (record.requestor || record.author?.name || (record.rrfNo ? `RFP #${record.rrfNo}` : 'Unnamed RFP'))
                           )}
                 </h3>
 
@@ -170,41 +172,41 @@ export default function ArchivedRecords() {
                 </div>
             </div>
             
-            <div style={{ 
-                padding: '1rem 1.5rem', 
-                borderTop: '1px solid var(--glass-border)', 
-              background: record.status === 'Archived' ? 'rgba(100, 116, 139, 0.05)' : (record.status === 'Disapproved' ? 'rgba(239, 68, 68, 0.05)' : 'rgba(245, 158, 11, 0.05)'),
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                borderBottomLeftRadius: '20px',
-                borderBottomRightRadius: '20px'
-            }}>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                    <button 
-                        className="archive-action-btn delete-btn" 
-                        onClick={(e) => handleDelete(e, record)}
-                        title="Delete Permanently"
-                    >
-                        🗑️
-                    </button>
-                    <button 
-                        className="archive-action-btn restore-btn" 
-                        onClick={(e) => handleRestore(e, record)}
-                        title="Restore to Approved"
-                    >
-                        🔄
-                    </button>
-                </div>
-                <span style={{ color: record.status === 'Archived' ? '#64748b' : 'var(--primary)', fontWeight: 600, fontSize: '0.8rem' }}>
-                    {getStatusLabel(record.status)} {record.archivedBy && `BY ${record.archivedBy.toUpperCase()}`} • View Full Document ›
-                </span>
-            </div>
+            {isAdmin && (
+              <div style={{ 
+                  padding: '1.2rem 1.5rem', 
+                  borderTop: '1px solid var(--glass-border)', 
+                  background: record.status === 'Archived' ? 'rgba(100, 116, 139, 0.05)' : (record.status === 'Disapproved' ? 'rgba(239, 68, 68, 0.05)' : 'rgba(245, 158, 11, 0.05)'),
+                  display: 'flex',
+                  justifyContent: 'center',
+                  gap: '12px',
+                  alignItems: 'center',
+                  borderBottomLeftRadius: '20px',
+                  borderBottomRightRadius: '20px',
+                  marginTop: 'auto'
+              }}>
+                  <button 
+                      className="archive-action-btn delete-btn" 
+                      onClick={(e) => handleDelete(e, record)}
+                      title="Delete Permanently"
+                      style={{ flex: 1, fontSize: '0.7rem', height: '40px', fontWeight: 700, borderRadius: '10px' }}
+                  >
+                      DELETE
+                  </button>
+                  <button 
+                      className="archive-action-btn restore-btn" 
+                      onClick={(e) => handleRestore(e, record)}
+                      title="Restore to Approved"
+                      style={{ flex: 1, fontSize: '0.7rem', height: '40px', fontWeight: 700, borderRadius: '10px' }}
+                  >
+                      RESTORE
+                  </button>
+              </div>
+            )}
           </div>
         ))}
         {records.length === 0 && (
             <div className="glass" style={{ gridColumn: '1 / -1', padding: '5rem', textAlign: 'center', borderRadius: '24px' }}>
-                <div style={{ fontSize: '4rem', marginBottom: '1.5rem' }}>🗄️</div>
                 <h2>No archived records found.</h2>
                 <p style={{ color: 'var(--text-dim)' }}>Documents that are archived will be stored here safely.</p>
             </div>

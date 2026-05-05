@@ -18,8 +18,10 @@ const StatusPill = ({ status }) => {
         return { background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', label: 'ONGOING' };
       case 'completed':
         return { background: 'rgba(16, 185, 129, 0.12)', color: '#10b981', label: 'COMPLETED' };
+      case 'received':
+        return { background: 'rgba(139, 92, 246, 0.12)', color: '#8b5cf6', label: 'RECEIVED' };
       default:
-        return { background: 'rgba(249, 115, 22, 0.1)', color: '#f97316', label: 'PENDING' };
+        return { background: 'rgba(249, 115, 22, 0.1)', color: '#f97316', label: status?.toUpperCase() || 'PENDING' };
     }
   };
 

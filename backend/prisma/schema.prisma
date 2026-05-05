@@ -88,6 +88,10 @@ model Rrf {
   requestor     String?
   dateRequested String?
   dateNeeded    String?
+  to            String?
+  from          String?
+  department    String?
+  company       String?
   remarks       String?
   preparedBy    String?
   verifiedBy    String?
@@ -97,6 +101,8 @@ model Rrf {
   authorId      Int?
   createdAt     DateTime  @default(now())
   archivedBy    String?
+  receivedBy    String?
+  receivedDate  String?
   disapprovalReason String?
   author           User?     @relation(fields: [authorId], references: [id], onDelete: Cascade, map: "Rrf_authorId_fkey")
   items         RrfItem[]
@@ -111,6 +117,7 @@ model RrfItem {
   unit          String?
   particulars   String?
   estimatedCost String?
+  availableStocks String?
   rrfId         Int
   rrf           Rrf     @relation(fields: [rrfId], references: [id], onDelete: Cascade, map: "RrfItem_rrfId_fkey")
 
@@ -177,7 +184,13 @@ model User {
   name         String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
-  canApprove   Boolean       @default(false)
+  canApprove          Boolean       @default(false)
+  canApprovePRF       Boolean       @default(false)
+  canApproveTripTicket Boolean      @default(false)
+  canApproveRFP       Boolean       @default(false)
+  canApproveDeptHead  Boolean       @default(false)
+  canEndorse          Boolean       @default(false)
+  canVerify           Boolean       @default(false)
   signatureUrl String?
   avatarUrl    String?
   themeColor   String?       @default("#6366f1")
@@ -207,5 +220,6 @@ enum UserRole {
   Admin
   Driver
   Guard
+  Accounting
   @@map("user_role")
 }

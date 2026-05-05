@@ -26,13 +26,13 @@ export const historyService = {
     return response.data;
   },
 
-  getRRFs: async () => {
-    const response = await api.get('/rrfs');
+  getRFPs: async () => {
+    const response = await api.get('/rfps');
     return response.data;
   },
 
-  updateRRFStatus: async (id, status) => {
-    const response = await api.put(`/rrfs/${id}`, { status });
+  updateRFPStatus: async (id, status) => {
+    const response = await api.put(`/rfps/${id}`, { status });
     return response.data;
   }
 };

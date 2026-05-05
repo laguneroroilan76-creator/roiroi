@@ -18,7 +18,7 @@ export default function History() {
   
   const [tickets, setTickets] = useState([]);
   const [prfs, setPrfs] = useState([]);
-  const [rrfs, setRrfs] = useState([]);
+  const [rfps, setRfps] = useState([]);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -32,19 +32,34 @@ export default function History() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [location.key]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [ticketsData, prfsData, rrfsData] = await Promise.all([
+      const [ticketsRes, prfsRes, rfpsRes] = await Promise.all([
         historyService.getTripTickets(),
         historyService.getPRFs(),
-        historyService.getRRFs()
+        historyService.getRFPs()
       ]);
-      setTickets(ticketsData);
-      setPrfs(prfsData);
-      setRrfs(rrfsData);
+
+      const parseRecord = (record) => {
+        if (!record.layout) return record;
+        try {
+          const parsed = JSON.parse(record.layout);
+          return { 
+            ...parsed, 
+            ...record,
+            status: record.status || parsed.status,
+            receivedBy: record.receivedBy || parsed.receivedBy,
+            receivedDate: record.receivedDate || parsed.receivedDate
+          };
+        } catch (e) { return record; }
+      };
+
+      setTickets(ticketsRes.map(parseRecord).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+      setPrfs(prfsRes.map(parseRecord).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+      setRfps(rfpsRes.map(parseRecord).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
 
       if (user?.canApprove) {
         const logsData = await historyService.getActivityLogs();
@@ -60,7 +75,7 @@ export default function History() {
   const handleViewRecord = (record, type) => {
     let path = '/trip-ticket';
     if (type === 'PRF') path = '/prf';
-    else if (type === 'RRF') path = '/rrf';
+    else if (type === 'RFP' || type === 'RRF') path = '/rfp';
     navigate(path, { state: { initialData: record, isReviewMode: true } });
   };
 
@@ -68,7 +83,7 @@ export default function History() {
     let record;
     if (log.resource === 'TRIP_TICKET') record = tickets.find(t => t.id === log.resourceId);
     else if (log.resource === 'PRF') record = prfs.find(p => p.id === log.resourceId);
-    else if (log.resource === 'RRF') record = rrfs.find(r => r.id === log.resourceId);
+    else if (log.resource === 'RFP' || log.resource === 'RRF') record = rfps.find(r => r.id === log.resourceId);
     
     if (record) handleViewRecord(record, log.resource);
   };
@@ -78,7 +93,7 @@ export default function History() {
   return (
     <div className="history-page" style={{ padding: '3rem' }}>
       <header className="page-header" style={{ marginBottom: '3rem', animation: 'slideDown 0.6s ease-out' }}>
-        <h1 style={{ fontSize: '3rem', fontWeight: '800', letterSpacing: '-1.5px' }}>📂 Records & Activity</h1>
+        <h1 style={{ fontSize: '3rem', fontWeight: '800', letterSpacing: '-1.5px' }}>Records & Activity</h1>
         <p style={{ color: 'var(--text-dim)', marginTop: '0.6rem', fontSize: '1.1rem', fontWeight: '500' }}>
           Monitor all document flows, approvals, and system changes in one centralized view.
         </p>
@@ -86,20 +101,20 @@ export default function History() {
 
       <div className="tabs-container" style={{ display: 'flex', gap: '1.2rem', marginBottom: '3rem' }}>
         <button className={`tab-btn ${activeTab === 'tickets' ? 'active' : ''}`} onClick={() => handleTabChange('tickets')}>
-          🚗 Trip Tickets
+          Trip Tickets
         </button>
         <button className={`tab-btn ${activeTab === 'prfs' ? 'active' : ''}`} onClick={() => handleTabChange('prfs')}>
-          📄 RFP Documents
+          Purchase Requisition (PRF)
         </button>
-        <button className={`tab-btn ${activeTab === 'rrfs' ? 'active' : ''}`} onClick={() => handleTabChange('rrfs')}>
-          📄 Purchase Requisition (PRF)
+        <button className={`tab-btn ${activeTab === 'rfps' ? 'active' : ''}`} onClick={() => handleTabChange('rfps')}>
+          Request For Payment (RFP)
         </button>
         <button className={`tab-btn ${activeTab === 'calendar' ? 'active' : ''}`} onClick={() => handleTabChange('calendar')}>
-          📅 Dispatch Calendar
+          Dispatch Calendar
         </button>
         {user?.canApprove && (
           <button className={`tab-btn ${activeTab === 'logs' ? 'active' : ''}`} onClick={() => handleTabChange('logs')}>
-            📜 System Activity
+            System Activity
           </button>
         )}
       </div>
@@ -107,29 +122,38 @@ export default function History() {
       <div className="content-container premium-card" style={{ padding: '2.5rem', background: 'var(--card-bg)' }}>
         {activeTab === 'tickets' && (
           <TicketTable 
-            tickets={tickets.map(t => ({ ...t, requestorName: t.requestorName || t.author?.name || 'Unknown' }))} 
+            tickets={tickets
+              .filter(t => user?.role === 'Admin' || user?.canApprove || t.authorId === user?.id)
+              .map(t => ({ ...t, requestorName: t.requestorName || t.author?.name || 'Unknown' }))} 
             onView={(t) => handleViewRecord(t, 'TRIP_TICKET')} 
           />
         )}
 
         {activeTab === 'prfs' && (
           <TicketTable 
-            tickets={prfs.map(p => ({ ...p, requestorName: p.requestor || p.author?.name || (p.prfNo ? `PRF #${p.prfNo}` : 'Unnamed PRF') }))} 
+            tickets={prfs
+              .filter(p => user?.role === 'Admin' || user?.canApprove || p.authorId === user?.id)
+              .map(p => ({ ...p, requestorName: p.requestor || p.author?.name || (p.prfNo ? `PRF #${p.prfNo}` : 'Unnamed PRF') }))} 
             onView={(p) => handleViewRecord(p, 'PRF')} 
-            typeLabel="Request For Payment (RFP)"
-          />
-        )}
-
-        {activeTab === 'rrfs' && (
-          <TicketTable 
-            tickets={rrfs.map(r => ({ ...r, requestorName: r.requestor || r.author?.name || (r.rrfNo ? `RRF #${r.rrfNo}` : 'Unnamed RRF') }))} 
-            onView={(r) => handleViewRecord(r, 'RRF')} 
             typeLabel="Purchase Requisition (PRF)"
           />
         )}
 
+        {activeTab === 'rfps' && (
+          <TicketTable 
+            tickets={rfps
+              .filter(r => user?.role === 'Admin' || user?.canApprove || r.authorId === user?.id)
+              .map(r => ({ ...r, requestorName: r.requestor || r.author?.name || (r.rrfNo ? `RFP #${r.rrfNo}` : 'Unnamed RFP') }))} 
+            onView={(r) => handleViewRecord(r, 'RFP')} 
+            typeLabel="Request For Payment (RFP)"
+          />
+        )}
+
         {activeTab === 'calendar' && (
-          <CalendarView tickets={tickets} onTicketClick={(t) => handleViewRecord(t, 'TRIP_TICKET')} />
+          <CalendarView 
+            tickets={tickets.filter(t => user?.role === 'Admin' || user?.canApprove || t.authorId === user?.id)} 
+            onTicketClick={(t) => handleViewRecord(t, 'TRIP_TICKET')} 
+          />
         )}
 
         {activeTab === 'logs' && (

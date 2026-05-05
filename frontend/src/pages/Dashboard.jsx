@@ -36,10 +36,11 @@ export default function Dashboard() {
       setLoading(true);
       try {
         const [ticketsRes, prfsRes, rrfsRes] = await Promise.all([
-          api.get('/trip-tickets').catch(e => ({ data: [] })),
-          api.get('/prfs').catch(e => ({ data: [] })),
-          api.get('/rrfs').catch(e => ({ data: [] }))
+          api.get('/trip-tickets'),
+          api.get('/prfs'),
+          api.get('/rfps')
         ]);
+
         
         const tickets = Array.isArray(ticketsRes.data) ? ticketsRes.data.filter(d => d.status !== 'Archived') : [];
         const prfs = Array.isArray(prfsRes.data) ? prfsRes.data.filter(d => d.status !== 'Archived') : [];
@@ -47,13 +48,13 @@ export default function Dashboard() {
         const allDocs = [...tickets, ...prfs, ...rrfs];
 
         setStats({
-            approved: allDocs.filter(d => d.status === 'Approved').length,
+            approved: allDocs.filter(d => d.status === 'Approved' || d.status === 'Completed').length,
             pending: allDocs.filter(d => d.status === 'Pending' || !d.status).length
         });
 
-        setTripData(processChartData(tickets.filter(d => d.status === 'Approved'), 'requestorName'));
-        setPrfData(processChartData(prfs.filter(d => d.status === 'Approved'), 'requestor'));
-        setRrfData(processChartData(rrfs.filter(d => d.status === 'Approved'), 'requestor'));
+        setTripData(processChartData(tickets.filter(d => d.status === 'Approved' || d.status === 'Completed'), 'requestorName'));
+        setPrfData(processChartData(prfs.filter(d => d.status === 'Approved' || d.status === 'Completed'), 'requestor'));
+        setRrfData(processChartData(rrfs.filter(d => d.status === 'Approved' || d.status === 'Completed'), 'requestor'));
 
       } catch (err) {
         console.error('Dashboard Fetch Error:', err);
@@ -90,7 +91,7 @@ export default function Dashboard() {
 
         <div className="stats-grid">
             <div className="stat-card glass highlight-pending" onClick={() => navigate('/pending')}>
-                <div className="stat-icon-box pending">⏳</div>
+                <div className="stat-icon-box pending"></div>
                 <div className="stat-info">
                     <h3>{stats.pending}</h3>
                     <p>Pending Approval</p>
@@ -99,7 +100,7 @@ export default function Dashboard() {
             </div>
 
             <div className="stat-card glass highlight-approved" onClick={() => navigate('/approved')}>
-                <div className="stat-icon-box approved">✅</div>
+                <div className="stat-icon-box approved"></div>
                 <div className="stat-info">
                     <h3>{stats.approved}</h3>
                     <p>Approved Records</p>

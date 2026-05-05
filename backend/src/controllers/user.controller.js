@@ -1,11 +1,11 @@
 const userService = require('../services/user.service');
 const activityService = require('../services/activity.service');
 const imageUtils = require('../utils/image.js');
+const bcrypt = require('bcryptjs');
 const path = require('path');
 
 const getUsers = async (req, res) => {
   try {
-    // Remove the canApprove check to allow drivers/users to see other users for selection
     const users = await userService.getAllUsers();
     res.json(users);
   } catch (err) {
@@ -93,15 +93,21 @@ const getActivityFeed = async (req, res) => {
 
 const updateUserData = async (req, res) => {
   try {
+    // Only Admins or canApprove users can update other users' data
     if (!req.user.canApprove) return res.status(403).json({ error: 'Unauthorized' });
+
     const { id } = req.params;
     const data = { ...req.body };
     if (data.password === '') delete data.password;
     
     // Hash password if it's being updated
     if (data.password) {
-        const bcrypt = require('bcryptjs');
-        data.password = await bcrypt.hash(data.password, 10);
+      data.password = await bcrypt.hash(data.password, 10);
+    }
+
+    // Only Admins can change roles — prevent canApprove users from privilege escalation
+    if (data.role !== undefined && req.user.role !== 'Admin') {
+      delete data.role;
     }
 
     const user = await userService.updateUser(id, data);
@@ -114,7 +120,14 @@ const updateUserData = async (req, res) => {
 const deleteUser = async (req, res) => {
   try {
     if (req.user.role !== 'Admin') return res.status(403).json({ error: 'Unauthorized' });
+    
     const { id } = req.params;
+
+    // Prevent Admin from deleting their own account
+    if (parseInt(id) === req.user.id) {
+      return res.status(400).json({ error: 'You cannot delete your own account.' });
+    }
+
     await userService.deleteUser(id);
     res.json({ message: 'User deleted' });
   } catch (err) {

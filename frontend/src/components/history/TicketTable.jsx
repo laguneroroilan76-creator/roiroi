@@ -31,6 +31,7 @@ const TicketTable = ({ tickets, onView, typeLabel }) => {
               if (currentStatus === 'approved') {
                 if (ticket.dateTimeReturn && ticket.dateTimeReturn.trim() !== '') return 'Completed';
                 if (ticket.dateTimeDeparture && ticket.dateTimeDeparture.trim() !== '') return 'Ongoing';
+                if (ticket.receivedBy) return 'Received';
               }
               return ticket.status;
             })()} />

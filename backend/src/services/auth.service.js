@@ -1,8 +1,11 @@
 const prisma = require('../config/database');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
-const VALID_ROLES = ['User', 'Admin', 'Driver', 'Guard'];
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('FATAL ERROR: JWT_SECRET is not defined in .env');
+}
+const VALID_ROLES = ['User', 'Admin', 'Driver', 'Guard', 'Accounting'];
 
 const login = async (email, password) => {
   const user = await prisma.user.findUnique({ where: { email } });

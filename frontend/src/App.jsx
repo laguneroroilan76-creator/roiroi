@@ -2,9 +2,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import GuardDashboard from './pages/GuardDashboard';
-import TripTicketForm from './pages/TripTicketForm';
-import PRFForm from './pages/PRFForm';
-import RRFForm from './pages/RRFForm';
+import TripTicketForm from './modules/TripTicket/TripTicketForm';
+import PRFForm from './modules/PRF/PRFForm';
+import RFPForm from './modules/RFP/RFPForm';
 import History from './pages/History';
 import Users from './pages/Users';
 import Profile from './pages/Profile';
@@ -69,8 +69,8 @@ function App() {
               element={<ProtectedRoute><Layout><PRFForm /></Layout></ProtectedRoute>} 
             />
             <Route 
-              path="/rrf" 
-              element={<ProtectedRoute><Layout><RRFForm /></Layout></ProtectedRoute>} 
+              path="/rfp" 
+              element={<ProtectedRoute><Layout><RFPForm /></Layout></ProtectedRoute>} 
             />
             <Route 
               path="/history" 

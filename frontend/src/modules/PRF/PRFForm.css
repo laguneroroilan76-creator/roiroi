@@ -1,0 +1,198 @@
+.prf-form-theme {
+  color: #334155;
+  font-family: 'Inter', sans-serif;
+}
+
+.header-main {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+}
+
+.form-logo {
+  height: 50px;
+  width: auto;
+  object-fit: contain;
+}
+
+.company-info h1 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 900;
+  color: var(--primary);
+  letter-spacing: -0.5px;
+}
+
+.header-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.meta-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.meta-row label {
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  font-size: 0.7rem;
+}
+
+.meta-row input {
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  width: 130px;
+  background: rgba(0,0,0,0.2);
+  color: var(--text-main);
+}
+
+.form-section-row {
+  display: flex;
+  gap: 2rem;
+  margin: 1.5rem 0;
+}
+
+.items-table-container {
+  margin: 1.5rem 0;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(0,0,0,0.1);
+}
+
+.prf-items-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.prf-items-table th {
+  background: rgba(0,0,0,0.2);
+  padding: 12px;
+  border-bottom: 1px solid var(--glass-border);
+  border-right: 1px solid var(--glass-border);
+  text-align: left;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--primary);
+  letter-spacing: 0.5px;
+}
+
+.prf-items-table td {
+  padding: 0;
+  border-bottom: 1px solid var(--glass-border);
+  border-right: 1px solid var(--glass-border);
+}
+
+.prf-items-table input {
+  width: 100%;
+  border: none;
+  padding: 6px 10px;
+  background: transparent;
+  font-size: 0.85rem;
+  color: var(--text-main);
+}
+
+.prf-items-table input:focus {
+  background: rgba(99, 102, 241, 0.05);
+  outline: none;
+}
+
+.remarks-area {
+  width: 100%;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 0.95rem;
+  background: rgba(0,0,0,0.2);
+  color: var(--text-main);
+  transition: all 0.3s ease;
+  resize: vertical;
+  min-height: 100px;
+}
+
+.prf-sigs {
+  margin-top: 5rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 2rem;
+}
+
+.sig-column {
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+}
+
+.sig-box {
+  border-bottom: 2px solid #334155;
+  padding-bottom: 4px;
+  min-height: 35px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.sig-box input {
+  width: 100%;
+  border: none;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+  background: transparent;
+  text-transform: uppercase;
+  outline: none;
+}
+
+.sig-value-display {
+  min-height: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  color: var(--text-main);
+}
+
+.sig-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-top: 8px;
+}
+
+@media print {
+  .custom-form-page { padding-top: 35px !important; }
+  .printable-form {
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+  .prf-items-table th { background: #eee !important; -webkit-print-color-adjust: exact; }
+  .sig-box { border-bottom-color: #000 !important; }
+}
+
+/* DARK MODE OVERRIDES */
+.dark-mode .custom-form-page { background: var(--bg-gradient); }
+.dark-mode .form-container { background: #ffffff !important; border-color: rgba(0,0,0,0.1); }
+.dark-mode .form-container * { color: #334155 !important; }
+.dark-mode .company-info h1 { color: var(--primary) !important; }
+.dark-mode .meta-row label { color: #64748b !important; }
+.dark-mode .meta-row input { background: #f1f5f9; border-color: #e2e8f0; color: #1e293b !important; }
+.dark-mode .items-table-container { background: #f8fafc; border-color: #e2e8f0; }
+.dark-mode .prf-items-table th { background: #f1f5f9; color: var(--primary) !important; border-color: #e2e8f0; }
+.dark-mode .prf-items-table td { border-color: #e2e8f0; }
+.dark-mode .prf-items-table input { color: #1e293b !important; }
+.dark-mode .remarks-area { background: #f8fafc; border-color: #e2e8f0; color: #1e293b !important; }
+.dark-mode .sig-box { border-bottom-color: #334155 !important; }
+.dark-mode .sig-label { color: #64748b !important; }

@@ -30,8 +30,17 @@ const getPRFs = async (req, res) => {
 
 const getPRFById = async (req, res) => {
   try {
-    const prf = await prfService.getPRFById(req.params.id);
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid PRF ID.' });
+
+    const prf = await prfService.getPRFById(id);
     if (!prf) return res.status(404).json({ error: 'PRF not found' });
+
+    // Non-approvers can only view their own PRFs
+    if (!req.user.canApprove && prf.authorId !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied.' });
+    }
+
     res.json(prf);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -40,13 +49,24 @@ const getPRFById = async (req, res) => {
 
 const updatePRF = async (req, res) => {
   try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid PRF ID.' });
+
+    const existing = await prfService.getPRFById(id);
+    if (!existing) return res.status(404).json({ error: 'PRF not found.' });
+
+    // Only the author or an approver can update
+    if (!req.user.canApprove && existing.authorId !== req.user.id) {
+      return res.status(403).json({ error: 'You are not authorized to update this PRF.' });
+    }
+
     if (req.body.status === 'Archived') {
       req.body.archivedBy = req.user.name || 'Unknown';
     } else if (req.body.status === 'Approved') {
       req.body.archivedBy = null;
     }
 
-    const prf = await prfService.updatePRF(req.params.id, req.body);
+    const prf = await prfService.updatePRF(id, req.body);
     
     let actionType = 'UPDATE';
     let message = `${req.user.name || 'Unknown User'} updated PRF status to ${prf.status}`;
@@ -59,13 +79,7 @@ const updatePRF = async (req, res) => {
       message = `${req.user.name || 'Unknown User'} archived PRF`;
     }
 
-    await activityService.logActivity(
-      req.user.id, 
-      actionType, 
-      'PRF', 
-      prf.id, 
-      message
-    );
+    await activityService.logActivity(req.user.id, actionType, 'PRF', prf.id, message);
 
     res.json(prf);
   } catch (err) {
@@ -75,12 +89,23 @@ const updatePRF = async (req, res) => {
 
 const deletePRF = async (req, res) => {
   try {
-    await prfService.deletePRF(req.params.id);
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid PRF ID.' });
+
+    const existing = await prfService.getPRFById(id);
+    if (!existing) return res.status(404).json({ error: 'PRF not found.' });
+
+    // Only author or Admin can delete
+    if (req.user.role !== 'Admin' && existing.authorId !== req.user.id) {
+      return res.status(403).json({ error: 'You are not authorized to delete this PRF.' });
+    }
+
+    await prfService.deletePRF(id);
     await activityService.logActivity(
       req.user.id, 
       'DELETE', 
       'PRF', 
-      parseInt(req.params.id), 
+      id, 
       `${req.user.name || 'Unknown User'} permanently deleted PRF`
     );
     res.json({ message: 'PRF deleted successfully' });

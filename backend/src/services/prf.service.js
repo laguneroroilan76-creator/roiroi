@@ -1,17 +1,42 @@
 const prisma = require('../config/database');
 
 const createPRF = async (userId, prfData) => {
-  const { items, layout, ...rest } = prfData;
-  return await prisma.prf.create({
-    data: {
-      ...rest,
-      layout: layout || null,
-      authorId: userId,
-      items: {
-        create: items
-      }
+  try {
+    const { items, layout, ...rest } = prfData;
+    
+    // Map data carefully
+    const data = {
+      prfNo: rest.rfpNo || rest.prfNo || null,
+      dateRequested: rest.dateRequested || null,
+      dateNeeded: rest.dateNeeded || null,
+      to: rest.to || null,
+      from: rest.from || null,
+      remarks: rest.remarks || rest.purpose || null,
+      preparedBy: rest.preparedBy || null,
+      verifiedBy: rest.verifiedBy || null,
+      notedBy: rest.notedBy || null,
+      approvedBy: rest.approvedBy || null,
+      status: rest.status || 'Pending',
+      requestor: rest.requestor || null,
+      authorId: userId ? parseInt(userId) : null,
+      layout: layout || JSON.stringify(prfData)
+    };
+
+    // Only add items if it's an array and not empty
+    if (items && Array.isArray(items) && items.length > 0) {
+      data.items = {
+        create: items.map(({ id, prfId, rrfId, ...it }) => it)
+      };
     }
-  });
+
+    return await prisma.prf.create({
+      data,
+      include: { items: true }
+    });
+  } catch (error) {
+    console.error('Error in createPRF service:', error);
+    throw error;
+  }
 };
 
 const getPRFs = async (userId, canApprove, isGuard = false) => {
@@ -31,35 +56,45 @@ const getPRFById = async (id) => {
 };
 
 const updatePRF = async (id, data) => {
-  // Destructure to remove fields that don't exist in Prisma model or are immutable
-  const { 
-    id: _id, 
-    createdAt, 
-    authorId, 
-    items, 
-    layout, 
-    author, 
-    type, 
-    displayType, 
-    requestorName,
-    docType,
-    ...rest 
-  } = data;
-  
-  // Use a transaction to ensure atomicity
-  return await prisma.$transaction(async (tx) => {
-    await tx.prfItem.deleteMany({ where: { prfId: parseInt(id) } });
-    return await tx.prf.update({
-      where: { id: parseInt(id) },
-      data: {
-        ...rest,
-        layout: layout || undefined,
-        items: {
-          create: items
-        }
+  try {
+    const { items, layout, ...rest } = data;
+    
+    const updateData = {
+      prfNo: rest.rfpNo || rest.prfNo || undefined,
+      dateRequested: rest.dateRequested || undefined,
+      dateNeeded: rest.dateNeeded || undefined,
+      to: rest.to || undefined,
+      from: rest.from || undefined,
+      remarks: rest.remarks || rest.purpose || undefined,
+      preparedBy: rest.preparedBy || undefined,
+      verifiedBy: rest.verifiedBy || undefined,
+      notedBy: rest.notedBy || undefined,
+      approvedBy: rest.approvedBy || undefined,
+      status: rest.status || undefined,
+      requestor: rest.requestor || undefined,
+      disapprovalReason: rest.disapprovalReason || undefined,
+      archivedBy: rest.archivedBy || undefined,
+      layout: layout || JSON.stringify(data)
+    };
+
+    return await prisma.$transaction(async (tx) => {
+      if (items && Array.isArray(items)) {
+        await tx.prfItem.deleteMany({ where: { prfId: parseInt(id) } });
+        updateData.items = {
+          create: items.map(({ id: _id, prfId: _pId, rrfId: _rId, ...it }) => it)
+        };
       }
+      
+      return await tx.prf.update({
+        where: { id: parseInt(id) },
+        data: updateData,
+        include: { items: true }
+      });
     });
-  });
+  } catch (error) {
+    console.error('Error in updatePRF service:', error);
+    throw error;
+  }
 };
 
 const deletePRF = async (id) => {

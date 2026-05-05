@@ -4,7 +4,10 @@ const getAllUsers = async () => {
   return await prisma.user.findMany({
     select: { 
       id: true, email: true, name: true, createdAt: true, 
-      canApprove: true, role: true, avatarUrl: true, 
+      canApprove: true, canApprovePRF: true, 
+      canApproveTripTicket: true, canApproveRFP: true,
+      canApproveDeptHead: true, canEndorse: true, canVerify: true,
+      role: true, avatarUrl: true, 
       themeColor: true, isDarkMode: true, permissions: true
     }
   });

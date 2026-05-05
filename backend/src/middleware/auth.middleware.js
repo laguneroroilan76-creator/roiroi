@@ -1,5 +1,9 @@
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('FATAL ERROR: JWT_SECRET is not defined in .env');
+  process.exit(1);
+}
 
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -8,7 +12,7 @@ const authenticateToken = (req, res, next) => {
   if (!token) return res.status(401).json({ error: 'Access denied' });
 
   jwt.verify(token, JWT_SECRET, async (err, decoded) => {
-    if (err) return res.status(403).json({ error: 'Invalid token' });
+    if (err) return res.status(401).json({ error: 'Invalid or expired token' });
     
     try {
       const prisma = require('../config/database');
@@ -17,7 +21,7 @@ const authenticateToken = (req, res, next) => {
       if (!user) return res.status(401).json({ error: 'User not found' });
 
       // Normalize user role and permissions for runtime checks.
-      const normalizedRole = ['Admin', 'Driver', 'Guard', 'User'].includes(user.role)
+      const normalizedRole = ['Admin', 'Driver', 'Guard', 'User', 'Accounting'].includes(user.role)
         ? user.role
         : 'User';
       user.role = normalizedRole;

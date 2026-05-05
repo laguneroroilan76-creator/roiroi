@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 
 export default function Vehicles() {
@@ -16,13 +16,11 @@ export default function Vehicles() {
 
   const fetchVehicles = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('http://172.16.28.96:5000/api/vehicles', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const response = await api.get('/vehicles');
       setVehicles(response.data);
     } catch (err) {
       console.error('Error fetching vehicles:', err);
+      showToast('Failed to load vehicles', 'error');
     } finally {
       setLoading(false);
     }
@@ -42,14 +40,11 @@ export default function Vehicles() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
-      const config = { headers: { 'Authorization': `Bearer ${token}` } };
-      
       if (editingVehicle) {
-        await axios.put(`http://172.16.28.96:5000/api/vehicles/${editingVehicle.id}`, formData, config);
+        await api.put(`/vehicles/${editingVehicle.id}`, formData);
         showToast('Vehicle updated successfully', 'success');
       } else {
-        await axios.post('http://172.16.28.96:5000/api/vehicles', formData, config);
+        await api.post('/vehicles', formData);
         showToast('Vehicle added successfully', 'success');
       }
       setIsModalOpen(false);
@@ -62,10 +57,7 @@ export default function Vehicles() {
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this vehicle?')) return;
     try {
-      const token = localStorage.getItem('token');
-      await axios.delete(`http://172.16.28.96:5000/api/vehicles/${id}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      await api.delete(`/vehicles/${id}`);
       showToast('Vehicle deleted successfully', 'success');
       fetchVehicles();
     } catch (err) {
@@ -78,7 +70,7 @@ export default function Vehicles() {
   return (
     <div className="vehicles-page">
       <div className="page-header">
-        <h1>🚙 Vehicles List</h1>
+        <h1>Vehicles List</h1>
         <button className="btn add-btn" onClick={() => handleOpenModal()}>
           <span>+</span> Add New Vehicle
         </button>
@@ -100,7 +92,7 @@ export default function Vehicles() {
               <tr key={vehicle.id}>
                 <td>
                     <div className="vehicle-cell">
-                        <div className="vehicle-icon">🚗</div>
+                        <div className="vehicle-icon"></div>
                         <span style={{ fontWeight: 800 }}>{vehicle.name}</span>
                     </div>
                 </td>
@@ -119,8 +111,8 @@ export default function Vehicles() {
                 <td className="date-cell">{new Date(vehicle.createdAt).toLocaleDateString()}</td>
                 <td>
                   <div className="actions">
-                    <button className="action-btn edit" onClick={() => handleOpenModal(vehicle)}>✎</button>
-                    <button className="action-btn delete" onClick={() => handleDelete(vehicle.id)}>🗑</button>
+                    <button className="action-btn edit" onClick={() => handleOpenModal(vehicle)}>Edit</button>
+                    <button className="action-btn delete" onClick={() => handleDelete(vehicle.id)}>Delete</button>
                   </div>
                 </td>
               </tr>

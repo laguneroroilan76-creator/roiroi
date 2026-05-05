@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 
 const ActivityLog = ({ logs, onViewResource }) => {
-  const pageSize = 10;
+  const pageSize = 20;
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
@@ -53,7 +53,7 @@ const ActivityLog = ({ logs, onViewResource }) => {
         </div>
       )}
 
-      {logs.length > 10 && (
+      {logs.length > pageSize && (
         <div className="pagination-bar glass">
           <button
             className="page-btn"

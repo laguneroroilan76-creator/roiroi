@@ -8,7 +8,6 @@ router.use(authenticateToken);
 
 router.get('/', userController.getUsers);
 router.get('/guards', userController.getGuardUsers);
-router.post('/profile/signature', uploadSignature.single('signature'), userController.updateSignature);
 router.post('/profile/avatar', uploadAvatar.single('avatar'), userController.updateAvatar);
 router.post('/profile/theme', userController.updateTheme);
 router.post('/profile/darkmode', userController.updateDarkMode);

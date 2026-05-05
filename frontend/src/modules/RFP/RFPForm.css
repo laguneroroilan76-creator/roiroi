@@ -1,0 +1,307 @@
+/* HDI Standard Form Layout */
+.custom-form-page {
+  background: #f1f5f9;
+  min-height: 100vh;
+  padding: 100px 20px 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: 'Outfit', sans-serif;
+  color: #1e293b;
+}
+
+.sticky-toolbar {
+  position: fixed; top: 0; left: 280px; right: 0;
+  padding: 1rem 3rem; display: flex; justify-content: space-between; align-items: center;
+  z-index: 900; border-bottom: 1px solid #e2e8f0;
+  background: white;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.tool-group { display: flex; gap: 12px; align-items: center; }
+
+.form-main-content {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    perspective: 1000px;
+}
+
+.form-container {
+  width: 100%;
+  max-width: 900px;
+  background: white;
+  border-radius: 12px;
+  padding: 3.5rem;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+  border: 1px solid #e2e8f0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* RFP Specific Styles - Adjusted for Standard Container */
+.rfp-paper {
+  background: white;
+  padding: 40px;
+  color: #1e293b;
+  font-family: 'Inter', sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+.rfp-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 30px;
+}
+
+.rfp-logo-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rfp-logo { height: 60px; object-fit: contain; }
+
+.rfp-meta {
+  width: 250px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rfp-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 2px;
+}
+
+.rfp-meta-row label { font-size: 0.75rem; font-weight: 700; color: #64748b; }
+.rfp-meta-row input { 
+  border: none; 
+  background: transparent; 
+  text-align: right; 
+  font-size: 0.85rem; 
+  font-weight: 600; 
+  width: 130px;
+  outline: none;
+}
+
+.rfp-title {
+  text-align: center;
+  font-size: 1.8rem;
+  font-weight: 800;
+  letter-spacing: 5px;
+  margin: 20px 0;
+  color: #1e293b;
+  border-top: 2px solid #1e293b;
+  border-bottom: 2px solid #1e293b;
+  padding: 10px 0;
+}
+
+.rfp-release-section {
+  margin: 20px 0;
+  font-size: 1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rfp-release-section input {
+  border: none;
+  border-bottom: 1px solid #1e293b;
+  outline: none;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 0 10px;
+}
+
+.rfp-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 2px solid #1e293b;
+  margin-bottom: 20px;
+}
+
+.rfp-table th {
+  background: #f8fafc;
+  border: 1px solid #1e293b;
+  padding: 10px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.rfp-table td {
+  border: 1px solid #1e293b;
+  padding: 0;
+}
+
+.rfp-table textarea {
+  width: 100%;
+  min-height: 250px;
+  border: none;
+  resize: none;
+  padding: 15px;
+  font-size: 1rem;
+  outline: none;
+  background: transparent;
+}
+
+.rfp-table input {
+  width: 100%;
+  height: 100%;
+  border: none;
+  padding: 15px;
+  font-size: 1.2rem;
+  font-weight: 800;
+  text-align: right;
+  outline: none;
+  background: transparent;
+}
+
+.rfp-total-row td {
+  background: #f8fafc;
+  padding: 15px;
+  font-weight: 800;
+  text-align: right;
+  font-size: 1.2rem;
+}
+
+.rfp-total-row td {
+  background: #f8fafc;
+  padding: 15px;
+  font-weight: 800;
+  text-align: right;
+  font-size: 1.2rem;
+}
+
+.rfp-footer-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.rfp-footer-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.rfp-footer-row label { font-size: 0.8rem; font-weight: 700; color: #64748b; min-width: 100px; }
+.rfp-footer-row input { flex: 1; border: none; background: transparent; padding: 8px 0; font-weight: 600; outline: none; }
+
+.rfp-signatures {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-top: 60px;
+  padding: 0 10px;
+}
+
+.rfp-sig-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 60px;
+}
+
+.sig-name {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #1e293b;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  text-align: center;
+}
+
+.rfp-sig-line {
+  width: 100%;
+  height: 1.2px;
+  background: #1e293b;
+  margin-bottom: 6px;
+}
+
+.sig-label { 
+  font-size: 0.65rem; 
+  font-weight: 700; 
+  text-transform: uppercase; 
+  color: #64748b;
+  letter-spacing: 0.5px;
+  text-align: center;
+}
+
+/* Modal UI */
+.reason-modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 10000; padding: 1rem;
+}
+
+.reason-modal {
+  width: 100%; max-width: 500px;
+  padding: 2.5rem; border-radius: 16px;
+  background: white;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  border: 1px solid #cbd5e1;
+  animation: modalAppear 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modalAppear {
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Status Badges */
+.status-badge {
+  padding: 6px 16px;
+  border-radius: 100px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.status-badge.approved { background: #10b9811a; color: #10b981; border: 1px solid #10b98133; }
+.status-badge.disapproved { background: #ef44441a; color: #ef4444; border: 1px solid #ef444433; }
+
+@media print {
+  .custom-form-page { padding: 35px 0 0 0 !important; background: white !important; }
+  .sticky-toolbar, .no-print { display: none !important; }
+  .form-container { box-shadow: none !important; border: none !important; padding: 0 !important; max-width: 100% !important; background: white !important; }
+  .rfp-paper { padding: 0 !important; }
+}
+
+@media (max-width: 1024px) {
+  .sticky-toolbar { left: 0; padding: 1rem 2rem; }
+}
+
+/* DARK MODE OVERRIDES */
+.dark-mode .custom-form-page { background: var(--bg-gradient); }
+.dark-mode .sticky-toolbar { background: #1e293b; border-color: rgba(255,255,255,0.1); }
+.dark-mode .form-container { background: #ffffff !important; border-color: rgba(0,0,0,0.1); }
+.dark-mode .form-container * { color: #1e293b !important; }
+.dark-mode .rfp-paper { background: #ffffff !important; color: #1e293b !important; }
+.dark-mode .rfp-meta-row { border-bottom-color: #e2e8f0; }
+.dark-mode .rfp-meta-row label { color: #64748b !important; }
+.dark-mode .rfp-title { color: #1e293b !important; border-color: #1e293b !important; }
+.dark-mode .rfp-release-section input { border-bottom-color: #1e293b; color: #1e293b !important; }
+.dark-mode .rfp-table, .dark-mode .rfp-table th, .dark-mode .rfp-table td { border-color: #1e293b; }
+.dark-mode .rfp-table th { background: #f8fafc; color: #1e293b !important; }
+.dark-mode .rfp-total-row td { background: #f8fafc; color: #1e293b !important; }
+.dark-mode .rfp-footer-row { border-bottom-color: #e2e8f0; }
+.dark-mode .rfp-footer-row label { color: #64748b !important; }
+.dark-mode .sig-name { color: #1e293b !important; }
+.dark-mode .rfp-sig-line { background: #1e293b; }
+.dark-mode .sig-label { color: #64748b !important; }
+.dark-mode .reason-modal { background: #1e293b; border-color: rgba(255,255,255,0.1); color: white; }
+.dark-mode .reason-modal h3 { color: white !important; }
+.dark-mode .reason-modal textarea { background: rgba(0,0,0,0.3); color: white !important; border-color: rgba(255,255,255,0.1); }

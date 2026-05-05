@@ -1,20 +1,35 @@
 const prisma = require('../config/database');
 
 const createTicket = async (userId, ticketData) => {
-  if (ticketData.etdOffice && ticketData.etaDestination) {
-    const occupied = await getOccupiedResources(ticketData.etdOffice, ticketData.etaDestination);
-    if (ticketData.driver && occupied.some(o => o.driver === ticketData.driver)) {
-      throw new Error(`Driver ${ticketData.driver} is already booked for this schedule.`);
+  const allowedFields = [
+    'dateRequested', 'requestorName', 'subsidiary', 'driver', 'vehicle', 'plateNumber',
+    'etdOffice', 'etaDestination', 'dateTimeDeparture', 'dateTimeReturn', 'passengersDetail',
+    'destination', 'purpose', 'medium', 'requestedBy', 'endorsedBy', 'approvedBy',
+    'layout', 'status', 'guardIn', 'guardOut', 'kmIn', 'kmOut',
+    'hdiPassengers', 'outsidePassengers', 'passengerCount'
+  ];
+
+  const data = {};
+  allowedFields.forEach(field => {
+    if (ticketData[field] !== undefined) {
+      data[field] = ticketData[field];
     }
-    if (ticketData.vehicle && occupied.some(o => o.vehicle === ticketData.vehicle)) {
-      throw new Error(`Vehicle ${ticketData.vehicle} is already booked for this schedule.`);
+  });
+
+  if (data.etdOffice && data.etaDestination) {
+    const occupied = await getOccupiedResources(data.etdOffice, data.etaDestination);
+    if (data.driver && occupied.some(o => o.driver === data.driver)) {
+      throw new Error(`Driver ${data.driver} is already booked for this schedule.`);
+    }
+    if (data.vehicle && occupied.some(o => o.vehicle === data.vehicle)) {
+      throw new Error(`Vehicle ${data.vehicle} is already booked for this schedule.`);
     }
   }
 
   return await prisma.tripTicket.create({
     data: {
-      ...ticketData,
-      layout: ticketData.layout || null,
+      ...data,
+      layout: data.layout || null,
       authorId: userId
     }
   });
@@ -34,7 +49,7 @@ const getDriverSchedule = async (driverName, isAdmin) => {
   return await prisma.tripTicket.findMany({
     where: {
       ...where,
-      status: { in: ['Approved', 'Completed'] } // Only show approved/ongoing/completed trips
+      status: { in: ['Approved', 'Completed', 'Ongoing'] } // Added 'Ongoing'
     },
     include: { author: { select: { name: true } } },
     orderBy: { createdAt: 'desc' }
@@ -48,37 +63,37 @@ const getTicketById = async (id) => {
 };
 
 const updateTicket = async (id, data) => {
-  const { 
-    id: _id, 
-    createdAt, 
-    authorId, 
-    layout, 
-    author, 
-    type, 
-    displayType, 
-    docType,
-    ...rest 
-  } = data;
+  // Strict whitelist of fields allowed in the database
+  const allowedFields = [
+    'dateRequested', 'requestorName', 'subsidiary', 'driver', 'vehicle', 'plateNumber',
+    'etdOffice', 'etaDestination', 'dateTimeDeparture', 'dateTimeReturn', 'passengersDetail',
+    'destination', 'purpose', 'medium', 'requestedBy', 'endorsedBy', 'approvedBy',
+    'layout', 'status', 'guardIn', 'guardOut', 'kmIn', 'kmOut',
+    'hdiPassengers', 'outsidePassengers', 'passengerCount', 'archivedBy', 'disapprovalReason'
+  ];
 
-  if (rest.etdOffice && rest.etaDestination) {
-    const occupied = await getOccupiedResources(rest.etdOffice, rest.etaDestination);
-    // Filter out the current ticket from conflicts
+  const updateData = {};
+  allowedFields.forEach(field => {
+    if (data[field] !== undefined) {
+      updateData[field] = data[field];
+    }
+  });
+
+  if (updateData.etdOffice && updateData.etaDestination) {
+    const occupied = await getOccupiedResources(updateData.etdOffice, updateData.etaDestination);
     const conflicts = occupied.filter(o => o.id !== parseInt(id));
     
-    if (rest.driver && conflicts.some(o => o.driver === rest.driver)) {
-      throw new Error(`Driver ${rest.driver} is already booked for this schedule.`);
+    if (updateData.driver && conflicts.some(o => o.driver === updateData.driver)) {
+      throw new Error(`Driver ${updateData.driver} is already booked for this schedule.`);
     }
-    if (rest.vehicle && conflicts.some(o => o.vehicle === rest.vehicle)) {
-      throw new Error(`Vehicle ${rest.vehicle} is already booked for this schedule.`);
+    if (updateData.vehicle && conflicts.some(o => o.vehicle === updateData.vehicle)) {
+      throw new Error(`Vehicle ${updateData.vehicle} is already booked for this schedule.`);
     }
   }
 
   return await prisma.tripTicket.update({
     where: { id: parseInt(id) },
-    data: {
-      ...rest,
-      layout: layout || undefined
-    }
+    data: updateData
   });
 };
 
@@ -92,7 +107,8 @@ const getOccupiedResources = async (startDate, endDate) => {
   if (!startDate || !endDate) return [];
   return await prisma.tripTicket.findMany({
     where: {
-      status: { in: ['Approved'] },
+      // Include all active trip statuses in conflict detection
+      status: { in: ['Approved', 'Ongoing', 'DEPARTED'] },
       AND: [
         { etdOffice: { lte: endDate } },
         { etaDestination: { gte: startDate } }

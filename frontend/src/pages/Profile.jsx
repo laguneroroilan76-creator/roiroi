@@ -23,40 +23,6 @@ export default function Profile() {
     }
   }, []);
 
-  const handleFileChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-        alert('Please upload an image file (PNG/JPG)');
-        return;
-    }
-
-    const formData = new FormData();
-    formData.append('signature', file);
-
-    try {
-      setIsUploading(true);
-      const token = localStorage.getItem('token');
-      const response = await axios.post('http://172.16.28.96:5000/api/users/profile/signature', formData, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-      
-      const updatedUser = { ...user, signatureUrl: response.data.signatureUrl };
-      setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser)); // Sync LocalStorage
-      showToast('E-Signature uploaded successfully!', 'success');
-    } catch (err) {
-      console.error('Upload error:', err);
-      showToast('please upload the signature', 'error');
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
 
   const handleAvatarChange = async (e) => {
     const file = e.target.files[0];
@@ -128,9 +94,6 @@ export default function Profile() {
 
   if (!user) return <div className="profile-page">Loading...</div>;
 
-  const fullSignatureUrl = user.signatureUrl && !user.signatureUrl.startsWith('http') 
-    ? `http://172.16.28.96:5000${user.signatureUrl}` 
-    : user.signatureUrl;
 
   return (
     <div className="profile-page">
@@ -210,36 +173,6 @@ export default function Profile() {
             </div>
           </div>
 
-          {/* Signature Settings */}
-          <div className="signature-card glass" style={{ marginTop: '2rem' }}>
-            <h2>🖋️ E-Signature</h2>
-            <p className="subtitle">Upload your transparent PNG signature for document approvals.</p>
-
-            <div className="signature-preview">
-              {fullSignatureUrl ? (
-                  <img src={fullSignatureUrl} alt="E-Signature Preview" />
-              ) : (
-                  <div className="no-signature">No signature uploaded yet.</div>
-              )}
-            </div>
-
-            <div className="upload-controls">
-              <input 
-                type="file" 
-                accept="image/*" 
-                style={{ display: 'none' }} 
-                ref={fileInputRef}
-                onChange={handleFileChange}
-              />
-              <button 
-                className="btn upload-btn" 
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-              >
-                {isUploading ? 'Uploading...' : 'Upload New Signature'}
-              </button>
-            </div>
-          </div>
         </div>
       </div>
       <style>{`

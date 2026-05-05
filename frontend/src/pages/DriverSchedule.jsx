@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 
@@ -6,6 +7,7 @@ export default function DriverSchedule() {
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
   const { showToast } = useToast();
+  const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'Admin' || user.canApprove;
 
@@ -24,11 +26,15 @@ export default function DriverSchedule() {
     }
   };
 
+  const handleView = (trip) => {
+    navigate('/trip-ticket', { state: { initialData: trip, readOnly: true } });
+  };
+
   return (
     <div className="driver-schedule-page" style={{ padding: '3rem' }}>
       <header style={{ marginBottom: '3rem' }}>
         <h1 style={{ fontSize: '2.5rem', fontWeight: '800' }}>
-          🗓️ {isAdmin ? 'Master Driving Schedule' : 'My Driving Schedule'}
+          {isAdmin ? 'Master Driving Schedule' : 'My Driving Schedule'}
         </h1>
         <p style={{ color: 'var(--text-dim)', marginTop: '0.4rem' }}>
           {isAdmin 
@@ -42,17 +48,19 @@ export default function DriverSchedule() {
       ) : (
         <div className="schedule-list" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {schedules.map(trip => (
-            <div key={trip.id} className="schedule-card glass" style={{ 
+            <div key={trip.id} className="schedule-card glass" onClick={() => handleView(trip)} style={{ 
               padding: '2rem', 
               borderRadius: '24px', 
               display: 'grid', 
               gridTemplateColumns: '1fr 1fr 1fr', 
               gap: '2rem',
-              alignItems: 'center',
+              alignItems: 'stretch',
               border: '1px solid var(--glass-border)',
-              background: 'var(--card-bg)'
+              background: 'var(--card-bg)',
+              cursor: 'pointer',
+              transition: 'transform 0.2s, box-shadow 0.2s'
             }}>
-              <div className="trip-info">
+              <div className="trip-info" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                 <span style={{ 
                   fontSize: '0.7rem', 
                   fontWeight: 900, 
@@ -70,8 +78,8 @@ export default function DriverSchedule() {
                 </p>
               </div>
 
-              <div className="fleet-info" style={{ paddingLeft: '2rem', borderLeft: '1px solid var(--glass-border)' }}>
-                <div style={{ marginBottom: '1rem' }}>
+              <div className="fleet-info" style={{ paddingLeft: '2rem', borderLeft: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <div style={{ marginBottom: isAdmin ? '1rem' : 0 }}>
                   <label style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-dim)', textTransform: 'uppercase' }}>Vehicle</label>
                   <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{trip.vehicle}</div>
                   <div style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 600 }}>{trip.plateNumber}</div>
@@ -84,7 +92,7 @@ export default function DriverSchedule() {
                 )}
               </div>
 
-              <div className="time-info" style={{ paddingLeft: '2rem', borderLeft: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+              <div className="time-info" style={{ paddingLeft: '2rem', borderLeft: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '0.8rem', justifyContent: 'center' }}>
                 <div>
                   <label style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-dim)', textTransform: 'uppercase' }}>Departure (ETD)</label>
                   <div style={{ fontWeight: 700 }}>
@@ -101,7 +109,7 @@ export default function DriverSchedule() {
                       background: trip.dateTimeDeparture && !trip.dateTimeReturn ? '#6366f1' : (trip.dateTimeReturn ? '#10b981' : '#22c55e')
                     }}></span>
                     <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>
-                      {trip.dateTimeDeparture && !trip.dateTimeReturn ? 'ONGOING' : (trip.dateTimeReturn ? 'COMPLETED' : 'READY')}
+                      {trip.dateTimeDeparture && !trip.dateTimeReturn ? 'DEPARTED' : (trip.dateTimeReturn ? 'ARRIVED' : 'APPROVED')}
                     </span>
                   </div>
                 </div>
@@ -111,7 +119,7 @@ export default function DriverSchedule() {
 
           {schedules.length === 0 && (
             <div className="glass" style={{ padding: '5rem', textAlign: 'center', borderRadius: '24px' }}>
-              <div style={{ fontSize: '4rem', marginBottom: '1.5rem' }}>🛣️</div>
+              <div></div>
               <h2>No scheduled trips found.</h2>
               <p style={{ color: 'var(--text-dim)' }}>New assignments will appear here once approved by an administrator.</p>
             </div>

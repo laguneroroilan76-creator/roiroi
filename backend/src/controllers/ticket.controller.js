@@ -37,8 +37,18 @@ const getTickets = async (req, res) => {
 
 const getTicketById = async (req, res) => {
   try {
-    const ticket = await ticketService.getTicketById(req.params.id);
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid Ticket ID.' });
+
+    const ticket = await ticketService.getTicketById(id);
     if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
+
+    // Non-approvers and non-guards can only view their own tickets
+    const isPrivileged = req.user.canApprove || req.user.role === 'Guard';
+    if (!isPrivileged && ticket.authorId !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied.' });
+    }
+
     res.json(ticket);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -47,6 +57,9 @@ const getTicketById = async (req, res) => {
 
 const updateTicket = async (req, res) => {
   try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid Ticket ID.' });
+
     // Guard users can only update checkpoint, actual-travel fields, and status
     const guardAllowed = ['kmOut', 'kmIn', 'guardOut', 'guardIn', 'dateTimeDeparture', 'dateTimeReturn', 'status'];
 
@@ -57,7 +70,6 @@ const updateTicket = async (req, res) => {
         return res.status(403).json({ error: 'Guard users can only update checkpoint and actual travel log fields.' });
       }
     }
-    // Non-guards (Admins/Approvers) can now update both status and guarded fields.
 
     if (req.body.status === 'Archived') {
       req.body.archivedBy = req.user.name || 'Unknown';
@@ -65,13 +77,12 @@ const updateTicket = async (req, res) => {
       req.body.archivedBy = null;
     }
 
-    const ticket = await ticketService.updateTicket(req.params.id, req.body);
+    const ticket = await ticketService.updateTicket(id, req.body);
     
     let actionType = 'UPDATE';
     let message = `${req.user.name || 'Unknown User'} updated status to ${ticket.status}`;
 
     if (req.user.role === 'Guard') {
-      actionType = 'UPDATE';
       message = `${req.user.name || 'Unknown User'} updated Trip Ticket guard log`;
     }
 
@@ -83,13 +94,7 @@ const updateTicket = async (req, res) => {
       message = `${req.user.name || 'Unknown User'} archived Trip Ticket`;
     }
 
-    await activityService.logActivity(
-      req.user.id, 
-      actionType, 
-      'TRIP_TICKET', 
-      ticket.id, 
-      message
-    );
+    await activityService.logActivity(req.user.id, actionType, 'TRIP_TICKET', ticket.id, message);
 
     res.json(ticket);
   } catch (err) {
@@ -99,12 +104,20 @@ const updateTicket = async (req, res) => {
 
 const deleteTicket = async (req, res) => {
   try {
-    await ticketService.deleteTicket(req.params.id);
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid Ticket ID.' });
+
+    // Only Admin can permanently delete tickets
+    if (req.user.role !== 'Admin') {
+      return res.status(403).json({ error: 'Only Admins can delete Trip Tickets.' });
+    }
+
+    await ticketService.deleteTicket(id);
     await activityService.logActivity(
       req.user.id, 
       'DELETE', 
       'TRIP_TICKET', 
-      parseInt(req.params.id), 
+      id, 
       `${req.user.name || 'Unknown User'} permanently deleted Trip Ticket`
     );
     res.json({ message: 'Ticket deleted successfully' });
@@ -120,6 +133,7 @@ const getDriverSchedule = async (req, res) => {
     const tickets = await ticketService.getDriverSchedule(driverName, isAdmin);
     res.json(tickets);
   } catch (err) {
+    console.error('ERROR in getDriverSchedule:', err);
     res.status(500).json({ error: err.message });
   }
 };
