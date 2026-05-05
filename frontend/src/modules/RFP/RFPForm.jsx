@@ -152,7 +152,7 @@ export default function RFPForm() {
           <button onClick={() => navigate(-1)} className="tool-btn back">Back</button>
         </div>
         <div className="tool-group">
-          {!isGuard && formData.status === 'Approved' && (
+          {!isGuard && formData.status === 'Approved' && formData.receivedBy && (
             <button className="tool-btn print-btn" onClick={() => window.print()} style={{ background: '#334155', color: 'white', marginRight: '10px' }}>Print</button>
           )}
           {isReviewMode && isPending && (user?.role === 'Admin' || user?.canApprove || user?.canApproveRFP) && (
