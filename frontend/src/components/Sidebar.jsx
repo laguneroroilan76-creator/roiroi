@@ -178,7 +178,7 @@ export default function Sidebar({ isOpen, onClose }) {
 
         {isAdmin && !isGuard && !isAccounting && canView('vehicles') && (
           <div className={`nav-item ${isActive('/vehicles') ? 'active' : ''}`} onClick={() => { navigate('/vehicles'); onClose(); }}>
-            Vehicles Management
+            Vehicle Management
           </div>
         )}
 

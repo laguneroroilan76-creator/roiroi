@@ -7,7 +7,7 @@ router.use(authenticateToken);
 
 router.post('/', vehicleController.createVehicle);
 router.get('/', vehicleController.getVehicles);
-router.put('/:id', vehicleController.updateVehicleStatus);
+router.put('/:id', vehicleController.updateVehicle);
 router.delete('/:id', vehicleController.deleteVehicle);
 
 module.exports = router;

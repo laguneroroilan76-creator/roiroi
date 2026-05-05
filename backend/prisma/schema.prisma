@@ -207,11 +207,19 @@ model User {
 }
 
 model Vehicle {
-  id          Int      @id @default(autoincrement())
-  name        String
-  plateNumber String
-  status      String   @default("Active")
-  createdAt   DateTime @default(now())
+  id            Int      @id @default(autoincrement())
+  name          String
+  plateNumber   String
+  brand         String?
+  model         String?
+  year          String?
+  color         String?
+  fuelType      String?
+  transmission  String?
+  engineNumber  String?
+  chassisNumber String?
+  status        String   @default("Active")
+  createdAt     DateTime @default(now())
   @@map("vehicle")
 }
 

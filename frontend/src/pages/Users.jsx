@@ -351,7 +351,7 @@ export default function Users() {
                         { key: 'tripTicket', label: 'Trip Ticket' },
                         { key: 'prf', label: 'Purchase Request' },
                         { key: 'rrf', label: 'Payment Request' },
-                        { key: 'vehicles', label: 'Fleet Management' },
+                        { key: 'vehicles', label: 'Vehicle Access' },
                         { key: 'users', label: 'User Management' },
                         { key: 'history', label: 'System Logs' },
                       ].map(module => (

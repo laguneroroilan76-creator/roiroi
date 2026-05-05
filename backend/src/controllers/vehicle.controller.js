@@ -18,9 +18,9 @@ const getVehicles = async (req, res) => {
   }
 };
 
-const updateVehicleStatus = async (req, res) => {
+const updateVehicle = async (req, res) => {
   try {
-    const vehicle = await vehicleService.updateVehicleStatus(req.params.id, req.body.status);
+    const vehicle = await vehicleService.updateVehicle(req.params.id, req.body);
     res.json(vehicle);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -36,4 +36,4 @@ const deleteVehicle = async (req, res) => {
   }
 };
 
-module.exports = { createVehicle, getVehicles, updateVehicleStatus, deleteVehicle };
+module.exports = { createVehicle, getVehicles, updateVehicle, deleteVehicle };

@@ -1,0 +1,429 @@
+.vehicles-page {
+  padding: 2rem 3rem;
+  max-width: 1600px;
+  margin: 0 auto;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 2.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.header-left h1 {
+  font-size: 2.4rem;
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  color: var(--text-main);
+  margin: 0 0 0.25rem 0;
+}
+
+.subtitle {
+  color: var(--text-dim);
+  font-size: 1rem;
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+/* Fix for the stretched button */
+.add-btn.btn {
+  width: auto !important;
+  padding: 0.8rem 1.8rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  background: var(--primary);
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.2);
+}
+
+.add-btn.btn span {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+/* Table Design */
+.table-container {
+  background: var(--card-bg);
+  border-radius: 20px;
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--premium-shadow);
+  overflow: hidden;
+  transition: var(--transition-smooth);
+}
+
+.vehicles-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.vehicles-table th {
+  background: #f8fafc;
+  text-align: left;
+  padding: 1.25rem 1.5rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.vehicles-table td {
+  padding: 1.4rem 1.5rem;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.vehicles-table tr:last-child td {
+  border-bottom: none;
+}
+
+.vehicles-table tr:hover td {
+  background: rgba(37, 99, 235, 0.02);
+}
+
+/* Cell Components */
+.vehicle-info-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.v-name {
+  font-weight: 700;
+  color: var(--text-main);
+  font-size: 1.1rem;
+}
+
+.v-brand {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.plate-badge {
+  background: #1e293b;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', 'Monaco', monospace;
+  font-weight: 800;
+  font-size: 0.9rem;
+  display: inline-block;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border: 2px solid #334155;
+}
+
+.spec-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.spec-info span {
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.spec-info small {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  margin-top: 2px;
+}
+
+.status-pill {
+  padding: 5px 12px;
+  border-radius: 100px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid transparent;
+}
+
+.status-pill.active {
+  background: #ecfdf5;
+  color: #059669;
+  border-color: #10b981;
+}
+
+.status-pill.inactive {
+  background: #fef2f2;
+  color: #dc2626;
+  border-color: #ef4444;
+}
+
+.actions-cell {
+  display: flex;
+  gap: 1.25rem;
+  justify-content: flex-end;
+}
+
+.action-link {
+  background: none;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 8px;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.action-link.edit {
+  color: var(--primary);
+  background: var(--primary-light);
+}
+
+.action-link.edit:hover {
+  background: var(--primary);
+  color: white;
+}
+
+.action-link.delete {
+  color: #ef4444;
+  background: #fee2e2;
+}
+
+.action-link.delete:hover {
+  background: #ef4444;
+  color: white;
+}
+
+/* Modal Styling */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
+
+.premium-modal {
+  width: 100%;
+  max-width: 900px;
+  background: var(--card-bg);
+  border-radius: 24px;
+  box-shadow: 0 40px 100px rgba(0,0,0,0.3);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  border: 1px solid var(--glass-border);
+  animation: modalSlideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modalSlideUp {
+  from { transform: translateY(40px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.modal-header {
+  padding: 2rem 2.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--glass-border);
+  background: var(--primary-light);
+}
+
+.modal-header h2 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 0;
+  color: var(--text-main);
+  letter-spacing: -0.5px;
+}
+
+.close-btn {
+  background: white;
+  border: 1px solid var(--glass-border);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  background: #ef4444;
+  color: white;
+  border-color: #ef4444;
+}
+
+.vehicle-form {
+  padding: 2.5rem;
+  overflow-y: auto;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2.5rem;
+}
+
+.section-title {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin: 0 0 1.5rem 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--glass-border);
+}
+
+.input-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.input-group {
+  margin-bottom: 1.5rem;
+}
+
+.input-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.input-group input, 
+.input-group select {
+  width: 100%;
+  padding: 0.85rem 1.1rem;
+  background: #f8fafc;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-main);
+  transition: all 0.2s;
+}
+
+.input-group input:focus,
+.input-group select:focus {
+  border-color: var(--primary);
+  background: white;
+  box-shadow: 0 0 0 4px var(--primary-light);
+  outline: none;
+}
+
+.modal-actions {
+  padding: 1.5rem 2.5rem;
+  background: #f8fafc;
+  border-top: 1px solid var(--glass-border);
+  display: flex;
+  gap: 1.25rem;
+  justify-content: flex-end;
+}
+
+.btn.cancel {
+  width: auto;
+  background: white;
+  border: 1px solid var(--glass-border);
+  padding: 0.85rem 2rem;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--text-dim);
+  box-shadow: none;
+}
+
+.btn.submit {
+  width: auto;
+  background: var(--primary);
+  padding: 0.85rem 2.5rem;
+  border-radius: 12px;
+  color: white;
+  font-weight: 700;
+}
+
+/* Dark Mode Overrides */
+.dark-mode .vehicles-page { background: #0f172a; }
+.dark-mode .table-container, 
+.dark-mode .premium-modal {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.dark-mode .vehicles-table th {
+  background: #0f172a;
+  color: #94a3b8;
+  border-color: #334155;
+}
+
+.dark-mode .vehicles-table td {
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+.dark-mode .v-name, 
+.dark-mode .modal-header h2 {
+  color: #f8fafc;
+}
+
+.dark-mode .input-group input, 
+.dark-mode .input-group select, 
+.dark-mode .btn.cancel {
+  background: #0f172a;
+  color: #f8fafc;
+  border-color: #334155;
+}
+
+.dark-mode .modal-header, 
+.dark-mode .modal-actions {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+.dark-mode .vehicles-table tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.dark-mode .action-link.edit { background: rgba(37, 99, 235, 0.15); }
+.dark-mode .action-link.delete { background: rgba(239, 68, 68, 0.15); }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (max-width: 1024px) {
+  .form-grid { grid-template-columns: 1fr; gap: 1rem; }
+  .vehicles-page { padding: 1.5rem; }
+}

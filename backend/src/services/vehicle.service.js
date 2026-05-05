@@ -2,7 +2,19 @@ const prisma = require('../config/database');
 
 const createVehicle = async (data) => {
   return await prisma.vehicle.create({
-    data: { name: data.name, plateNumber: data.plateNumber }
+    data: { 
+      name: data.name, 
+      plateNumber: data.plateNumber,
+      brand: data.brand,
+      model: data.model,
+      year: data.year,
+      color: data.color,
+      fuelType: data.fuelType,
+      transmission: data.transmission,
+      engineNumber: data.engineNumber,
+      chassisNumber: data.chassisNumber,
+      status: data.status || 'Active'
+    }
   });
 };
 
@@ -12,10 +24,22 @@ const getVehicles = async () => {
   });
 };
 
-const updateVehicleStatus = async (id, status) => {
+const updateVehicle = async (id, data) => {
   return await prisma.vehicle.update({
     where: { id: parseInt(id) },
-    data: { status }
+    data: {
+      name: data.name,
+      plateNumber: data.plateNumber,
+      brand: data.brand,
+      model: data.model,
+      year: data.year,
+      color: data.color,
+      fuelType: data.fuelType,
+      transmission: data.transmission,
+      engineNumber: data.engineNumber,
+      chassisNumber: data.chassisNumber,
+      status: data.status
+    }
   });
 };
 
@@ -25,4 +49,4 @@ const deleteVehicle = async (id) => {
   });
 };
 
-module.exports = { createVehicle, getVehicles, updateVehicleStatus, deleteVehicle };
+module.exports = { createVehicle, getVehicles, updateVehicle, deleteVehicle };
