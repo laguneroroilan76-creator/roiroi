@@ -134,16 +134,25 @@ export default function RFPForm() {
   const isOwner = initialData?.authorId === user?.id || initialData?.requestor === user?.name;
 
   const isFieldDisabled = (fieldName, readOnly) => {
+    // Signature fields should always be locked for non-authorities
+    if (fieldName === 'deptHead' || fieldName === 'approvedBy') {
+      if (formData.status === 'Pending' && isReviewMode) {
+        if (fieldName === 'deptHead') return !(user?.role === 'Admin' || user?.canApprove || user?.canApproveDeptHead);
+        if (fieldName === 'approvedBy') return !(user?.role === 'Admin' || user?.canApprove);
+      }
+      return true;
+    }
+
     if (formData.status !== 'Pending') {
       if (isAccounting && location.state?.isInbox && ['rfpNo', 'prfNo', 'poNumber', 'siNumber'].includes(fieldName)) return false;
       return true;
     }
     if (readOnly) {
-      if (fieldName === 'deptHead' && (user?.role === 'Admin' || user?.canApprove || user?.canApproveDeptHead)) return false;
       return true;
     }
     return false;
   };
+
 
   return (
     <div className="custom-form-page">
@@ -162,11 +171,11 @@ export default function RFPForm() {
             </>
           )}
           {isAccounting && location.state?.isInbox && formData.status === 'Approved' && !formData.receivedBy && (
-            <button onClick={handleReceive} className="tool-btn receive-btn" style={{ background: '#6366f1', color: 'white', marginRight: '10px' }}>Receive RFP</button>
+            <button onClick={handleReceive} className="tool-btn receive-btn" style={{ background: 'var(--primary)', color: 'white', marginRight: '10px' }}>Receive RFP</button>
           )}
           {formData.receivedBy && <div className="status-badge received" style={{ background: '#8b5cf6', color: 'white', padding: '5px 12px', borderRadius: '100px', fontSize: '0.75rem', fontWeight: 800, marginLeft: '10px' }}>RECEIVED</div>}
           {!isReadOnly && formData.status === 'Pending' && (
-            <button onClick={handleSave} className="tool-btn save" style={{ background: '#2563eb', color: 'white' }}>Submit Request</button>
+            <button onClick={handleSave} className="tool-btn save" style={{ background: 'var(--primary)', color: 'white' }}>Submit Request</button>
           )}
           {isReviewMode && formData.status === 'Pending' && isOwner && (
             <button onClick={handleCancelRequest} className="tool-btn cancel" style={{ background: '#64748b', color: 'white', marginRight: '10px' }}>Cancel Request</button>

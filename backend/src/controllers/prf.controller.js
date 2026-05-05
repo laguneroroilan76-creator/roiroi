@@ -1,9 +1,11 @@
 const prfService = require('../services/prf.service');
 const activityService = require('../services/activity.service');
+const { prfCreateBodySchema, prfUpdateBodySchema, formatZodErrors, idParamSchema } = require('../utils/validation');
 
 const createPRF = async (req, res) => {
   try {
-    const prf = await prfService.createPRF(req.user.id, req.body);
+    const validatedBody = prfCreateBodySchema.parse(req.body);
+    const prf = await prfService.createPRF(req.user.id, validatedBody);
     
     await activityService.logActivity(
       req.user.id, 
@@ -15,9 +17,13 @@ const createPRF = async (req, res) => {
     
     res.status(201).json(prf);
   } catch (err) {
+    if (err.name === 'ZodError') {
+      return res.status(400).json({ error: formatZodErrors(err) });
+    }
     res.status(500).json({ error: err.message });
   }
 };
+
 
 const getPRFs = async (req, res) => {
   try {
@@ -49,8 +55,8 @@ const getPRFById = async (req, res) => {
 
 const updatePRF = async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) return res.status(400).json({ error: 'Invalid PRF ID.' });
+    const { id } = idParamSchema.parse(req.params);
+    const validatedBody = prfUpdateBodySchema.parse(req.body);
 
     const existing = await prfService.getPRFById(id);
     if (!existing) return res.status(404).json({ error: 'PRF not found.' });
@@ -60,13 +66,13 @@ const updatePRF = async (req, res) => {
       return res.status(403).json({ error: 'You are not authorized to update this PRF.' });
     }
 
-    if (req.body.status === 'Archived') {
-      req.body.archivedBy = req.user.name || 'Unknown';
-    } else if (req.body.status === 'Approved') {
-      req.body.archivedBy = null;
+    if (validatedBody.status === 'Archived') {
+      validatedBody.archivedBy = req.user.name || 'Unknown';
+    } else if (validatedBody.status === 'Approved') {
+      validatedBody.archivedBy = null;
     }
 
-    const prf = await prfService.updatePRF(id, req.body);
+    const prf = await prfService.updatePRF(id, validatedBody);
     
     let actionType = 'UPDATE';
     let message = `${req.user.name || 'Unknown User'} updated PRF status to ${prf.status}`;
@@ -83,6 +89,9 @@ const updatePRF = async (req, res) => {
 
     res.json(prf);
   } catch (err) {
+    if (err.name === 'ZodError') {
+      return res.status(400).json({ error: formatZodErrors(err) });
+    }
     res.status(500).json({ error: err.message });
   }
 };

@@ -36,11 +36,6 @@ export default function DriverSchedule() {
         <h1 style={{ fontSize: '2.5rem', fontWeight: '800' }}>
           {isAdmin ? 'Master Driving Schedule' : 'My Driving Schedule'}
         </h1>
-        <p style={{ color: 'var(--text-dim)', marginTop: '0.4rem' }}>
-          {isAdmin 
-            ? 'Monitor all upcoming and active vehicle assignments.' 
-            : 'View your upcoming trips and assigned vehicles.'}
-        </p>
       </header>
 
       {loading ? (
@@ -48,11 +43,11 @@ export default function DriverSchedule() {
       ) : (
         <div className="schedule-list" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {schedules.map(trip => (
-            <div key={trip.id} className="schedule-card glass" onClick={() => handleView(trip)} style={{ 
-              padding: '2rem', 
-              borderRadius: '24px', 
-              display: 'grid', 
-              gridTemplateColumns: '1fr 1fr 1fr', 
+            <div key={trip.id} className="schedule-card glass" onClick={() => handleView(trip)} style={{
+              padding: '2rem',
+              borderRadius: '24px',
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr 1fr',
               gap: '2rem',
               alignItems: 'stretch',
               border: '1px solid var(--glass-border)',
@@ -61,11 +56,11 @@ export default function DriverSchedule() {
               transition: 'transform 0.2s, box-shadow 0.2s'
             }}>
               <div className="trip-info" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <span style={{ 
-                  fontSize: '0.7rem', 
-                  fontWeight: 900, 
-                  color: 'var(--primary)', 
-                  textTransform: 'uppercase', 
+                <span style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 900,
+                  color: 'var(--primary)',
+                  textTransform: 'uppercase',
                   letterSpacing: '1px',
                   display: 'block',
                   marginBottom: '0.5rem'
@@ -85,7 +80,7 @@ export default function DriverSchedule() {
                   <div style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 600 }}>{trip.plateNumber}</div>
                 </div>
                 {isAdmin && (
-                   <div>
+                  <div>
                     <label style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-dim)', textTransform: 'uppercase' }}>Assigned Driver</label>
                     <div style={{ fontWeight: 700 }}>{trip.driver}</div>
                   </div>
@@ -104,8 +99,8 @@ export default function DriverSchedule() {
                 <div>
                   <label style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-dim)', textTransform: 'uppercase' }}>Status</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                    <span style={{ 
-                      width: '10px', height: '10px', borderRadius: '50%', 
+                    <span style={{
+                      width: '10px', height: '10px', borderRadius: '50%',
                       background: trip.dateTimeDeparture && !trip.dateTimeReturn ? '#6366f1' : (trip.dateTimeReturn ? '#10b981' : '#22c55e')
                     }}></span>
                     <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>

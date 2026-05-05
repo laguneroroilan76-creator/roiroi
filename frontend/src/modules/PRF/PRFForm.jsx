@@ -33,7 +33,7 @@ export default function PRFForm() {
 
   const getDefaultFormData = () => {
     const base = {
-      rrfNo: '',
+      prfNo: '',
       dateRequested: new Date().toISOString().split('T')[0],
       dateNeeded: '',
       requestor: user?.name || '',
@@ -68,14 +68,20 @@ export default function PRFForm() {
   }, [location.state]);
 
   const isFieldDisabled = (fieldName, baseDisabled = false) => {
-    if (status === 'Approved' || status === 'Archived' || status === 'Disapproved') return true;
-    if (status === 'Pending' && isReviewMode) {
-      if (fieldName === 'verifiedBy') return !(user?.role === 'Admin' || user?.canApprove || user?.canVerify);
-      if (fieldName === 'notedBy') return !(user?.role === 'Admin' || user?.canApprove);
+    // Signature fields should always be locked for non-authorities
+    if (fieldName === 'verifiedBy' || fieldName === 'approvedBy') {
+      if (status === 'Pending' && isReviewMode) {
+        if (fieldName === 'verifiedBy') return !(user?.role === 'Admin' || user?.canApprove || user?.canVerify);
+        if (fieldName === 'approvedBy') return !(user?.role === 'Admin' || user?.canApprove);
+      }
       return true;
     }
+
+    if (status === 'Approved' || status === 'Archived' || status === 'Disapproved') return true;
+    if (status === 'Pending' && isReviewMode) return true;
     return baseDisabled;
   };
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -90,7 +96,8 @@ export default function PRFForm() {
 
   const handleSave = async () => {
     try {
-      const payload = { ...formData, status: 'Pending', items: formData.items.filter(it => it.particulars.trim() !== '') };
+      const items = (formData?.items || []).filter(it => it?.particulars?.trim() !== '');
+      const payload = { ...formData, status: 'Pending', items };
       if (isReviewMode && initialData?.id) {
         await api.put(`/prfs/${initialData.id}`, payload);
         showToast('Purchase Requisition Updated!', 'success');
@@ -99,17 +106,21 @@ export default function PRFForm() {
         showToast('Purchase Requisition Created!', 'success');
       }
       navigate('/dashboard');
-    } catch (err) { showToast('Error saving Purchase Requisition', 'error'); }
+    } catch (err) { 
+      const msg = err.response?.data?.error || err.message || 'Error saving Purchase Requisition';
+      showToast(msg, 'error'); 
+    }
   };
 
   const handleApprove = async () => {
     if (!await confirm('Approve this PRF?')) return;
     try {
+      const items = (formData?.items || []).filter(it => it?.particulars?.trim() !== '');
       const payload = { 
         ...formData, 
         status: 'Approved', 
         approvedBy: user.name || user.email || 'ADMIN', 
-        items: formData.items.filter(it => it.particulars.trim() !== '') 
+        items 
       };
       await api.put(`/prfs/${initialData.id}`, payload);
       showToast('Purchase Requisition Approved!', 'success');
@@ -120,6 +131,7 @@ export default function PRFForm() {
       showToast(msg, 'error');
     }
   };
+
 
   const confirmDisapprove = async () => {
     if (!await confirm('Disapprove this PRF?')) return;
@@ -239,10 +251,10 @@ export default function PRFForm() {
         .tool-btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 700; transition: all 0.2s; font-size: 0.95rem; }
         .tool-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .tool-btn.back { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
-        .tool-btn.save { background: #2563eb; color: white; }
+        .tool-btn.save { background: var(--primary); color: white; }
         .tool-btn.approve { background: #10b981; color: white; }
         .tool-btn.disapprove { background: #ef4444; color: white; }
-        .tool-btn.archive-btn { background: #f59e0b; color: white; }
+        .tool-btn.archive-btn { background: var(--primary); color: white; filter: brightness(1.1); }
         .tool-btn.print-btn { background: #334155; color: white; }
         .form-container { width: 100%; max-width: 1000px; background: #ffffff; border-radius: 12px; padding: 3rem; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 10000; padding: 1rem; }

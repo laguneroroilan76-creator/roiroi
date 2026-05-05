@@ -47,6 +47,8 @@ model Prf {
   status           String    @default("Pending")
   authorId         Int?
   requestor        String?
+  department       String?
+  company          String?
   archivedBy       String?
   disapprovalReason String?
   author           User?     @relation(fields: [authorId], references: [id], onDelete: Cascade, map: "Prf_authorId_fkey")
@@ -203,7 +205,27 @@ model User {
   rrf          Rrf[]
   task         Task[]
   tripticket   TripTicket[]
+  supportTickets SupportTicket[] @relation("SupportAuthor")
+  assignedSupportTickets SupportTicket[] @relation("SupportAssigned")
   @@map("user")
+}
+
+model SupportTicket {
+  id          Int      @id @default(autoincrement())
+  subject     String
+  description String?  @db.Text
+  status      String   @default("Pending")
+  priority    String   @default("Medium")
+  category    String   @default("Others")
+  authorId    Int
+  author      User     @relation("SupportAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  assignedToId Int?
+  assignedTo  User?    @relation("SupportAssigned", fields: [assignedToId], references: [id])
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("supportticket")
 }
 
 model Vehicle {
@@ -229,5 +251,6 @@ enum UserRole {
   Driver
   Guard
   Accounting
+  IT
   @@map("user_role")
 }

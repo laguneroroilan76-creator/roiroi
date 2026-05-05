@@ -13,6 +13,7 @@ import ArchivedRecords from './pages/ArchivedRecords';
 import PendingRecords from './pages/PendingRecords';
 import Vehicles from './pages/Vehicles';
 import DriverSchedule from './pages/DriverSchedule';
+import SupportLog from './pages/SupportLog';
 import Layout from './components/Layout';
 import { ToastProvider } from './context/ToastContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -103,6 +104,10 @@ function App() {
             <Route 
               path="/driver-schedule" 
               element={<ProtectedRoute><Layout><DriverSchedule /></Layout></ProtectedRoute>} 
+            />
+            <Route 
+              path="/support" 
+              element={<ProtectedRoute><Layout><SupportLog /></Layout></ProtectedRoute>} 
             />
           </Routes>
         </Router>

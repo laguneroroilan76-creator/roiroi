@@ -63,7 +63,19 @@ export default function TripTicketForm() {
   const isCompleted = !!(formData.dateTimeDeparture && formData.dateTimeReturn);
 
   const isFieldDisabled = (fieldName) => {
+    // Signature fields should always be locked for non-authorities
+    if (fieldName === 'endorsedBy' || fieldName === 'approvedBy') {
+      if (status === 'Pending Endorsement' && fieldName === 'endorsedBy') {
+        return !(user?.role === 'Admin' || user?.canApprove || user?.canEndorse);
+      }
+      if (status === 'Pending Approval' && fieldName === 'approvedBy') {
+        return !(user?.role === 'Admin' || user?.canApprove || user?.canApproveTripTicket);
+      }
+      return true; 
+    }
+
     const isDeparted = !!formData.dateTimeDeparture;
+
     const isArrived = !!(formData.dateTimeDeparture && formData.dateTimeReturn);
 
     if (isArrived || status === 'ARRIVED') return true;
@@ -80,10 +92,9 @@ export default function TripTicketForm() {
     }
     if (status === 'Archived' || status === 'Disapproved') return true;
     if (status === 'Pending' && isReviewMode) {
-      if (fieldName === 'approvedBy') return !(user?.role === 'Admin' || user?.canApprove || user?.canApproveTripTicket);
-      if (fieldName === 'endorsedBy') return !(user?.role === 'Admin' || user?.canApprove || user?.canEndorse);
       return true;
     }
+
     const guardOnlyFields = ['kmOut', 'kmIn', 'guardOut', 'guardIn', 'dateTimeDeparture', 'dateTimeReturn'];
     if (isGuard && !guardOnlyFields.includes(fieldName)) return true;
     if (!isGuard && guardOnlyFields.includes(fieldName)) return true;
@@ -246,7 +257,7 @@ export default function TripTicketForm() {
             <button className="tool-btn print-btn" onClick={() => window.print()} style={{ background: '#334155', color: 'white' }}>Print</button>
           )}
           {!isReviewMode && status === 'Pending' && (
-            <button className="tool-btn save" onClick={handleSave}>Submit Request</button>
+            <button className="tool-btn save" onClick={handleSave} style={{ background: 'var(--primary)', color: 'white' }}>Submit Request</button>
           )}
           {isReviewMode && status.startsWith('Pending') && isOwner && (
             <button className="tool-btn cancel" onClick={handleCancelRequest} style={{ background: '#64748b', color: 'white' }}>Cancel Request</button>
@@ -263,7 +274,7 @@ export default function TripTicketForm() {
           {/* Approval Stage */}
           {isReviewMode && status === 'Pending Approval' && (user?.role === 'Admin' || user?.canApprove || user?.canApproveTripTicket) && (
             <>
-              <button className="tool-btn approve" onClick={handleApprove}>Final Approve</button>
+              <button className="tool-btn approve" onClick={handleApprove} style={{ background: 'var(--primary)', color: 'white' }}>Final Approve</button>
               <button className="tool-btn disapprove-btn" onClick={handleDisapprove}>Disapprove</button>
             </>
           )}

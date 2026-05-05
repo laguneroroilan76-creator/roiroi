@@ -11,7 +11,7 @@ export const FormHeader = ({ formData, handleChange, isFieldDisabled }) => (
     <div className="header-meta">
       <div className="meta-row">
         <label>PRF No.:</label>
-        <input type="text" name="rrfNo" value={formData.rrfNo} onChange={handleChange} disabled={isFieldDisabled('rrfNo')} placeholder={isFieldDisabled('rrfNo') ? "" : "AUTO"} />
+        <input type="text" name="prfNo" value={formData.prfNo} onChange={handleChange} disabled={isFieldDisabled('prfNo')} placeholder={isFieldDisabled('prfNo') ? "" : "AUTO"} />
       </div>
       <div className="meta-row">
         <label>Date Requested:</label>

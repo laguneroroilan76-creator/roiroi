@@ -6,11 +6,13 @@ const createPRF = async (userId, prfData) => {
     
     // Map data carefully
     const data = {
-      prfNo: rest.rfpNo || rest.prfNo || null,
+      prfNo: rest.rrfNo || rest.rfpNo || rest.prfNo || null,
       dateRequested: rest.dateRequested || null,
       dateNeeded: rest.dateNeeded || null,
       to: rest.to || null,
       from: rest.from || null,
+      department: rest.department || null,
+      company: rest.company || null,
       remarks: rest.remarks || rest.purpose || null,
       preparedBy: rest.preparedBy || null,
       verifiedBy: rest.verifiedBy || null,
@@ -60,11 +62,13 @@ const updatePRF = async (id, data) => {
     const { items, layout, ...rest } = data;
     
     const updateData = {
-      prfNo: rest.rfpNo || rest.prfNo || undefined,
+      prfNo: rest.rrfNo || rest.rfpNo || rest.prfNo || undefined,
       dateRequested: rest.dateRequested || undefined,
       dateNeeded: rest.dateNeeded || undefined,
       to: rest.to || undefined,
       from: rest.from || undefined,
+      department: rest.department || undefined,
+      company: rest.company || undefined,
       remarks: rest.remarks || rest.purpose || undefined,
       preparedBy: rest.preparedBy || undefined,
       verifiedBy: rest.verifiedBy || undefined,

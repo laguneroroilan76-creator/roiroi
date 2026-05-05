@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import api, { BASE_URL } from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { Search } from 'lucide-react';
+
 
 export default function Users() {
   const [users, setUsers] = useState([]);
@@ -100,28 +102,29 @@ export default function Users() {
 
   return (
     <div className="users-page">
-      <div className="page-header">
+      <div className="toolbar-glass">
         <div className="header-left">
-          <h1>User Management</h1>
-          <p className="subtitle">System Access & Permission Controls</p>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0 }}>User Management</h1>
         </div>
-        <div className="header-actions">
-          <div className="search-box">
-            <input 
-              type="text" 
-              placeholder="Search by name, email, or role..." 
+        <div className="header-actions" style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', flex: 1, justifyContent: 'flex-end' }}>
+          <div className="search-box-premium" style={{ maxWidth: '400px' }}>
+            <Search size={18} className="search-icon" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }} />
+            <input
+              type="text"
+              placeholder="Search by name, email, or role..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ paddingLeft: '48px' }}
             />
           </div>
-          <button className="btn add-user-btn" onClick={() => handleOpenModal()}>
+          <button className="action-btn-premium primary" onClick={() => handleOpenModal()} style={{ borderRadius: '16px', padding: '12px 24px' }}>
             Add New User
           </button>
         </div>
       </div>
 
-      <div className="table-container glass">
-        <table className="users-table">
+      <div className="table-container-glass">
+        <table className="corporate-table">
           <thead>
             <tr>
               <th>Full Name</th>
@@ -133,28 +136,26 @@ export default function Users() {
             </tr>
           </thead>
           <tbody>
-            {users.filter(u => 
-              u.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+            {users.filter(u =>
+              u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
               u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
               u.role?.toLowerCase().includes(searchTerm.toLowerCase())
             ).map(user => (
               <tr key={user.id}>
                 <td>
-                  <div className="user-cell">
-                    <div className="user-avatar-box">
-                      <div className="user-initial">
-                        {user.avatarUrl ? (
-                          <img src={user.avatarUrl.startsWith('http') ? user.avatarUrl : `${BASE_URL}${user.avatarUrl}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '14px' }} />
-                        ) : (
-                          user.name?.[0] || 'U'
-                        )}
-                      </div>
+                  <div className="cell-document">
+                    <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'linear-gradient(135deg, var(--primary), #60a5fa)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '1.1rem', fontWeight: 800, boxShadow: '0 8px 15px rgba(37, 99, 235, 0.15)', overflow: 'hidden' }}>
+                      {user.avatarUrl ? (
+                        <img src={user.avatarUrl.startsWith('http') ? user.avatarUrl : `${BASE_URL}${user.avatarUrl}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        user.name?.[0] || 'U'
+                      )}
                     </div>
-                    <span className="user-name">{user.name || 'N/A'}</span>
+                    <span style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-main)' }}>{user.name || 'N/A'}</span>
                   </div>
                 </td>
                 <td>
-                  <span className={`role-badge ${user.role?.toLowerCase()}`}>
+                  <span className={`role-badge ${user.role?.toLowerCase()}`} style={{ fontSize: '0.65rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', color: user.role === 'Admin' ? '#f59e0b' : (user.role === 'Accounting' ? '#8b5cf6' : 'var(--text-dim)') }}>
                     {user.role || 'User'}
                   </span>
                 </td>
@@ -173,11 +174,11 @@ export default function Users() {
                     )}
                   </div>
                 </td>
-                <td className="date-cell">{new Date(user.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                <td style={{ color: 'var(--text-dim)', fontSize: '0.9rem', fontWeight: 600 }}>{new Date(user.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</td>
                 <td>
-                  <div className="actions">
-                    <button className="action-btn edit" title="Edit User" onClick={() => handleOpenModal(user)}>Edit</button>
-                    <button className="action-btn delete" title="Delete User" onClick={() => handleDelete(user.id)}>Delete</button>
+                  <div style={{ display: 'flex', gap: '0.8rem', justifyContent: 'flex-end' }}>
+                    <button className="action-btn-premium" onClick={() => handleOpenModal(user)} style={{ background: 'var(--primary-light)', color: 'var(--primary)', borderColor: 'transparent' }}>Edit</button>
+                    <button className="action-btn-premium" onClick={() => handleDelete(user.id)} style={{ background: '#fef2f2', color: '#ef4444', borderColor: 'transparent' }}>Delete</button>
                   </div>
                 </td>
               </tr>
@@ -185,6 +186,7 @@ export default function Users() {
           </tbody>
         </table>
       </div>
+
 
       {isModalOpen && (
         <div className="modal-overlay">
@@ -201,51 +203,45 @@ export default function Users() {
                 {/* Section 1: Basic Identity */}
                 <div className="form-section">
                   <h3 className="section-label">Identity & Account Details</h3>
-                  <div className="input-row">
-                    <div className="input-group">
+                  <div className="grid-row">
+                    <div className="form-group">
                       <label>Full Name</label>
-                      <div className="input-wrapper">
-                        <input
-                          type="text"
-                          placeholder="Full Name"
-                          value={formData.name}
-                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          required
-                        />
-                      </div>
+                      <input
+                        type="text"
+                        placeholder="Full Name"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        required
+                      />
                     </div>
-                    <div className="input-group">
+                    <div className="form-group">
                       <label>Email Address</label>
-                      <div className="input-wrapper">
-                        <input
-                          type="email"
-                          placeholder="Corporate Email"
-                          value={formData.email}
-                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                          required
-                        />
-                      </div>
+                      <input
+                        type="email"
+                        placeholder="Corporate Email"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        required
+                      />
                     </div>
                   </div>
 
-                  <div className="input-row">
-                    <div className="input-group">
+                  <div className="grid-row">
+                    <div className="form-group">
                       <label>{editingUser ? 'Change Password' : 'Initial Password'}</label>
-                      <div className="input-wrapper">
-                        <input
-                          type="password"
-                          placeholder={editingUser ? "Keep current password" : "Password"}
-                          value={formData.password}
-                          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                          required={!editingUser}
-                        />
-                      </div>
-                      <p className="input-hint">Minimum 8 characters, with uppercase and special characters.</p>
+                      <input
+                        type="password"
+                        placeholder={editingUser ? "Keep current password" : "Password"}
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        required={!editingUser}
+                      />
+                      <p className="input-hint" style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '4px' }}>Minimum 8 characters.</p>
                     </div>
-                    <div className="input-group">
+                    <div className="form-group">
                       <label>Primary System Role</label>
-                      <div className="input-wrapper">
-                        <select
+                      <select
+
                           className="role-select"
                           value={formData.role}
                           onChange={(e) => {
@@ -262,9 +258,9 @@ export default function Users() {
                           <option value="Driver">Driver</option>
                           <option value="Guard">Security</option>
                           <option value="Accounting">Accounting</option>
+                          <option value="IT">IT Specialist</option>
                         </select>
                       </div>
-                    </div>
                   </div>
                 </div>
 
@@ -353,7 +349,8 @@ export default function Users() {
                         { key: 'rrf', label: 'Payment Request' },
                         { key: 'vehicles', label: 'Vehicle Access' },
                         { key: 'users', label: 'User Management' },
-                        { key: 'history', label: 'System Logs' },
+                        { key: 'history', label: 'Activity Log' },
+                        { key: 'support', label: 'Support Log' },
                       ].map(module => (
                         <div key={module.key} className="module-item">
                           <div className="module-info">
@@ -373,7 +370,7 @@ export default function Users() {
                               />
                               <span className="chip">View</span>
                             </label>
-                            {['tripTicket', 'prf', 'rrf', 'vehicles', 'users'].includes(module.key) && (
+                            {['tripTicket', 'prf', 'rrf', 'vehicles', 'users', 'support'].includes(module.key) && (
                               <label className="chip-toggle">
                                 <input
                                   type="checkbox"
@@ -398,227 +395,16 @@ export default function Users() {
               </div>
 
               <div className="modal-footer">
-                <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)}>Cancel</button>
-                <button type="submit" className="btn-primary">{editingUser ? 'Save Profile Changes' : 'Complete Registration'}</button>
+                <button type="button" className="btn-cancel" onClick={() => setIsModalOpen(false)}>Cancel</button>
+                <button type="submit" className="btn-submit">{editingUser ? 'Save Profile Changes' : 'Complete Registration'}</button>
               </div>
+
             </form>
           </div>
         </div>
       )}
 
-      <style>{`
-        .users-page { padding: 2rem 3rem; max-width: 1400px; margin: 0 auto; color: var(--text-main); min-height: 100vh; }
-        
-        .page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 3rem; }
-        .header-left h1 { font-size: 2.8rem; font-weight: 800; letter-spacing: -1.5px; margin-bottom: 4px; }
-        .subtitle { color: var(--text-dim); font-weight: 500; font-size: 1.1rem; }
-        
-        .header-actions { display: flex; gap: 1.5rem; align-items: center; }
-        .search-box { 
-          display: flex; align-items: center; background: var(--card-bg); 
-          padding: 0.8rem 1.5rem; border-radius: 18px; border: 1px solid var(--glass-border);
-          box-shadow: 0 4px 15px rgba(0,0,0,0.02); min-width: 300px; transition: 0.3s;
-        }
-        .search-box:focus-within { border-color: var(--primary); box-shadow: 0 8px 25px rgba(37, 99, 235, 0.1); transform: translateY(-2px); }
-        .search-box span { margin-right: 12px; font-size: 1.1rem; opacity: 0.5; }
-        .search-box input { border: none; background: none; outline: none; width: 100%; color: var(--text-main); font-weight: 600; font-size: 0.95rem; }
-
-        .add-user-btn { 
-          padding: 0.8rem 1.8rem; background: var(--primary); border-radius: 18px; 
-          font-weight: 700; border: none; color: white; cursor: pointer;
-          font-size: 0.95rem;
-          box-shadow: 0 10px 20px rgba(37, 99, 235, 0.2);
-        }
-        .add-user-btn:hover { transform: translateY(-3px); box-shadow: 0 15px 30px rgba(37, 99, 235, 0.3); }
-
-        .table-container { 
-          border-radius: 30px; border: 1px solid var(--glass-border); 
-          background: var(--card-bg); box-shadow: 0 20px 50px rgba(0,0,0,0.03); 
-          overflow: hidden; animation: slideUp 0.6s ease-out;
-        }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-
-        .users-table { width: 100%; border-collapse: collapse; text-align: left; }
-        .users-table th { 
-          background: var(--primary-light); padding: 1.5rem 2rem; font-size: 0.8rem; 
-          color: var(--primary); text-transform: uppercase; letter-spacing: 2px; 
-          font-weight: 800; border-bottom: 2px solid var(--glass-border); 
-        }
-        .users-table td { padding: 1.8rem 2rem; border-bottom: 1px solid var(--glass-border); vertical-align: middle; }
-        .users-table tr:last-child td { border-bottom: none; }
-        .users-table tr:hover td { background: var(--primary-light); }
-
-        .user-cell { display: flex; align-items: center; gap: 18px; }
-        .user-avatar-box { position: relative; }
-        .user-initial { 
-          width: 48px; height: 48px; border-radius: 16px; background: linear-gradient(135deg, var(--primary), #60a5fa);
-          display: flex; align-items: center; justify-content: center; color: white; font-size: 1.1rem; font-weight: 800;
-          box-shadow: 0 8px 15px rgba(37, 99, 235, 0.15);
-        }
-        .user-info-text { display: flex; flexDirection: column; gap: 2px; }
-        .user-name { font-weight: 800; font-size: 1.05rem; color: var(--text-main); }
-        .role-badge { font-size: 0.65rem; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); }
-        .role-badge.admin { color: #f59e0b; }
-        .role-badge.accounting { color: #8b5cf6; }
-
-        .date-cell { color: var(--text-dim); font-size: 0.9rem; font-weight: 600; }
-
-        .actions { display: flex; gap: 10px; justify-content: flex-end; }
-        .action-btn { 
-          width: 44px; height: 44px; border-radius: 14px; border: 1px solid var(--glass-border); 
-          background: var(--card-bg); color: var(--text-main); cursor: pointer; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
-        }
-        .action-btn:hover { transform: translateY(-4px) scale(1.05); box-shadow: 0 10px 20px rgba(0,0,0,0.08); }
-        .action-btn.edit:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
-        .action-btn.delete:hover { border-color: #ef4444; color: #ef4444; background: #fef2f2; }
-
-        /* MODAL PREMIUM STYLES */
-        .modal-overlay { 
-          position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(20px);
-          display: flex; align-items: center; justify-content: center; z-index: 10000; padding: 2rem;
-        }
-        .modal-content.premium { 
-          width: 100%; max-width: 850px; background: var(--card-bg); border-radius: 40px; 
-          border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 50px 100px rgba(0,0,0,0.3);
-          overflow: hidden; animation: modalPop 0.5s cubic-bezier(0.19, 1, 0.22, 1);
-          max-height: 92vh; display: flex; flex-direction: column;
-        }
-        @keyframes modalPop { from { opacity: 0; transform: scale(0.95) translateY(40px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-
-        .modal-header { 
-          padding: 2.5rem 3rem 1.5rem; display: flex; justify-content: space-between; align-items: center;
-          border-bottom: 1px solid var(--glass-border); background: var(--primary-light);
-        }
-        .modal-header h2 { font-size: 1.8rem; font-weight: 800; letter-spacing: -1px; }
-        .close-btn { 
-          background: none; border: none; font-size: 2rem; color: var(--text-dim); cursor: pointer; 
-          transition: 0.3s; opacity: 0.5;
-        }
-        .close-btn:hover { opacity: 1; transform: rotate(90deg); color: #ef4444; }
-
-        .premium-form { padding: 0; display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-        .form-sections { padding: 2.5rem 3rem; overflow-y: auto; flex: 1; }
-        
-        .form-section { margin-bottom: 3rem; }
-        .form-section:last-child { margin-bottom: 1rem; }
-        .section-label { 
-          font-size: 0.85rem; font-weight: 800; color: var(--primary); text-transform: uppercase; 
-          letter-spacing: 2px; margin-bottom: 1.8rem; display: flex; align-items: center; gap: 10px;
-        }
-        .section-label::after { content: ''; height: 1px; flex: 1; background: var(--glass-border); }
-
-        .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 1.8rem; }
-        .input-group label { display: block; margin-bottom: 10px; font-weight: 700; font-size: 0.9rem; color: var(--text-main); }
-        .input-wrapper { display: flex; align-items: center; }
-        .input-wrapper input, .input-wrapper select { 
-          width: 100%; padding: 1.1rem 1.5rem; background: var(--primary-light); 
-          border: 2px solid transparent; border-radius: 20px; font-size: 1rem; font-weight: 600;
-          color: var(--text-main); transition: 0.3s;
-        }
-        .input-wrapper input:focus, .input-wrapper select:focus { 
-          background: var(--card-bg); border-color: var(--primary); 
-          box-shadow: 0 10px 25px rgba(37, 99, 235, 0.1); outline: none;
-        }
-
-        .highlight { background: var(--primary-light); padding: 2rem; border-radius: 28px; border: 1px solid var(--glass-border); }
-        .section-header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
-        
-        .master-toggle { display: flex; align-items: center; gap: 12px; cursor: pointer; }
-        .toggle-slider { 
-          width: 50px; height: 26px; background: #cbd5e1; border-radius: 100px; position: relative; transition: 0.3s;
-        }
-        .toggle-slider::after { 
-          content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; 
-          background: white; border-radius: 50%; transition: 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .master-toggle input:checked + .toggle-slider { background: var(--primary); }
-        .master-toggle input:checked + .toggle-slider::after { transform: translateX(24px); }
-        .toggle-text { font-weight: 800; font-size: 0.9rem; color: var(--primary); }
-        .master-toggle input { display: none; }
-
-        .permission-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-        .perm-card { background: var(--card-bg); padding: 1.5rem; border-radius: 20px; border: 1px solid var(--glass-border); }
-        .perm-header { font-size: 0.75rem; font-weight: 800; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1.2rem; }
-        .perm-list { display: flex; flex-direction: column; gap: 12px; }
-
-        .custom-check-item { display: flex; align-items: center; gap: 12px; cursor: pointer; transition: 0.2s; }
-        .custom-check-item:hover { transform: translateX(5px); }
-        .custom-check-item input { display: none; }
-        .check-box { 
-          width: 22px; height: 22px; border-radius: 7px; border: 2px solid var(--glass-border); 
-          position: relative; transition: 0.3s;
-        }
-        .custom-check-item input:checked + .check-box { background: var(--primary); border-color: var(--primary); }
-        .custom-check-item input:checked + .check-box::after { 
-          content: '✓'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; 
-          color: white; font-size: 0.8rem; font-weight: 900;
-        }
-        .check-text { font-size: 0.95rem; font-weight: 600; color: var(--text-main); }
-
-        .module-perm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-        .module-item { 
-          display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; 
-          background: var(--primary-light); border-radius: 18px; border: 1px solid var(--glass-border);
-        }
-        .module-info { display: flex; align-items: center; }
-        .module-name { font-weight: 700; font-size: 0.9rem; }
-        
-        .module-actions { display: flex; gap: 8px; }
-        .chip-toggle input { display: none; }
-        .chip { 
-          padding: 6px 14px; border-radius: 10px; font-size: 0.7rem; font-weight: 800; 
-          background: var(--card-bg); border: 1px solid var(--glass-border); color: var(--text-dim); transition: 0.3s;
-        }
-        .chip-toggle input:checked + .chip { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2); }
-
-        .modal-footer { 
-          padding: 2rem 3rem; background: var(--primary-light); display: flex; gap: 1.5rem;
-          border-top: 1px solid var(--glass-border);
-        }
-        .btn-secondary { 
-          flex: 1; padding: 1.1rem; border-radius: 20px; border: 1px solid var(--glass-border);
-          background: var(--card-bg); color: var(--text-dim); font-weight: 700; cursor: pointer; transition: 0.3s;
-        }
-        .btn-secondary:hover { background: #f1f5f9; color: var(--text-main); }
-        .btn-primary { 
-          flex: 2; padding: 1.1rem; border-radius: 20px; border: none;
-          background: var(--primary); color: white; font-weight: 700; cursor: pointer; 
-          box-shadow: 0 10px 25px rgba(37, 99, 235, 0.2); transition: 0.3s;
-        }
-        .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 15px 35px rgba(37, 99, 235, 0.3); }
-
-        .approver-badge {
-          background: rgba(16, 185, 129, 0.1); color: #10b981; font-size: 0.65rem;
-          padding: 5px 12px; border-radius: 100px; font-weight: 900; border: 1px solid rgba(16, 185, 129, 0.1);
-          text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;
-        }
-        .approver-badge.ticket { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
-        .approver-badge.prf { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
-        .approver-badge.rfp { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
-
-        /* DARK MODE */
-        .dark-mode .search-box, .dark-mode .table-container, .dark-mode .modal-content.premium, .dark-mode .perm-card { background: #1e293b; }
-        .dark-mode .users-table th { background: rgba(255,255,255,0.03); }
-        .dark-mode .users-table tr:hover td { background: rgba(255,255,255,0.02); }
-        .dark-mode .modal-header, .dark-mode .modal-footer, .dark-mode .highlight, .dark-mode .module-item { background: rgba(255,255,255,0.02); }
-        .dark-mode .input-wrapper input, .dark-mode .input-wrapper select { 
-          background: rgba(15, 23, 42, 0.6); 
-          color: white; 
-          border-color: rgba(255, 255, 255, 0.1); 
-        }
-        .dark-mode .input-wrapper input:focus, .dark-mode .input-wrapper select:focus { 
-          border-color: var(--primary); 
-          background: rgba(15, 23, 42, 0.8); 
-        }
-        .dark-mode select option {
-          background: #1e293b;
-          color: white;
-        }
-        .dark-mode .subtitle { color: #94a3b8; }
-        .dark-mode .action-btn { background: rgba(255,255,255,0.05); color: #cbd5e1; border-color: rgba(255,255,255,0.1); }
-        .dark-mode .action-btn:hover { background: rgba(255,255,255,0.1); }
-      `}</style>
     </div>
   );
 }
+

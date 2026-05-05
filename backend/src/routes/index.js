@@ -12,6 +12,7 @@ const activityRoutes = require('./activity.routes');
 
 const driverRoutes = require('./driver.routes');
 const vehicleRoutes = require('./vehicle.routes');
+const supportRoutes = require('./support.routes');
 
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
@@ -23,5 +24,6 @@ router.use('/tasks', taskRoutes);
 router.use('/activity', activityRoutes);
 router.use('/drivers', driverRoutes);
 router.use('/vehicles', vehicleRoutes);
+router.use('/support', supportRoutes);
 
 module.exports = router;

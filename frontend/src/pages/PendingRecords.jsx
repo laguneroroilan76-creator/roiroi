@@ -2,13 +2,29 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { 
+  FileText, 
+  Search, 
+  Filter, 
+  Clock, 
+  User, 
+  CheckCircle, 
+  ArrowRight, 
+  Layers,
+  ChevronRight,
+  ClipboardList,
+  Inbox
+} from 'lucide-react';
 
 export default function PendingRecords() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState('All');
   const navigate = useNavigate();
   const { showToast } = useToast();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isDarkMode = document.body.classList.contains('dark-mode');
 
   useEffect(() => {
     fetchData();
@@ -95,111 +111,128 @@ export default function PendingRecords() {
     }
   };
 
+  const filteredRecords = records.filter(r => {
+    const matchesSearch = r.requestorName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          r.author?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = filterType === 'All' || r.docType === filterType;
+    return matchesSearch && matchesType;
+  });
+
+  if (loading) return <div className="pending-records-page" style={{ padding: '3rem' }}>Loading pending documents...</div>;
+
   return (
-    <div className="pending-records-page" style={{ padding: '3rem' }}>
-      <header style={{ marginBottom: '3rem' }}>
-        <h1 style={{ fontSize: '2.5rem', fontWeight: '800', color: 'var(--text-main)', letterSpacing: '-1px' }}>
-             Pending Approvals
-        </h1>
-        <p style={{ color: 'var(--text-dim)', fontSize: '1.1rem', marginTop: '0.5rem', fontWeight: '500' }}>
-            Review and take action on documents awaiting your approval.
-        </p>
+    <div className={`pending-records-page ${isDarkMode ? 'dark-mode' : ''}`} style={{ padding: '2rem 3rem' }}>
+      <header className="page-header" style={{ marginBottom: '3rem' }}>
+        <div className="header-left">
+          <div className="title-area" style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
+            <div className="icon-box" style={{ background: 'rgba(37, 99, 235, 0.1)', color: 'var(--primary)', padding: '12px', borderRadius: '16px' }}>
+              <ClipboardList size={32} strokeWidth={2.5} />
+            </div>
+            <div>
+              <h1 style={{ fontSize: '2.5rem', fontWeight: '800', margin: 0 }}>Pending Approvals</h1>
+            </div>
+          </div>
+        </div>
       </header>
 
-      {loading ? (
-        <div style={{ color: 'var(--text-dim)' }}>Loading pending documents...</div>
-      ) : records.length > 0 ? (
-        <div className="grid-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '2rem' }}>
-          {records.map(record => (
-            <div key={`${record.docType}-${record.id}`} className="pending-card glass" onClick={() => handleReview(record)} style={{ 
-                padding: 0, 
-                borderRadius: '24px', 
-                border: '1px solid var(--glass-border)',
-                background: 'var(--card-bg)',
-                cursor: 'pointer',
-                transition: 'all 0.3s',
-                display: 'flex',
-                flexDirection: 'column',
-                overflow: 'hidden'
-            }}>
-                <div style={{ padding: '2rem', flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
-                        <span className={`type-badge ${record.docType}`} style={{ 
-                            fontSize: '0.65rem', 
-                            fontWeight: '900', 
-                            padding: '6px 14px', 
-                            borderRadius: '100px',
-                            color: record.docType === 'TRIP_TICKET' ? '#818cf8' : (record.docType === 'PRF' ? '#10b981' : '#f59e0b'),
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.5px',
-                            background: record.docType === 'TRIP_TICKET' ? 'rgba(99, 102, 241, 0.1)' : (record.docType === 'PRF' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)'),
-                            border: `1px solid ${record.docType === 'TRIP_TICKET' ? 'rgba(99, 102, 241, 0.2)' : (record.docType === 'PRF' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)')}`
-                        }}>
-                            {record.displayType}
-                        </span>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontWeight: '600' }}>
-                            {new Date(record.createdAt).toLocaleDateString()}
-                        </span>
+      <div className="toolbar-glass">
+        <div className="search-box-premium">
+          <Search size={18} className="search-icon" />
+          <input 
+            type="text" 
+            placeholder="Search by requestor or author..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div className="filter-group-premium">
+          <div className="filter-item-premium">
+            <Filter size={16} />
+            <select value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+              <option value="All">All Document Types</option>
+              <option value="TRIP_TICKET">Trip Tickets (TT)</option>
+              <option value="PRF">Purchase Requests (PRF)</option>
+              <option value="RFP">Payment Requests (RFP)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div className="table-container-glass">
+        <table className="corporate-table">
+          <thead>
+            <tr>
+              <th>Document Details</th>
+              <th>Submitted By</th>
+              <th>Current Status</th>
+              <th>Submission Date</th>
+              <th style={{ textAlign: 'right' }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredRecords.map(record => (
+              <tr key={`${record.docType}-${record.id}`} onClick={() => handleReview(record)} style={{ cursor: 'pointer' }}>
+                <td>
+                  <div className="cell-document">
+                    <div className="cell-icon-box">
+                      <FileText size={20} />
                     </div>
-
-                    <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.4rem', color: 'var(--text-main)', fontWeight: '800' }}>
-                        {record.requestorName}
-                    </h3>
-                    
-                    <p style={{ fontSize: '0.9rem', color: 'var(--text-dim)', marginBottom: '1.5rem' }}>
-                        Submitted by: <strong style={{ color: 'var(--text-main)' }}>{record.author?.name || 'User'}</strong>
-                    </p>
-                </div>
-
-                <div style={{ 
-                    padding: '1.2rem 2rem', 
-                    background: 'rgba(37, 99, 235, 0.05)', 
-                    borderTop: '1px solid var(--glass-border)',
-                    marginTop: 'auto'
-                }}>
-                    <button 
-                        className="review-btn" 
-                        onClick={(e) => { e.stopPropagation(); handleReview(record); }}
-                        style={{ 
-                            width: '100%', 
-                            padding: '12px', 
-                            borderRadius: '12px', 
-                            border: 'none', 
-                            background: 'var(--primary)', 
-                            color: 'white', 
-                            fontWeight: '800', 
-                            cursor: 'pointer',
-                            fontSize: '0.85rem',
-                            letterSpacing: '0.5px',
-                            boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
-                            transition: '0.3s'
-                        }}
-                    >
-                        {user?.role === 'Admin' || user?.canApprove ? 'REVIEW & APPROVAL' : 'REVIEW DOCUMENT'}
+                    <div>
+                      <div className="cell-text-main">{record.requestorName}</div>
+                      <div className="cell-text-sub">
+                        {record.displayType} #{record.id.toString().padStart(4, '0')}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800 }}>
+                      {record.author?.name?.[0] || 'U'}
+                    </div>
+                    <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)' }}>{record.author?.name || 'User'}</span>
+                  </div>
+                </td>
+                <td>
+                  <span className="status-pill-premium" style={{ 
+                    background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b'
+                  }}>
+                    <Clock size={12} /> {record.status?.toUpperCase() || 'PENDING'}
+                  </span>
+                </td>
+                <td>
+                  <div style={{ fontSize: '0.9rem', color: 'var(--text-dim)', fontWeight: 600 }}>
+                    {new Date(record.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </div>
+                </td>
+                <td style={{ textAlign: 'right' }}>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <button className="action-btn-premium primary" onClick={(e) => { e.stopPropagation(); handleReview(record); }}>
+                      REVIEW <ArrowRight size={14} />
                     </button>
-                </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="empty-state glass" style={{ padding: '6rem 3rem', borderRadius: '30px', textAlign: 'center', border: '1px dashed var(--glass-border)', background: 'var(--card-bg)' }}>
-            <h2 style={{ color: 'var(--text-main)', fontSize: '2rem', fontWeight: '800' }}>All caught up!</h2>
-            <p style={{ color: 'var(--text-dim)', fontSize: '1.1rem', marginTop: '1rem' }}>No documents are currently pending approval.</p>
-        </div>
-      )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {filteredRecords.length === 0 && (
+              <tr>
+                <td colSpan="5" style={{ textAlign: 'center', padding: '6rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem', color: 'var(--text-dim)' }}>
+                    <div style={{ padding: '2rem', background: 'var(--primary-light)', borderRadius: '50%', color: 'var(--primary)', opacity: 0.8 }}>
+                      <Inbox size={64} strokeWidth={1} />
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <h2 style={{ fontSize: '1.8rem', fontWeight: 800, margin: '0 0 0.5rem', color: 'var(--text-main)' }}>All caught up!</h2>
+                      <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 500 }}>No documents matching your criteria are pending approval.</p>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
-      <style>{`
-        .pending-card:hover {
-            transform: translateY(-8px);
-            border-color: var(--primary) !important;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.2) !important;
-        }
-        .review-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4) !important;
-            filter: brightness(1.1);
-        }
-      `}</style>
     </div>
   );
 }

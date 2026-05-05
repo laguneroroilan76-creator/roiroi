@@ -5,9 +5,9 @@ export default function Sidebar({ isOpen, onClose }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [showForms, setShowForms] = useState(false);
-  const [showApproved, setShowApproved] = useState(false);
 
   let user = null;
+
   try {
     const saved = localStorage.getItem('user');
     user = saved ? JSON.parse(saved) : null;
@@ -39,16 +39,12 @@ export default function Sidebar({ isOpen, onClose }) {
       setShowForms(true);
     }
 
-    if ((location.pathname === '/approved' && !location.state?.isInbox) || (isReadOnly && !isReview && !isArchived && !location.state?.isInbox)) {
-      setShowApproved(true);
-    }
-
     // Reset dropdowns if we are in review or archived view to keep sidebar clean
     if (isReview || isArchived) {
       setShowForms(false);
-      setShowApproved(false);
     }
   }, [location.pathname, location.state]);
+
 
   const handleLogout = () => {
     localStorage.clear();
@@ -123,40 +119,14 @@ export default function Sidebar({ isOpen, onClose }) {
         )}
 
         {!isGuard && (
-          <div className="nav-group">
-            <div
-              className={`nav-item ${(isActive('/approved') && !location.state?.isInbox) || (['/trip-ticket', '/prf', '/rfp'].includes(location.pathname) && location.state?.readOnly && !location.state?.isReview && !location.state?.isArchived && !location.state?.isInbox) ? 'active' : ''}`}
-              onClick={() => setShowApproved(!showApproved)}
-            >
-              Approved Records
-              <span className={`chevron ${showApproved ? 'open' : ''}`}>›</span>
-            </div>
-            {showApproved && (
-              <div className="sub-nav">
-                <div
-                  className={`sub-item ${location.state?.filter === 'TRIP_TICKET' ? 'active' : ''}`}
-                  onClick={() => { navigate('/approved', { state: { filter: 'TRIP_TICKET' } }); onClose(); }}
-                >
-                  Trip Tickets
-                </div>
-                <div
-                  className={`sub-item ${location.state?.filter === 'PRF' ? 'active' : ''}`}
-                  onClick={() => { navigate('/approved', { state: { filter: 'PRF' } }); onClose(); }}
-                >
-                  Purchase Requisition (PRF)
-                </div>
-                {!isGuard && (
-                  <div
-                    className={`sub-item ${location.state?.filter === 'RFP' && !location.state?.isInbox ? 'active' : ''}`}
-                    onClick={() => { navigate('/approved', { state: { filter: 'RFP' } }); onClose(); }}
-                  >
-                    Request For Payment (RFP)
-                  </div>
-                )}
-              </div>
-            )}
+          <div 
+            className={`nav-item ${(isActive('/approved') && !location.state?.isInbox) || (['/trip-ticket', '/prf', '/rfp'].includes(location.pathname) && location.state?.readOnly && !location.state?.isReview && !location.state?.isArchived && !location.state?.isInbox) ? 'active' : ''}`}
+            onClick={() => { navigate('/approved'); onClose(); }}
+          >
+            Approved Records
           </div>
         )}
+
 
         {(isAdmin || isDriver) && !isAccounting && (
           <div className={`nav-item ${isActive('/driver-schedule') ? 'active' : ''}`} onClick={() => { navigate('/driver-schedule'); onClose(); }}>
@@ -167,6 +137,12 @@ export default function Sidebar({ isOpen, onClose }) {
         {!isGuard && canView('history') && (
           <div className={`nav-item ${isActive('/history') ? 'active' : ''}`} onClick={() => { navigate('/history'); onClose(); }}>
             {user?.canApprove ? "History & Activity" : "My Requests"}
+          </div>
+        )}
+
+        {!isGuard && canView('support') && (
+          <div className={`nav-item ${isActive('/support') ? 'active' : ''}`} onClick={() => { navigate('/support'); onClose(); }}>
+            Support Log
           </div>
         )}
 

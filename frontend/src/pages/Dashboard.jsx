@@ -48,11 +48,11 @@ export default function Dashboard() {
         const allDocs = [...tickets, ...prfs, ...rrfs];
 
         setStats({
-            approved: allDocs.filter(d => d.status === 'Approved' || d.status === 'Completed').length,
-            pending: allDocs.filter(d => d.status === 'Pending' || !d.status).length
+            approved: allDocs.filter(d => d.status === 'Approved' || d.status === 'Completed' || d.status === 'DEPARTED' || d.status === 'ARRIVED').length,
+            pending: allDocs.filter(d => d.status === 'Pending' || d.status === 'Pending Endorsement' || d.status === 'Pending Approval' || !d.status).length
         });
 
-        setTripData(processChartData(tickets.filter(d => d.status === 'Approved' || d.status === 'Completed'), 'requestorName'));
+        setTripData(processChartData(tickets.filter(d => d.status === 'Approved' || d.status === 'Completed' || d.status === 'DEPARTED' || d.status === 'ARRIVED'), 'requestorName'));
         setPrfData(processChartData(prfs.filter(d => d.status === 'Approved' || d.status === 'Completed'), 'requestor'));
         setRrfData(processChartData(rrfs.filter(d => d.status === 'Approved' || d.status === 'Completed'), 'requestor'));
 
@@ -143,7 +143,7 @@ export default function Dashboard() {
             {/* PRF Chart */}
             <div className={`section-card ${isDarkMode ? 'dark-box' : 'light-box'}`}>
                 <div className="section-header">
-                    <h3>Request For Payment (RFP)</h3>
+                    <h3>Purchase Requisition (PRF)</h3>
                 </div>
                 <div className="chart-container">
                     {prfData.length > 0 ? (
@@ -171,7 +171,7 @@ export default function Dashboard() {
             {/* RRF Chart */}
             <div className={`section-card ${isDarkMode ? 'dark-box' : 'light-box'}`}>
                 <div className="section-header">
-                    <h3>Purchase Requisition (PRF)</h3>
+                    <h3>Request For Payment (RFP)</h3>
                 </div>
                 <div className="chart-container">
                     {rrfData.length > 0 ? (
