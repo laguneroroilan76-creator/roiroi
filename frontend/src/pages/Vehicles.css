@@ -40,7 +40,7 @@
   font-size: 0.95rem;
   font-weight: 700;
   background: var(--primary);
-  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 4px 15px rgba(15, 23, 42, 0.2);
 }
 
 .add-btn.btn span {
@@ -87,7 +87,7 @@
 }
 
 .vehicles-table tr:hover td {
-  background: rgba(37, 99, 235, 0.02);
+  background: rgba(15, 23, 42, 0.02);
 }
 
 /* Cell Components */
@@ -199,7 +199,7 @@
 }
 
 .action-link.delete:hover {
-  background: #ef4444;
+  background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1;
   color: white;
 }
 
@@ -268,7 +268,7 @@
 }
 
 .close-btn:hover {
-  background: #ef4444;
+  background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1;
   color: white;
   border-color: #ef4444;
 }
@@ -415,7 +415,7 @@
   background: rgba(255, 255, 255, 0.02);
 }
 
-.dark-mode .action-link.edit { background: rgba(37, 99, 235, 0.15); }
+.dark-mode .action-link.edit { background: rgba(15, 23, 42, 0.15); }
 .dark-mode .action-link.delete { background: rgba(239, 68, 68, 0.15); }
 
 @keyframes fadeIn {

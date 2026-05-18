@@ -18,7 +18,7 @@ const createPRF = async (userId, prfData) => {
       verifiedBy: rest.verifiedBy || null,
       notedBy: rest.notedBy || null,
       approvedBy: rest.approvedBy || null,
-      status: rest.status || 'Pending',
+      status: rest.status || 'Pending Verification',
       requestor: rest.requestor || null,
       authorId: userId ? parseInt(userId) : null,
       layout: layout || JSON.stringify(prfData)

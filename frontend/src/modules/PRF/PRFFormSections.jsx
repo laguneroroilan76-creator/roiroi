@@ -138,7 +138,7 @@ export const SignatureSection = ({ formData, handleChange, isFieldDisabled }) =>
         {isFieldDisabled('preparedBy') ? (
           <div className="sig-value-display">{formData.preparedBy}</div>
         ) : (
-          <input type="text" name="preparedBy" value={formData.preparedBy} onChange={handleChange} />
+          <input type="text" name="preparedBy" value={formData.preparedBy} readOnly className="read-only-sig" />
         )}
       </div>
       <label className="sig-label">Requested By</label>
@@ -148,7 +148,7 @@ export const SignatureSection = ({ formData, handleChange, isFieldDisabled }) =>
         {isFieldDisabled('verifiedBy') ? (
           <div className="sig-value-display">{formData.verifiedBy}</div>
         ) : (
-          <input type="text" name="verifiedBy" value={formData.verifiedBy} onChange={handleChange} />
+          <input type="text" name="verifiedBy" value={formData.verifiedBy} readOnly className="read-only-sig" />
         )}
       </div>
       <label className="sig-label">Verified By</label>
@@ -158,7 +158,7 @@ export const SignatureSection = ({ formData, handleChange, isFieldDisabled }) =>
         {isFieldDisabled('approvedBy') ? (
           <div className="sig-value-display">{formData.approvedBy}</div>
         ) : (
-          <input type="text" name="approvedBy" value={formData.approvedBy} onChange={handleChange} />
+          <input type="text" name="approvedBy" value={formData.approvedBy} readOnly className="read-only-sig" />
         )}
       </div>
       <label className="sig-label">Approved By</label>

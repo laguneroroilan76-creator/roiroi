@@ -140,7 +140,7 @@
   text-transform: uppercase;
 }
 
-.ticket-preview-badge.ongoing { background: rgba(99, 102, 241, 0.15); color: #6366f1; }
+.ticket-preview-badge.ongoing { background: rgba(15, 23, 42, 0.15); color: #0f172a; }
 .ticket-preview-badge.completed { background: rgba(16, 185, 129, 0.15); color: #10b981; }
 .ticket-preview-badge.approved { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
 
@@ -267,7 +267,7 @@
   transition: all 0.2s;
 }
 
-.action-btn-mini.archive { background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); color: #f59e0b; }
+.action-btn-mini.archive { background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); color: #334155; }
 .action-btn-mini.cancel { background: rgba(249, 115, 22, 0.1); border: 1px solid rgba(249, 115, 22, 0.2); color: #f97316; }
 
 /* Print Overrides */

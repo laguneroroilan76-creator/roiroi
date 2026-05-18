@@ -5,7 +5,8 @@ const ThemeContext = createContext();
 export function ThemeProvider({ children }) {
   const [themeColor, setThemeColor] = useState(() => {
     const user = JSON.parse(localStorage.getItem('user'));
-    return user?.themeColor || '#2563eb';
+    const color = user?.themeColor || '#0f172a';
+    return color === '#6366f1' ? '#0f172a' : color;
   });
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -59,7 +60,7 @@ export function ThemeProvider({ children }) {
       document.documentElement.style.setProperty('--bg-gradient', dynamicBg);
     } else {
       document.documentElement.style.setProperty('--text-main', '#0f172a');
-      document.documentElement.style.setProperty('--text-dim', '#64748b');
+      document.documentElement.style.setProperty('--text-dim', '#475569');
       document.documentElement.style.setProperty('--glass', 'rgba(255, 255, 255, 0.7)');
       document.documentElement.style.setProperty('--glass-border', 'rgba(0, 0, 0, 0.05)');
       document.documentElement.style.setProperty('--card-bg', '#ffffff');

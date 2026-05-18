@@ -2,7 +2,6 @@ import { useState } from 'react';
 import api from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
-
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,7 +16,6 @@ export default function Login() {
 
     try {
       const response = await api.post(`/auth/login`, { email, password });
-
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
       navigate('/dashboard');
@@ -29,205 +27,271 @@ export default function Login() {
   };
 
   return (
-    <div className="login-page-wrapper">
-      <div className="login-glass-card">
-        <div className="auth-header">
-          <div className="auth-logo-box" style={{ background: 'transparent', boxShadow: 'none' }}>
-            <img src="/HDI Primary Logo .png" alt="HDI Logo" style={{ width: '180px', height: 'auto' }} />
-          </div>
-          <h1>Welcome Back</h1>
-          <p>Sign in to <span>HDI</span></p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="auth-form">
-          <div className="input-group">
-            <label>Username or Email</label>
-            <div className="input-wrapper">
-              <span className="input-icon">📧</span>
+    <div className="login-container">
+      <div className="login-card">
+        <div className="login-form-section">
+          <form onSubmit={handleSubmit} className="login-form">
+            <div style={{ height: '1rem' }}></div>
+            
+            <div className="form-group">
+              <label htmlFor="email">Email</label>
               <input
+                id="email"
                 type="text"
-                placeholder="admin@hdi.com"
+                placeholder="m@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
-          </div>
 
-          <div className="input-group">
-            <label>Security Password</label>
-            <div className="input-wrapper">
-              <span className="input-icon">🔒</span>
+            <div className="form-group">
+              <div className="password-header">
+                <label htmlFor="password">Password</label>
+              </div>
               <input
+                id="password"
                 type="password"
-                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
             </div>
-          </div>
 
-          {error && <div className="error-banner">
-            <span className="error-icon">⚠️</span>
-            {error}
-          </div>}
+            {error && <div className="error-message">{error}</div>}
 
-          <button type="submit" className="login-submit-btn" disabled={loading}>
-            {loading ? <div className="spinner-small" /> : (
-              <>
-                <span>Access Dashboard</span>
-                <span className="btn-arrow">→</span>
-              </>
-            )}
-          </button>
-        </form>
+            <button type="submit" className="submit-btn" disabled={loading}>
+              {loading ? 'Logging in...' : 'Login'}
+            </button>
 
-        <div className="auth-footer">
-          <p>© 2026 HDI • Internal Portal</p>
+            <div className="separator">
+              <span>Or continue with</span>
+            </div>
+
+            <div className="social-buttons">
+              <button type="button" className="social-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 21 21" style={{ width: '1.25rem', height: '1.25rem', marginRight: '0.5rem' }}>
+                  <path fill="#f25022" d="M0 0h10v10H0z"/>
+                  <path fill="#7fba00" d="M11 0h10v10H11z"/>
+                  <path fill="#00a4ef" d="M0 11h10v10H0z"/>
+                  <path fill="#ffb900" d="M11 11h10v10H11z"/>
+                </svg>
+                <span style={{ fontWeight: 600 }}>Outlook</span>
+              </button>
+            </div>
+
+          </form>
+        </div>
+
+        <div className="login-image-section">
+          <img src="/HDI Primary Logo .png" alt="HDI Logo" className="right-side-logo" />
         </div>
       </div>
 
+
       <style>{`
-        .login-page-wrapper {
-          display: flex; align-items: center; justify-content: center;
-          min-height: 100vh; 
+        .login-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: 100vh;
+          background-color: #64748b;
+          padding: 1.5rem;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        .login-card {
+          display: flex;
+          flex-direction: column;
+          width: 100%;
+          max-width: 900px;
+          background: #ffffff;
+          border-radius: 12px;
+          overflow: hidden;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+          border: 1px solid #e2e8f0;
+        }
+
+        @media (min-width: 768px) {
+          .login-card {
+            flex-direction: row;
+          }
+        }
+
+        .login-form-section {
+          flex: 1;
+          padding: 2rem;
+        }
+
+        @media (min-width: 768px) {
+          .login-form-section {
+            padding: 3rem;
+          }
+        }
+
+        .login-image-section {
+          display: none;
+          flex: 1;
           background: #f8fafc;
-          background: radial-gradient(circle at top left, #ffffff 0%, #f1f5f9 100%);
-          padding: 2rem; position: relative; overflow: hidden;
-          font-family: 'Inter', -apple-system, sans-serif;
+          position: relative;
         }
 
-        /* Ambient background blobs */
-        .login-page-wrapper::before {
-          content: ''; position: absolute; top: -15%; right: -10%; width: 600px; height: 600px;
-          background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
-          filter: blur(80px); animation: float 20s infinite alternate;
-        }
-        .login-page-wrapper::after {
-          content: ''; position: absolute; bottom: -20%; left: -10%; width: 500px; height: 500px;
-          background: radial-gradient(circle, rgba(139, 92, 246, 0.05) 0%, transparent 70%);
-          filter: blur(100px); animation: float 15s infinite alternate-reverse;
+        @media (min-width: 768px) {
+          .login-image-section {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
         }
 
-        @keyframes float {
-            from { transform: translate(0, 0); }
-            to { transform: translate(50px, 50px); }
+        .right-side-logo {
+          width: 50%;
+          max-width: 300px;
+          height: auto;
+          object-fit: contain;
         }
 
-        .login-glass-card { 
-            max-width: 480px; width: 100%; 
-            padding: 4rem 3.5rem; 
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.8);
-            border-radius: 40px;
-            z-index: 10;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08);
-            animation: fadeInScale 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        .login-form {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+          max-width: 400px;
+          margin: 0 auto;
         }
 
-        @keyframes fadeInScale {
-            from { opacity: 0; transform: scale(0.95) translateY(20px); }
-            to { opacity: 1; transform: scale(1) translateY(0); }
-        }
-        
-        .auth-logo-box { 
-            width: 70px; height: 70px; 
-            background: rgba(255, 255, 255, 0.05); 
-            border-radius: 20px; 
-            display: flex; align-items: center; justify-content: center; 
-            margin: 0 auto 2rem;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .logo-icon { font-size: 2.5rem; filter: drop-shadow(0 0 15px rgba(99, 102, 241, 0.5)); }
 
-        .auth-header { text-align: center; margin-bottom: 3rem; }
-        .auth-header h1 { font-size: 3rem; font-weight: 800; color: #0f172a; letter-spacing: -2px; margin-bottom: 0.5rem; }
-        .auth-header p { font-size: 1.1rem; color: #64748b; font-weight: 500; }
-        .auth-header p span { color: #4f46e5; font-weight: 700; }
 
-        .auth-form { display: flex; flex-direction: column; gap: 1.5rem; }
-        
-        .input-group { display: flex; flex-direction: column; gap: 0.7rem; }
-        .input-group label { font-size: 0.85rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 1px; padding-left: 4px; }
-        
-        .input-wrapper { 
-            position: relative; 
-            display: flex; align-items: center;
-        }
-        .input-icon { position: absolute; left: 18px; font-size: 1.1rem; opacity: 0.5; }
-
-        .input-group input { 
-            width: 100%; 
-            padding: 1.2rem 1.2rem 1.2rem 3.2rem;
-            background: #f1f5f9;
-            border: 1px solid #e2e8f0;
-            border-radius: 18px;
-            color: #1e293b;
-            font-size: 1rem;
-            font-weight: 500;
-            transition: all 0.3s;
-        }
-        .input-group input:focus { 
-            background: white;
-            border-color: #6366f1;
-            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
-            outline: none;
+        .form-group {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
         }
 
-        .error-banner {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.2);
-            color: #f87171;
-            padding: 1rem;
-            border-radius: 15px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            display: flex; align-items: center; gap: 10px;
-            animation: shake 0.4s ease-in-out;
+        .form-group label {
+          font-size: 0.875rem;
+          font-weight: 500;
+          color: #0f172a;
         }
 
-        .login-submit-btn {
-            margin-top: 1rem;
-            padding: 1.2rem;
-            border-radius: 18px;
-            border: none;
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-            color: white;
-            font-size: 1.1rem;
-            font-weight: 700;
-            cursor: pointer;
-            display: flex; align-items: center; justify-content: center; gap: 12px;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.4);
-        }
-        .login-submit-btn:hover:not(:disabled) { 
-            transform: translateY(-3px);
-            box-shadow: 0 15px 30px -5px rgba(99, 102, 241, 0.5);
-            filter: brightness(1.1);
-        }
-        .login-submit-btn:active:not(:disabled) { transform: translateY(1px); }
-        .login-submit-btn:disabled { opacity: 0.6; cursor: not-allowed; filter: grayscale(0.5); }
-        
-        .btn-arrow { font-size: 1.2rem; transition: transform 0.3s; }
-        .login-submit-btn:hover .btn-arrow { transform: translateX(5px); }
-
-        .auth-footer { text-align: center; margin-top: 3rem; }
-        .auth-footer p { font-size: 0.8rem; color: #475569; font-weight: 500; }
-
-        .spinner-small { width: 22px; height: 22px; border: 3px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-6px); }
-            75% { transform: translateX(6px); }
+        .password-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
         }
 
-        @media (max-width: 480px) {
-            .login-glass-card { padding: 3rem 2rem; border-radius: 30px; }
-            .auth-header h1 { font-size: 2.2rem; }
+        .forgot-link {
+          font-size: 0.875rem;
+          color: #0f172a;
+          text-decoration: none;
+        }
+        .forgot-link:hover {
+          text-decoration: underline;
+          text-underline-offset: 2px;
+        }
+
+        .form-group input {
+          width: 100%;
+          padding: 0.5rem 0.75rem;
+          font-size: 0.875rem;
+          border: 1px solid #e2e8f0;
+          border-radius: 6px;
+          outline: none;
+          color: #0f172a;
+          transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        .form-group input:focus {
+          border-color: #0f172a;
+          box-shadow: 0 0 0 1px #0f172a;
+        }
+
+        .submit-btn {
+          width: 100%;
+          background: #0f172a;
+          color: white;
+          border: none;
+          padding: 0.625rem;
+          border-radius: 6px;
+          font-size: 0.875rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+
+        .submit-btn:hover:not(:disabled) {
+          background: #1e293b;
+        }
+
+        .submit-btn:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+        }
+
+        .separator {
+          position: relative;
+          text-align: center;
+          margin: 1rem 0;
+        }
+
+        .separator::before {
+          content: "";
+          position: absolute;
+          top: 50%;
+          left: 0;
+          right: 0;
+          height: 1px;
+          background: #e2e8f0;
+          z-index: 1;
+        }
+
+        .separator span {
+          position: relative;
+          z-index: 2;
+          background: white;
+          padding: 0 0.5rem;
+          color: #64748b;
+          font-size: 0.75rem;
+        }
+
+        .social-buttons {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 1rem;
+        }
+
+        .social-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0.5rem;
+          background: white;
+          border: 1px solid #e2e8f0;
+          border-radius: 6px;
+          cursor: pointer;
+          color: #0f172a;
+          transition: background 0.2s;
+        }
+
+        .social-btn:hover {
+          background: #f8fafc;
+        }
+
+        .social-btn svg {
+          width: 1.25rem;
+          height: 1.25rem;
+        }
+
+
+
+        .error-message {
+          color: #ef4444;
+          font-size: 0.875rem;
+          text-align: center;
+          background: #fef2f2;
+          padding: 0.5rem;
+          border-radius: 6px;
+          border: 1px solid #fee2e2;
         }
       `}</style>
     </div>

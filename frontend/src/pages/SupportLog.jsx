@@ -17,12 +17,17 @@ export default function SupportLog() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterPriority, setFilterPriority] = useState('All');
-  const [formData, setFormData] = useState({ subject: '', description: '', priority: 'Medium', category: 'Others' });
+  const [formData, setFormData] = useState({ subject: '', description: '', priority: 'Medium', category: 'Others', resolutionNotes: '' });
+  const [isResolveModalOpen, setIsResolveModalOpen] = useState(false);
+  const [resolvingTicket, setResolvingTicket] = useState(null);
+  const [resolveNote, setResolveNote] = useState('');
 
   const { showToast } = useToast();
   const { isDarkMode } = useTheme();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isIT = user.role === 'IT' || user.role === 'Admin';
+  const permissions = typeof user.permissions === 'string' ? JSON.parse(user.permissions) : (user.permissions || {});
+  const isIT = user.role === 'IT' || user.role === 'Admin' || permissions?.support?.view || permissions?.support?.edit;
+  const canManageSupport = user.role === 'IT' || user.role === 'Admin' || permissions?.support?.edit;
 
   useEffect(() => {
     fetchTickets();
@@ -48,11 +53,12 @@ export default function SupportLog() {
         description: ticket.description || '',
         priority: ticket.priority,
         category: ticket.category,
-        status: ticket.status
+        status: ticket.status,
+        resolutionNotes: ticket.resolutionNotes || ''
       });
     } else {
       setEditingTicket(null);
-      setFormData({ subject: '', description: '', priority: 'Medium', category: 'Others' });
+      setFormData({ subject: '', description: '', priority: 'Medium', category: 'Others', resolutionNotes: '' });
     }
     setIsModalOpen(true);
   };
@@ -85,11 +91,23 @@ export default function SupportLog() {
     }
   };
 
-  const handleResolve = async (ticket) => {
-    if (!window.confirm('Mark this ticket as resolved?')) return;
+  const handleResolve = (ticket) => {
+    setResolvingTicket(ticket);
+    setResolveNote('');
+    setIsResolveModalOpen(true);
+  };
+
+  const confirmResolve = async (e) => {
+    e.preventDefault();
+    if (!resolvingTicket) return;
     try {
-      await api.put(`/support/${ticket.id}`, { status: 'Resolved' });
+      await api.put(`/support/${resolvingTicket.id}`, { 
+        status: 'Resolved', 
+        resolutionNotes: resolveNote 
+      });
       showToast('Ticket marked as resolved', 'success');
+      setIsResolveModalOpen(false);
+      setResolvingTicket(null);
       fetchTickets();
     } catch (err) {
       showToast('Error resolving ticket', 'error');
@@ -99,8 +117,8 @@ export default function SupportLog() {
   const getStatusColor = (status) => {
     switch (status) {
       case 'Resolved': return '#10b981';
-      case 'In Progress': return '#3b82f6';
-      default: return '#f59e0b';
+      case 'In Progress': return '#1e293b';
+      default: return '#334155';
     }
   };
 
@@ -122,12 +140,8 @@ export default function SupportLog() {
       <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
         <div className="header-left">
           <div className="title-area" style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
-            <div className="icon-box" style={{ background: 'var(--primary)', color: 'white', padding: '12px', borderRadius: '16px', boxShadow: '0 8px 16px rgba(37, 99, 235, 0.2)' }}>
-              <LifeBuoy size={32} strokeWidth={2.5} />
-            </div>
             <div>
               <h1 style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0 }}>Support Log</h1>
-              <p className="subtitle" style={{ color: 'var(--text-dim)', margin: 0, fontWeight: 500 }}>{isIT ? 'Manage system-wide help requests' : 'Track your help requests to IT'}</p>
             </div>
           </div>
         </div>
@@ -199,14 +213,14 @@ export default function SupportLog() {
                     </div>
                   </td>
                   <td>
-                    <span style={{ fontSize: '0.7rem', fontStyle: 'normal', fontWeight: 800, background: 'var(--primary-light)', color: 'var(--primary)', padding: '5px 12px', borderRadius: '10px', border: '1px solid rgba(37, 99, 235, 0.1)' }}>
+                    <span style={{ fontSize: '0.7rem', fontStyle: 'normal', fontWeight: 800, background: 'var(--primary-light)', color: 'var(--primary)', padding: '5px 12px', borderRadius: '10px', border: '1px solid rgba(15, 23, 42, 0.1)' }}>
                       {ticket.category}
                     </span>
                   </td>
                   <td>
                     <span className="status-pill-premium" style={{ 
                       background: ticket.priority === 'Urgent' ? '#fef2f2' : (ticket.priority === 'High' ? '#fff7ed' : (ticket.priority === 'Medium' ? '#fffbeb' : '#f0fdf4')),
-                      color: ticket.priority === 'Urgent' ? '#ef4444' : (ticket.priority === 'High' ? '#f97316' : (ticket.priority === 'Medium' ? '#f59e0b' : '#10b981')),
+                      color: ticket.priority === 'Urgent' ? '#ef4444' : (ticket.priority === 'High' ? '#f97316' : (ticket.priority === 'Medium' ? '#334155' : '#10b981')),
                       border: '1px solid currentColor'
                     }}>
                       {ticket.priority}
@@ -232,8 +246,8 @@ export default function SupportLog() {
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'flex-end' }}>
-                      {isIT && ticket.status !== 'Resolved' && (
-                        <button className="action-btn-premium" onClick={() => handleResolve(ticket)} style={{ background: '#10b981', color: 'white', border: 'none' }}>
+                      {canManageSupport && ticket.status !== 'Resolved' && (
+                        <button className="action-btn-premium" onClick={() => handleResolve(ticket)} style={{ background: 'var(--primary)', color: '#ffffff' }}>
                           <CheckCircle2 size={16} />
                           <span>Resolve</span>
                         </button>
@@ -242,7 +256,7 @@ export default function SupportLog() {
                         {ticket.status === 'Resolved' ? <Eye size={16} /> : <Edit3 size={16} />}
                         <span>{ticket.status === 'Resolved' ? 'View' : 'Manage'}</span>
                       </button>
-                      {(isIT || ticket.status === 'Pending') && (
+                      {(canManageSupport || ticket.status === 'Pending') && (
                         <button className="action-btn-premium" onClick={() => handleDelete(ticket.id)} style={{ color: '#ef4444' }}>
                           <Trash2 size={16} />
                         </button>
@@ -292,7 +306,7 @@ export default function SupportLog() {
                     onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                     placeholder="Briefly describe the issue"
                     required
-                    disabled={editingTicket && (editingTicket.status === 'Resolved' || (!isIT && editingTicket.status !== 'Pending'))}
+                    disabled={editingTicket && (editingTicket.status === 'Resolved' || (!canManageSupport && editingTicket.status !== 'Pending'))}
                   />
                 </div>
                 <div className="grid-row">
@@ -301,7 +315,7 @@ export default function SupportLog() {
                     <select
                       value={formData.category}
                       onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      disabled={editingTicket && (editingTicket.status === 'Resolved' || (!isIT && editingTicket.status !== 'Pending'))}
+                      disabled={editingTicket && (editingTicket.status === 'Resolved' || (!canManageSupport && editingTicket.status !== 'Pending'))}
                     >
                       <option value="Hardware">Hardware</option>
                       <option value="Software">Software</option>
@@ -315,7 +329,7 @@ export default function SupportLog() {
                     <select
                       value={formData.priority}
                       onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                      disabled={editingTicket && (editingTicket.status === 'Resolved' || (!isIT && editingTicket.status !== 'Pending'))}
+                      disabled={editingTicket && (editingTicket.status === 'Resolved' || (!canManageSupport && editingTicket.status !== 'Pending'))}
                     >
                       <option value="Low">Low</option>
                       <option value="Medium">Medium</option>
@@ -331,17 +345,81 @@ export default function SupportLog() {
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Describe your request in detail..."
                     rows="5"
-                    disabled={editingTicket && (editingTicket.status === 'Resolved' || (!isIT && editingTicket.status !== 'Pending'))}
+                    disabled={editingTicket && (editingTicket.status === 'Resolved' || (!canManageSupport && editingTicket.status !== 'Pending'))}
                   ></textarea>
                 </div>
+
+                {editingTicket && editingTicket.status === 'Resolved' && (
+                  <div className="resolution-details-premium" style={{ marginTop: '1.5rem', padding: '1.5rem', background: 'var(--success-light)', borderRadius: '16px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                    <h3 style={{ margin: '0 0 1rem', display: 'flex', alignItems: 'center', gap: '8px', color: '#059669', fontSize: '1.1rem', fontWeight: 800 }}>
+                      <CheckCircle2 size={20} />
+                      Resolution Details
+                    </h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1rem' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: '4px' }}>Resolved By</label>
+                        <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{editingTicket.resolvedBy?.name || 'System'}</div>
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: '4px' }}>Resolved At</label>
+                        <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{new Date(editingTicket.resolvedAt).toLocaleString()}</div>
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: '4px' }}>Resolution Note / Reason</label>
+                      <div style={{ fontWeight: 600, color: 'var(--text-main)', lineHeight: 1.5, background: 'white', padding: '12px', borderRadius: '10px', border: '1px solid rgba(0,0,0,0.05)' }}>
+                        {editingTicket.resolutionNotes || 'No notes provided.'}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn-cancel" onClick={() => setIsModalOpen(false)}>Cancel</button>
-                {(!editingTicket || (editingTicket.status !== 'Resolved' && (isIT || editingTicket.status === 'Pending'))) && (
+                {(!editingTicket || (editingTicket.status !== 'Resolved' && (canManageSupport || editingTicket.status === 'Pending'))) && (
                   <button type="submit" className="btn-submit">
                     {editingTicket ? 'Update Ticket' : 'Submit Request'}
                   </button>
                 )}
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+
+      {isResolveModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content glass premium" style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <div className="modal-title">
+                <CheckCircle2 size={24} color="#10b981" />
+                <h2>Resolve Ticket</h2>
+              </div>
+              <button className="close-btn" onClick={() => setIsResolveModalOpen(false)}>×</button>
+            </div>
+            <form onSubmit={confirmResolve} className="support-form">
+              <div className="form-body">
+                <p style={{ color: 'var(--text-dim)', marginBottom: '1.5rem', fontWeight: 500 }}>
+                  Please provide a brief explanation or notes regarding the resolution of this request.
+                </p>
+                <div className="form-group">
+                  <label>Resolution Notes / Reason</label>
+                  <textarea
+                    value={resolveNote}
+                    onChange={(e) => setResolveNote(e.target.value)}
+                    placeholder="Enter resolution details..."
+                    rows="4"
+                    required
+                    autoFocus
+                  ></textarea>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn-cancel" onClick={() => setIsResolveModalOpen(false)}>Cancel</button>
+                <button type="submit" className="btn-submit" style={{ background: 'var(--primary)', color: '#ffffff' }}>
+                  Confirm Resolution
+                </button>
               </div>
             </form>
           </div>

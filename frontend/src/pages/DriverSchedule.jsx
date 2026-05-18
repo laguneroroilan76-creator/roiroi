@@ -101,7 +101,7 @@ export default function DriverSchedule() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
                     <span style={{
                       width: '10px', height: '10px', borderRadius: '50%',
-                      background: trip.dateTimeDeparture && !trip.dateTimeReturn ? '#6366f1' : (trip.dateTimeReturn ? '#10b981' : '#22c55e')
+                      background: trip.dateTimeDeparture && !trip.dateTimeReturn ? '#0f172a' : (trip.dateTimeReturn ? '#10b981' : '#22c55e')
                     }}></span>
                     <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>
                       {trip.dateTimeDeparture && !trip.dateTimeReturn ? 'DEPARTED' : (trip.dateTimeReturn ? 'ARRIVED' : 'APPROVED')}

@@ -30,7 +30,7 @@ export const FormHeader = ({ status, formData }) => {
         {status && (status !== 'Pending' || formData?.id) && (
           <div className="form-status" style={{ marginTop: '5px' }}>
             {isOngoing || status === 'DEPARTED' ? (
-              <span className="status-badge ongoing" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#6366f1', padding: '6px 16px', borderRadius: '100px', fontSize: '0.85rem', fontWeight: 900, border: '1px solid rgba(99, 102, 241, 0.3)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+              <span className="status-badge ongoing" style={{ background: 'rgba(15, 23, 42, 0.15)', color: '#0f172a', padding: '6px 16px', borderRadius: '100px', fontSize: '0.85rem', fontWeight: 900, border: '1px solid rgba(15, 23, 42, 0.3)', textTransform: 'uppercase', letterSpacing: '1px' }}>
                 DEPARTED
               </span>
             ) : (isCompleted || status === 'ARRIVED') ? (
@@ -233,19 +233,19 @@ export const SignatureSection = ({ formData, handleChange, isFieldDisabled, isRe
   <div className="form-section signature-section">
     <div className="sig-block">
       <div className="sig-line">
-        <input type="text" name="requestedBy" value={formData.requestedBy} onChange={handleChange} disabled={isFieldDisabled('requestedBy', isReadOnly)} placeholder={isFieldDisabled('requestedBy', isReadOnly) ? "" : "Name"} />
+        <input type="text" name="requestedBy" value={formData.requestedBy} readOnly className="read-only-sig" placeholder={isFieldDisabled('requestedBy', isReadOnly) ? "" : "Name"} />
       </div>
       <label>Requested By</label>
     </div>
     <div className="sig-block">
       <div className="sig-line">
-        <input type="text" name="endorsedBy" value={formData.endorsedBy} onChange={handleChange} disabled={isFieldDisabled('endorsedBy', isReadOnly)} placeholder="Name" />
+        <input type="text" name="endorsedBy" value={formData.endorsedBy} readOnly className="read-only-sig" placeholder="Name" />
       </div>
       <label>Endorsed By</label>
     </div>
     <div className="sig-block">
       <div className="sig-line">
-        <input type="text" name="approvedBy" value={formData.approvedBy} onChange={handleChange} disabled={isFieldDisabled('approvedBy', isReadOnly || !user?.canApprove)} placeholder="Name" />
+        <input type="text" name="approvedBy" value={formData.approvedBy} readOnly className="read-only-sig" placeholder="Name" />
       </div>
       <label>Approved By</label>
     </div>

@@ -8,14 +8,14 @@ export default function RecordCard({ record, type, onClick, onArchive, onCancel,
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <span style={{ 
               padding: '4px 12px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 800,
-              background: type === 'TRIP_TICKET' ? 'rgba(99, 102, 241, 0.1)' : (type === 'PRF' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)'),
-              color: type === 'TRIP_TICKET' ? '#818cf8' : (type === 'PRF' ? '#10b981' : '#f59e0b'),
-              border: `1px solid ${type === 'TRIP_TICKET' ? 'rgba(99, 102, 241, 0.2)' : (type === 'PRF' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)')}`
+              background: type === 'TRIP_TICKET' ? 'rgba(15, 23, 42, 0.1)' : (type === 'PRF' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)'),
+              color: type === 'TRIP_TICKET' ? '#818cf8' : (type === 'PRF' ? '#10b981' : '#334155'),
+              border: `1px solid ${type === 'TRIP_TICKET' ? 'rgba(15, 23, 42, 0.2)' : (type === 'PRF' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)')}`
             }}>
               {type === 'TRIP_TICKET' ? 'TRIP TICKET' : (type === 'PRF' ? 'PRF' : 'RFP')}
             </span>
             {type === 'TRIP_TICKET' && record.dateTimeDeparture && !record.dateTimeReturn && (
-              <span style={{ padding: '2px 8px', borderRadius: '6px', background: '#6366f1', color: 'white', fontSize: '0.65rem', fontWeight: 900 }}>DEPARTED</span>
+              <span style={{ padding: '2px 8px', borderRadius: '6px', background: '#0f172a', color: 'white', fontSize: '0.65rem', fontWeight: 900 }}>DEPARTED</span>
             )}
             {type === 'TRIP_TICKET' && record.dateTimeDeparture && record.dateTimeReturn && (
               <span style={{ padding: '2px 8px', borderRadius: '6px', background: '#10b981', color: 'white', fontSize: '0.65rem', fontWeight: 900 }}>ARRIVED</span>
@@ -24,7 +24,7 @@ export default function RecordCard({ record, type, onClick, onArchive, onCancel,
               <span style={{ padding: '2px 8px', borderRadius: '6px', background: 'rgba(34, 197, 94, 0.2)', color: '#22c55e', fontSize: '0.65rem', fontWeight: 900 }}>APPROVED</span>
             )}
             {type === 'RFP' && record.receivedBy && (
-              <span style={{ padding: '2px 8px', borderRadius: '6px', background: '#8b5cf6', color: 'white', fontSize: '0.65rem', fontWeight: 900 }}>RECEIVED</span>
+              <span style={{ padding: '2px 8px', borderRadius: '6px', background: '#0f172a', color: 'white', fontSize: '0.65rem', fontWeight: 900 }}>RECEIVED</span>
             )}
           </div>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
@@ -56,7 +56,7 @@ export default function RecordCard({ record, type, onClick, onArchive, onCancel,
         padding: '1rem 1.5rem', 
         borderTop: '1px solid var(--glass-border)', 
         background: (type === 'TRIP_TICKET' && record.dateTimeDeparture && !record.dateTimeReturn) 
-          ? 'rgba(99, 102, 241, 0.08)' 
+          ? 'rgba(15, 23, 42, 0.08)' 
           : 'rgba(34, 197, 94, 0.05)',
         display: 'flex',
         justifyContent: 'center',

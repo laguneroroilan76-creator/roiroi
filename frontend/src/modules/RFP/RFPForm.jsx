@@ -43,6 +43,42 @@ export default function RFPForm() {
     setFormData(getDefaultFormData());
   }, [location.state]);
 
+  const parseRecord = (record) => {
+    if (!record) return null;
+    if (!record.layout) return record;
+    try {
+      const parsed = JSON.parse(record.layout);
+      return { 
+        ...parsed,
+        ...record,
+        status: record.status || parsed.status || 'Pending',
+        approvedBy: record.approvedBy || parsed.approvedBy,
+        verifiedBy: record.verifiedBy || parsed.verifiedBy,
+        preparedBy: record.preparedBy || parsed.preparedBy
+      };
+    } catch (e) { return record; }
+  };
+
+  useEffect(() => {
+    const fetchLatest = async () => {
+      if (initialData?.id) {
+        try {
+          const res = await api.get(`/rfps/${initialData.id}`);
+          if (res.data) {
+            const parsed = parseRecord(res.data);
+            setFormData(prev => ({
+              ...prev,
+              ...parsed
+            }));
+          }
+        } catch (err) {
+          console.error("Error fetching latest RFP data:", err);
+        }
+      }
+    };
+    fetchLatest();
+  }, [initialData?.id]);
+
   const [disReason, setDisReason] = useState('');
   const [showReasonModal, setShowReasonModal] = useState(false);
 
@@ -59,7 +95,7 @@ export default function RFPForm() {
 
   const handleSave = async () => {
     try {
-      const payload = { ...formData, requestor: user?.name || 'Unknown' };
+      const payload = { ...formData, status: 'Pending Dept Head Approval', requestor: user?.name || 'Unknown' };
       if (initialData?.id) {
         await api.put(`/rfps/${initialData.id}`, payload);
       } else {
@@ -71,6 +107,21 @@ export default function RFPForm() {
       console.error(err);
       const msg = err.response?.data?.error || err.message || 'Error saving RFP';
       showToast(msg, 'error');
+    }
+  };
+
+  const handleDeptHeadApprove = async () => {
+    if (!await confirm('Approve as Dept Head?')) return;
+    try {
+      await api.put(`/rfps/${initialData.id}`, { 
+        ...formData, 
+        status: 'Pending Final Approval',
+        deptHead: user.name || user.email || 'DEPT HEAD' 
+      });
+      showToast('Dept Head Approved!', 'success');
+      navigate('/dashboard');
+    } catch (err) {
+      showToast('Error approving', 'error');
     }
   };
 
@@ -117,6 +168,17 @@ export default function RFPForm() {
       await api.put(`/rfps/${initialData.id}`, payload);
       showToast('RFP Received!', 'success');
       setFormData(payload);
+      // Update history state so refreshes load the received data
+      navigate(location.pathname, { 
+        state: { 
+          ...location.state, 
+          initialData: {
+            ...initialData,
+            ...payload
+          }
+        }, 
+        replace: true 
+      });
     } catch (err) {
       showToast('Error receiving RFP', 'error');
     }
@@ -134,17 +196,16 @@ export default function RFPForm() {
   const isOwner = initialData?.authorId === user?.id || initialData?.requestor === user?.name;
 
   const isFieldDisabled = (fieldName, readOnly) => {
+    if (!initialData) return false;
     // Signature fields should always be locked for non-authorities
     if (fieldName === 'deptHead' || fieldName === 'approvedBy') {
-      if (formData.status === 'Pending' && isReviewMode) {
-        if (fieldName === 'deptHead') return !(user?.role === 'Admin' || user?.canApprove || user?.canApproveDeptHead);
-        if (fieldName === 'approvedBy') return !(user?.role === 'Admin' || user?.canApprove);
-      }
+      if (formData.status === 'Pending Dept Head Approval' && fieldName === 'deptHead') return !(user?.role === 'Admin' || user?.canApprove || user?.canApproveDeptHead);
+      if (formData.status === 'Pending Final Approval' && fieldName === 'approvedBy') return !(user?.role === 'Admin' || user?.canApprove || user?.canApproveRFP);
       return true;
     }
 
     if (formData.status !== 'Pending') {
-      if (isAccounting && location.state?.isInbox && ['rfpNo', 'prfNo', 'poNumber', 'siNumber'].includes(fieldName)) return false;
+      if (isAccounting && (location.state?.isInbox || location.state?.isReview) && ['rfpNo', 'prfNo', 'poNumber', 'siNumber'].includes(fieldName)) return false;
       return true;
     }
     if (readOnly) {
@@ -164,20 +225,30 @@ export default function RFPForm() {
           {!isGuard && formData.status === 'Approved' && formData.receivedBy && (
             <button className="tool-btn print-btn" onClick={() => window.print()} style={{ background: '#334155', color: 'white', marginRight: '10px' }}>Print</button>
           )}
-          {isReviewMode && isPending && (user?.role === 'Admin' || user?.canApprove || user?.canApproveRFP) && (
+          {isReviewMode && (
             <>
-              <button onClick={handleApprove} className="tool-btn approve" style={{ background: '#10b981', color: 'white' }}>Approve</button>
-              <button onClick={handleDisapprove} className="tool-btn disapprove" style={{ background: '#ef4444', color: 'white' }}>Disapprove</button>
+              {formData.status === 'Pending Dept Head Approval' && (user?.role === 'Admin' || user?.canApprove || user?.canApproveDeptHead) && (
+                <>
+                  <button onClick={handleDeptHeadApprove} className="tool-btn approve" style={{ background: 'var(--primary)', color: '#ffffff' }}>Approve Dept Head</button>
+                  <button onClick={handleDisapprove} className="tool-btn disapprove" style={{ background: '#ffffff', color: '#0f172a', border: '1px solid #cbd5e1' }}>Disapprove</button>
+                </>
+              )}
+              {formData.status === 'Pending Final Approval' && (user?.role === 'Admin' || user?.canApprove || user?.canApproveRFP) && (
+                <>
+                  <button onClick={handleApprove} className="tool-btn approve" style={{ background: 'var(--primary)', color: '#ffffff' }}>Approve Final</button>
+                  <button onClick={handleDisapprove} className="tool-btn disapprove" style={{ background: '#ffffff', color: '#0f172a', border: '1px solid #cbd5e1' }}>Disapprove</button>
+                </>
+              )}
             </>
           )}
-          {isAccounting && location.state?.isInbox && formData.status === 'Approved' && !formData.receivedBy && (
+          {isAccounting && (location.state?.isInbox || location.state?.isReview) && formData.status === 'Approved' && !formData.receivedBy && (
             <button onClick={handleReceive} className="tool-btn receive-btn" style={{ background: 'var(--primary)', color: 'white', marginRight: '10px' }}>Receive RFP</button>
           )}
-          {formData.receivedBy && <div className="status-badge received" style={{ background: '#8b5cf6', color: 'white', padding: '5px 12px', borderRadius: '100px', fontSize: '0.75rem', fontWeight: 800, marginLeft: '10px' }}>RECEIVED</div>}
-          {!isReadOnly && formData.status === 'Pending' && (
+          {formData.receivedBy && <div className="status-badge received" style={{ background: '#0f172a', color: 'white', padding: '5px 12px', borderRadius: '100px', fontSize: '0.75rem', fontWeight: 800, marginLeft: '10px' }}>RECEIVED</div>}
+          {!isReadOnly && (formData.status === 'Pending' || formData.status === 'Pending Dept Head Approval') && (
             <button onClick={handleSave} className="tool-btn save" style={{ background: 'var(--primary)', color: 'white' }}>Submit Request</button>
           )}
-          {isReviewMode && formData.status === 'Pending' && isOwner && (
+          {isReviewMode && (formData.status === 'Pending Dept Head Approval' || formData.status === 'Pending Final Approval') && isOwner && (
             <button onClick={handleCancelRequest} className="tool-btn cancel" style={{ background: '#64748b', color: 'white', marginRight: '10px' }}>Cancel Request</button>
           )}
           {/* Status badges removed from toolbar for cleaner UI */}
@@ -264,16 +335,7 @@ export default function RFPForm() {
                 <div className="sig-label">PREPARED BY</div>
               </div>
               <div className="rfp-sig-box">
-                <input 
-                  type="text"
-                  className="sig-name"
-                  name="deptHead"
-                  value={formData.deptHead || ''}
-                  onChange={handleChange}
-                  disabled={isFieldDisabled('deptHead', isReadOnly)}
-                  placeholder=""
-                  style={{ border: 'none', background: 'transparent', textAlign: 'center', width: '100%', outline: 'none', fontWeight: 800, color: 'var(--primary)' }}
-                />
+                <div className="sig-name">{formData.deptHead || ''}</div>
                 <div className="rfp-sig-line"></div>
                 <div className="sig-label">DEPT HEAD</div>
               </div>

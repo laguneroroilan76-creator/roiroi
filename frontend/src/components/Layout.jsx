@@ -1,10 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import api from '../services/api';
+import { Menu, X } from 'lucide-react';
 
 export default function Layout({ children }) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    const refreshUser = async () => {
+      try {
+        const res = await api.get('/auth/me');
+        if (res.data) {
+          localStorage.setItem('user', JSON.stringify(res.data));
+        }
+      } catch (err) {
+        console.error('Failed to refresh user session:', err);
+      }
+    };
+    refreshUser();
+  }, []);
   
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-gradient)' }}>
@@ -28,10 +44,10 @@ export default function Layout({ children }) {
           justifyContent: 'center',
           fontSize: '1.5rem',
           cursor: 'pointer',
-          boxShadow: '0 4px 15px rgba(37, 99, 235, 0.3)'
+          boxShadow: '0 4px 15px rgba(15, 23, 42, 0.3)'
         }}
       >
-        {sidebarOpen ? '✕' : '☰'}
+        {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
 
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />

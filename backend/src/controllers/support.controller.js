@@ -17,7 +17,9 @@ const createTicket = async (req, res) => {
 
 const getTickets = async (req, res) => {
   try {
-    const tickets = await supportService.getTickets(req.user.id, req.user.role);
+    const permissions = typeof req.user.permissions === 'string' ? JSON.parse(req.user.permissions) : (req.user.permissions || {});
+    const hasSupportAccess = req.user.role === 'IT' || req.user.role === 'Admin' || permissions?.support?.view || permissions?.support?.edit;
+    const tickets = await supportService.getTickets(req.user.id, req.user.role, hasSupportAccess);
     res.json(tickets);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -32,8 +34,11 @@ const getTicketById = async (req, res) => {
     const ticket = await supportService.getTicketById(paramValidation.data.id);
     if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
     
-    // Authorization check: Only IT/Admin or the author can view
-    if (req.user.role !== 'IT' && req.user.role !== 'Admin' && ticket.authorId !== req.user.id) {
+    const permissions = typeof req.user.permissions === 'string' ? JSON.parse(req.user.permissions) : (req.user.permissions || {});
+    const hasSupportAccess = req.user.role === 'IT' || req.user.role === 'Admin' || permissions?.support?.view || permissions?.support?.edit;
+    
+    // Authorization check: Only IT/Admin/Support-permitted or the author can view
+    if (!hasSupportAccess && ticket.authorId !== req.user.id) {
       return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -56,18 +61,24 @@ const updateTicket = async (req, res) => {
     const ticket = await supportService.getTicketById(paramValidation.data.id);
     if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
 
-    // Authorization: Only IT/Admin can update status/assignment. Author can update content if Pending.
-    const isIT = req.user.role === 'IT' || req.user.role === 'Admin';
+    // Authorization: Only IT/Admin/Support-permitted can update status/assignment. Author can update content if Pending.
+    const permissions = typeof req.user.permissions === 'string' ? JSON.parse(req.user.permissions) : (req.user.permissions || {});
+    const hasSupportEdit = req.user.role === 'IT' || req.user.role === 'Admin' || permissions?.support?.edit;
     const isAuthor = ticket.authorId === req.user.id;
 
-    if (!isIT && !isAuthor) return res.status(403).json({ error: 'Access denied' });
+    if (!hasSupportEdit && !isAuthor) return res.status(403).json({ error: 'Access denied' });
     
-    // Standard users can only update if Pending
-    if (!isIT && ticket.status !== 'Pending') {
+    // Standard users (who are not Support) can only update if Pending
+    if (!hasSupportEdit && ticket.status !== 'Pending') {
       return res.status(400).json({ error: 'Cannot update ticket that is already being processed' });
     }
 
-    const updated = await supportService.updateTicket(paramValidation.data.id, validation.data);
+    const updateData = { ...validation.data };
+    if (updateData.status === 'Resolved') {
+      updateData.resolvedById = req.user.id;
+    }
+
+    const updated = await supportService.updateTicket(paramValidation.data.id, updateData);
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: err.message });

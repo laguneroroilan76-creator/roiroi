@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_DATABASE: hdi_db
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+    ports:
+      - '3307:3306'
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  backend:
+    build: ./backend
+    restart: always
+    ports:
+      - '5000:5000'
+    environment:
+      - DATABASE_URL=mysql://root:@db:3306/hdi_db
+      - JWT_SECRET=f3ae2318b95becf15a9074c93e6731d3a7e593f706955e31ae7f9e90cb27e136d6b3d455ac1c1e7a491213aa6e52eaf95faf26bb07234ec60da95863c09157ce
+      - NODE_ENV=production
+    depends_on:
+      - db
+
+  frontend:
+    build: ./frontend
+    restart: always
+    ports:
+      - '80:80'
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:

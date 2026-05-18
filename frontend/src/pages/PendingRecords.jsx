@@ -62,35 +62,71 @@ export default function PendingRecords() {
             apiEndpoint: '/trip-tickets',
             requestorName: t.requestorName || t.author?.name || 'Unnamed Request'
         })),
-        ...prfsRes.data.filter(p => p.status === 'Pending' || !p.status).map(p => ({
+        ...prfsRes.data.filter(p => p.status === 'Pending' || p.status === 'Pending Verification' || p.status === 'Pending Approval' || !p.status).map(p => ({
             ...parseRecord(p),
             docType: 'PRF',
             displayType: 'PRF',
             apiEndpoint: '/prfs',
-            requestorName: p.requestor || p.author?.name || `PRF #${p.prfNo || p.id}`
+            requestorName: p.requestor || p.author?.name || `PRF #${p.prfNo || p.id}`,
+            status: p.status || 'Pending Verification'
         })),
-        ...rrfsRes.data.filter(r => r.status === 'Pending' || !r.status).map(r => ({
+        ...rrfsRes.data.filter(r => r.status === 'Pending' || r.status === 'Pending Dept Head Approval' || r.status === 'Pending Final Approval' || (r.status === 'Approved' && !r.receivedBy) || !r.status).map(r => ({
             ...parseRecord(r),
             docType: 'RFP',
             displayType: 'RFP',
             apiEndpoint: '/rfps',
-            requestorName: r.requestor || r.author?.name || `RFP #${r.rrfNo || r.id}`
+            requestorName: r.requestor || r.author?.name || `RFP #${r.rrfNo || r.id}`,
+            status: r.status || 'Pending Dept Head Approval'
         }))
       ];
 
       const filteredPending = allPending.filter(record => {
         const isAdmin = user?.role === 'Admin' || user?.canApprove;
         
-        // Granular filtering for Trip Ticket stages
+        // Granular filtering per document type
         if (record.docType === 'TRIP_TICKET') {
-            if (record.status === 'Pending Endorsement') return isAdmin || user?.canEndorse;
-            if (record.status === 'Pending Approval') return isAdmin || user?.canApproveTripTicket;
+            const isTTApprover = isAdmin || user?.canApproveTripTicket;
+            const isTTEndorser = isAdmin || user?.canEndorse;
+
+            if (record.status === 'Pending Endorsement') {
+                return isTTEndorser || isTTApprover || record.authorId === user.id;
+            }
+            if (record.status === 'Pending Approval') {
+                return isTTApprover || record.authorId === user.id;
+            }
+            return isTTApprover || record.authorId === user.id;
         }
 
-        if (user?.role === 'Accounting' && !isAdmin) {
-            return record.userId === user.id || record.authorId === user.id;
+        if (record.docType === 'PRF') {
+            const isPRFApprover = isAdmin || user?.canApprovePRF;
+            const isPRFVerifier = isAdmin || user?.canVerify;
+
+            if (record.status === 'Pending Verification') {
+                return isPRFVerifier || isPRFApprover || record.authorId === user.id;
+            }
+            if (record.status === 'Pending Approval') {
+                return isPRFApprover || record.authorId === user.id;
+            }
+            return isPRFApprover || record.authorId === user.id;
         }
-        return true;
+
+        if (record.docType === 'RFP') {
+            const isRFPApprover = isAdmin || user?.canApproveRFP || user?.role === 'Accounting';
+            const isRFPDeptHead = isAdmin || user?.canApproveDeptHead;
+
+            if (record.status === 'Pending Dept Head Approval') {
+                return isRFPDeptHead || isRFPApprover || record.authorId === user.id;
+            }
+            if (record.status === 'Pending Final Approval') {
+                return isRFPApprover || record.authorId === user.id;
+            }
+            if (record.status === 'Pending Accounting') {
+                return isRFPApprover || record.authorId === user.id;
+            }
+            return isRFPApprover || record.authorId === user.id;
+        }
+
+        return record.authorId === user.id || isAdmin;
       });
 
       setRecords(filteredPending.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
@@ -125,9 +161,6 @@ export default function PendingRecords() {
       <header className="page-header" style={{ marginBottom: '3rem' }}>
         <div className="header-left">
           <div className="title-area" style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
-            <div className="icon-box" style={{ background: 'rgba(37, 99, 235, 0.1)', color: 'var(--primary)', padding: '12px', borderRadius: '16px' }}>
-              <ClipboardList size={32} strokeWidth={2.5} />
-            </div>
             <div>
               <h1 style={{ fontSize: '2.5rem', fontWeight: '800', margin: 0 }}>Pending Approvals</h1>
             </div>
@@ -194,11 +227,23 @@ export default function PendingRecords() {
                   </div>
                 </td>
                 <td>
-                  <span className="status-pill-premium" style={{ 
-                    background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b'
-                  }}>
-                    <Clock size={12} /> {record.status?.toUpperCase() || 'PENDING'}
-                  </span>
+                  {(() => {
+                    const isPendingAccounting = record.docType === 'RFP' && record.status === 'Approved' && !record.receivedBy;
+                    const displayStatusText = isPendingAccounting ? 'Pending Accounting' : record.status;
+                    const isOrange = record.status === 'Pending Approval' || record.status === 'Pending Final Approval' || isPendingAccounting;
+                    return (
+                      <span className="status-pill-premium" style={{ 
+                        background: isOrange
+                          ? 'rgba(249, 115, 22, 0.1)' // Orange for final/accounting approval stage
+                          : 'rgba(245, 158, 11, 0.1)', // Yellow for initial pending stage
+                        color: isOrange
+                          ? '#f97316'
+                          : '#334155'
+                      }}>
+                        <Clock size={12} /> {displayStatusText?.toUpperCase() || 'PENDING'}
+                      </span>
+                    );
+                  })()}
                 </td>
                 <td>
                   <div style={{ fontSize: '0.9rem', color: 'var(--text-dim)', fontWeight: 600 }}>

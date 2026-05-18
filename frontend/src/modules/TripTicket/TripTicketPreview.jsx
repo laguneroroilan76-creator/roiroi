@@ -49,9 +49,9 @@ export default function TripTicketPreview({ record, onClose, onActionComplete })
             <div style={{ fontSize: '0.85rem', color: '#64748b' }}>Submitted on {new Date(record.createdAt).toLocaleDateString()}</div>
         </div>
         <div style={{ display: 'flex', gap: '15px' }}>
-          <button onClick={handleApprove} style={{ background: '#10b981', color: 'white', border: 'none', padding: '12px 25px', borderRadius: '12px', fontWeight: 800, cursor: 'pointer', transition: '0.2s' }}>Approve</button>
-          <button onClick={handleDisapprove} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '12px 25px', borderRadius: '12px', fontWeight: 800, cursor: 'pointer', transition: '0.2s' }}>Disapprove</button>
-          <button onClick={onClose} style={{ background: '#f1f5f9', color: '#475569', border: 'none', padding: '12px 25px', borderRadius: '12px', fontWeight: 800, cursor: 'pointer', transition: '0.2s' }}>Cancel</button>
+          <button onClick={handleApprove} style={{ background: 'var(--primary)', color: '#ffffff' }}>Approve</button>
+          <button onClick={handleDisapprove} style={{ background: '#ffffff', color: '#0f172a', border: '1px solid #cbd5e1' }}>Disapprove</button>
+          <button onClick={onClose} style={{ background: '#64748b', color: '#475569', border: 'none', padding: '12px 25px', borderRadius: '12px', fontWeight: 800, cursor: 'pointer', transition: '0.2s' }}>Cancel</button>
         </div>
       </div>
 
@@ -100,7 +100,7 @@ export default function TripTicketPreview({ record, onClose, onActionComplete })
               >Confirm Disapprove</button>
               <button 
                 onClick={() => setShowReasonModal(false)} 
-                style={{ flex: 1, padding: '15px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '12px', fontWeight: 800, cursor: 'pointer' }}
+                style={{ flex: 1, padding: '15px', background: '#64748b', color: '#475569', border: 'none', borderRadius: '12px', fontWeight: 800, cursor: 'pointer' }}
               >Cancel</button>
             </div>
           </div>

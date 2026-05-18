@@ -71,7 +71,7 @@ export default function TripTicketForm() {
       if (status === 'Pending Approval' && fieldName === 'approvedBy') {
         return !(user?.role === 'Admin' || user?.canApprove || user?.canApproveTripTicket);
       }
-      return true; 
+      return true;
     }
 
     const isDeparted = !!formData.dateTimeDeparture;
@@ -81,14 +81,14 @@ export default function TripTicketForm() {
     if (isArrived || status === 'ARRIVED') return true;
 
     if (status === 'Approved' || status === 'DEPARTED') {
-       const departureFields = ['kmOut', 'guardOut', 'dateTimeDeparture'];
-       const returnFields = ['kmIn', 'guardIn', 'dateTimeReturn'];
-       
-       if (isGuard) {
-         if (isDeparted && departureFields.includes(fieldName)) return true;
-         if ([...departureFields, ...returnFields].includes(fieldName)) return false;
-       }
-       return true;
+      const departureFields = ['kmOut', 'guardOut', 'dateTimeDeparture'];
+      const returnFields = ['kmIn', 'guardIn', 'dateTimeReturn'];
+
+      if (isGuard) {
+        if (isDeparted && departureFields.includes(fieldName)) return true;
+        if ([...departureFields, ...returnFields].includes(fieldName)) return false;
+      }
+      return true;
     }
     if (status === 'Archived' || status === 'Disapproved') return true;
     if (status === 'Pending' && isReviewMode) {
@@ -160,7 +160,7 @@ export default function TripTicketForm() {
           }
           payload.dateTimeDeparture = now;
           payload.status = 'DEPARTED';
-        } 
+        }
         // Return phase
         else if (formData.dateTimeDeparture && !formData.dateTimeReturn) {
           if (!formData.kmIn || !formData.guardIn) {
@@ -177,8 +177,8 @@ export default function TripTicketForm() {
       } else if (isGuard && isReviewMode && initialData?.id) {
         // Extract only guard-log fields for update
         const guardPayload = {};
-        ['kmOut', 'kmIn', 'guardOut', 'guardIn', 'dateTimeDeparture', 'dateTimeReturn', 'status'].forEach(k => { 
-          if (payload[k] !== undefined) guardPayload[k] = payload[k]; 
+        ['kmOut', 'kmIn', 'guardOut', 'guardIn', 'dateTimeDeparture', 'dateTimeReturn', 'status'].forEach(k => {
+          if (payload[k] !== undefined) guardPayload[k] = payload[k];
         });
         payload = guardPayload;
       }
@@ -203,8 +203,8 @@ export default function TripTicketForm() {
       await api.put(`/trip-tickets/${initialData.id}`, { ...formData, status: 'Pending Approval', endorsedBy: user.name });
       showToast('Trip Ticket Endorsed!', 'success');
       navigate('/pending');
-    } catch (err) { 
-      showToast(err.response?.data?.error || 'Error endorsing', 'error'); 
+    } catch (err) {
+      showToast(err.response?.data?.error || 'Error endorsing', 'error');
     }
   };
 
@@ -214,8 +214,8 @@ export default function TripTicketForm() {
       await api.put(`/trip-tickets/${initialData.id}`, { ...formData, status: 'Approved', approvedBy: user.name });
       showToast('Trip Ticket Approved!', 'success');
       navigate('/pending');
-    } catch (err) { 
-      showToast(err.response?.data?.error || 'Error approving', 'error'); 
+    } catch (err) {
+      showToast(err.response?.data?.error || 'Error approving', 'error');
     }
   };
 
@@ -228,8 +228,8 @@ export default function TripTicketForm() {
       await api.put(`/trip-tickets/${initialData.id}`, { status: 'Disapproved', disapprovalReason: disReason });
       showToast('Trip Ticket Disapproved', 'info');
       navigate('/pending');
-    } catch (err) { 
-      showToast(err.response?.data?.error || 'Error disapproving', 'error'); 
+    } catch (err) {
+      showToast(err.response?.data?.error || 'Error disapproving', 'error');
     }
   };
 
@@ -259,14 +259,11 @@ export default function TripTicketForm() {
           {!isReviewMode && status === 'Pending' && (
             <button className="tool-btn save" onClick={handleSave} style={{ background: 'var(--primary)', color: 'white' }}>Submit Request</button>
           )}
-          {isReviewMode && status.startsWith('Pending') && isOwner && (
-            <button className="tool-btn cancel" onClick={handleCancelRequest} style={{ background: '#64748b', color: 'white' }}>Cancel Request</button>
-          )}
 
           {/* Endorsement Stage */}
           {isReviewMode && status === 'Pending Endorsement' && (user?.role === 'Admin' || user?.canApprove || user?.canEndorse) && (
             <>
-              <button className="tool-btn approve" onClick={handleEndorse} style={{ background: '#14b8a6', color: 'white' }}>Endorse Ticket</button>
+              <button className="tool-btn approve" onClick={handleEndorse}>Endorse</button>
               <button className="tool-btn disapprove-btn" onClick={handleDisapprove}>Disapprove</button>
             </>
           )}
@@ -274,12 +271,17 @@ export default function TripTicketForm() {
           {/* Approval Stage */}
           {isReviewMode && status === 'Pending Approval' && (user?.role === 'Admin' || user?.canApprove || user?.canApproveTripTicket) && (
             <>
-              <button className="tool-btn approve" onClick={handleApprove} style={{ background: 'var(--primary)', color: 'white' }}>Final Approve</button>
+              <button className="tool-btn approve" onClick={handleApprove}>Approve</button>
               <button className="tool-btn disapprove-btn" onClick={handleDisapprove}>Disapprove</button>
             </>
           )}
+
+          {isReviewMode && status.startsWith('Pending') && isOwner && (
+            <button className="tool-btn cancel" onClick={handleCancelRequest}>Cancel Request</button>
+          )}
+
           {isGuard && (status === 'Approved' || status === 'DEPARTED') && (
-            <button className="tool-btn save" onClick={handleSave} style={{ background: '#10b981', color: 'white' }}>
+            <button className="tool-btn save" onClick={handleSave} style={{ background: 'var(--primary)', color: '#ffffff' }}>
               {!formData.dateTimeDeparture ? 'DEPARTURE' : 'ARRIVED'}
             </button>
           )}
@@ -287,28 +289,28 @@ export default function TripTicketForm() {
             <div className="status-badge approved" style={{ marginLeft: '10px' }}>APPROVED</div>
           )}
           {(status === 'Approved' || status === 'DEPARTED') && formData.dateTimeDeparture && !formData.dateTimeReturn && (
-            <div className="status-badge ongoing" style={{ 
-              marginLeft: '10px', 
-              background: 'rgba(99, 102, 241, 0.15)', 
-              color: '#6366f1', 
-              padding: '6px 16px', 
-              borderRadius: '100px', 
-              fontSize: '0.85rem', 
-              fontWeight: 900, 
-              border: '1px solid rgba(99, 102, 241, 0.3)',
+            <div className="status-badge ongoing" style={{
+              marginLeft: '10px',
+              background: 'rgba(15, 23, 42, 0.15)',
+              color: '#0f172a',
+              padding: '6px 16px',
+              borderRadius: '100px',
+              fontSize: '0.85rem',
+              fontWeight: 900,
+              border: '1px solid rgba(15, 23, 42, 0.3)',
               textTransform: 'uppercase',
               letterSpacing: '1px'
             }}>DEPARTED</div>
           )}
           {(status === 'Approved' || status === 'ARRIVED') && formData.dateTimeDeparture && formData.dateTimeReturn && (
-            <div className="status-badge completed" style={{ 
-              marginLeft: '10px', 
-              background: 'rgba(16, 185, 129, 0.15)', 
-              color: '#10b981', 
-              padding: '6px 16px', 
-              borderRadius: '100px', 
-              fontSize: '0.85rem', 
-              fontWeight: 900, 
+            <div className="status-badge completed" style={{
+              marginLeft: '10px',
+              background: 'rgba(16, 185, 129, 0.15)',
+              color: '#10b981',
+              padding: '6px 16px',
+              borderRadius: '100px',
+              fontSize: '0.85rem',
+              fontWeight: 900,
               border: '1px solid rgba(16, 185, 129, 0.3)',
               textTransform: 'uppercase',
               letterSpacing: '1px'
@@ -319,7 +321,7 @@ export default function TripTicketForm() {
       </div>
 
       <div className="form-main-content no-print">
-        <TripTicketCoreForm 
+        <TripTicketCoreForm
           formData={formData}
           status={status}
           handleChange={handleChange}
@@ -343,17 +345,17 @@ export default function TripTicketForm() {
               Disapproval Reason
             </h3>
             <p style={{ fontSize: '0.9rem', color: 'var(--text-dim)', marginBottom: '1.2rem' }}>Please provide a reason for rejecting this request.</p>
-            <textarea 
-              value={disReason} 
-              onChange={(e) => setDisReason(e.target.value)} 
+            <textarea
+              value={disReason}
+              onChange={(e) => setDisReason(e.target.value)}
               placeholder="Enter reason here..."
-              style={{ 
-                width: '100%', 
-                minHeight: '120px', 
-                marginBottom: '1.5rem', 
-                padding: '1.2rem', 
-                borderRadius: '16px', 
-                border: '1px solid var(--glass-border)', 
+              style={{
+                width: '100%',
+                minHeight: '120px',
+                marginBottom: '1.5rem',
+                padding: '1.2rem',
+                borderRadius: '16px',
+                border: '1px solid var(--glass-border)',
                 background: 'rgba(255,255,255,0.03)',
                 color: 'var(--text-main)',
                 fontFamily: 'inherit',
@@ -363,17 +365,17 @@ export default function TripTicketForm() {
               }}
             />
             <div style={{ display: 'flex', gap: '1rem' }}>
-              <button 
+              <button
                 className="tool-btn disapprove-btn"
-                onClick={confirmDisapprove} 
+                onClick={confirmDisapprove}
                 disabled={!disReason.trim()}
                 style={{ flex: 1, background: disReason.trim() ? '#ef4444' : '#666' }}
               >
                 Confirm Disapprove
               </button>
-              <button 
+              <button
                 className="tool-btn back"
-                onClick={() => setShowReasonModal(false)} 
+                onClick={() => setShowReasonModal(false)}
                 style={{ flex: 1 }}
               >
                 Cancel

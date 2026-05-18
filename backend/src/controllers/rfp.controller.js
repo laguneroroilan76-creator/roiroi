@@ -21,7 +21,8 @@ const createRFP = async (req, res) => {
 
 const getRFPs = async (req, res) => {
   try {
-    const rfps = await rfpService.getRRFs(req.user.id, req.user.canApprove, req.user.role);
+    const hasAccess = req.user.canApprove || req.user.canApproveRFP || req.user.canApproveDeptHead || req.user.role === 'Accounting';
+    const rfps = await rfpService.getRRFs(req.user.id, hasAccess, req.user.role);
     res.json(rfps);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -36,8 +37,9 @@ const getRFPById = async (req, res) => {
     const rfp = await rfpService.getRRFById(id);
     if (!rfp) return res.status(404).json({ error: 'RFP not found' });
 
-    // Non-approvers can only view their own RFPs, EXCEPT Accounting role for approved RFPs
-    if (!req.user.canApprove && rfp.authorId !== req.user.id && req.user.role !== 'Accounting') {
+    // Access control: Author, Admin/Approver, specific RFP role, or Accounting
+    const hasAccess = req.user.canApprove || req.user.canApproveRFP || req.user.canApproveDeptHead || rfp.authorId === req.user.id || req.user.role === 'Accounting';
+    if (!hasAccess) {
       return res.status(403).json({ error: 'Access denied.' });
     }
 
@@ -55,8 +57,9 @@ const updateRFP = async (req, res) => {
     const existing = await rfpService.getRRFById(id);
     if (!existing) return res.status(404).json({ error: 'RFP not found.' });
 
-    // Only the author, an approver, or Accounting can update
-    if (!req.user.canApprove && existing.authorId !== req.user.id && req.user.role !== 'Accounting') {
+    // Only the author, an authorized approver, or Accounting can update
+    const canUpdate = req.user.canApprove || req.user.canApproveRFP || req.user.canApproveDeptHead || existing.authorId === req.user.id || req.user.role === 'Accounting';
+    if (!canUpdate) {
       return res.status(403).json({ error: 'You are not authorized to update this RFP.' });
     }
 

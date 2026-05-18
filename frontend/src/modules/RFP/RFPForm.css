@@ -213,12 +213,17 @@
 }
 
 .sig-name {
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   font-weight: 800;
   color: #1e293b;
   text-transform: uppercase;
   margin-bottom: 4px;
   text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  display: block;
 }
 
 .rfp-sig-line {
@@ -270,8 +275,8 @@
   letter-spacing: 1px;
 }
 
-.status-badge.approved { background: #10b9811a; color: #10b981; border: 1px solid #10b98133; }
-.status-badge.disapproved { background: #ef44441a; color: #ef4444; border: 1px solid #ef444433; }
+.status-badge.approved { background: var(--primary)1a; color: #10b981; border: 1px solid #10b98133; }
+.status-badge.disapproved { background: #ffffff; color: #0f172a; border: 1px solid #cbd5e11a; color: #ef4444; border: 1px solid #ef444433; }
 
 @media print {
   .custom-form-page { padding: 35px 0 0 0 !important; background: white !important; }

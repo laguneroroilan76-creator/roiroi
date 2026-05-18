@@ -16,61 +16,61 @@ const idParamSchema = z.object({
 
 // Item schemas
 const prfItemSchema = z.object({
-  qty: z.string().optional().or(z.literal('')),
-  unit: z.string().optional().or(z.literal('')),
-  particulars: z.string().optional().or(z.literal('')),
-  estimatedCost: z.string().optional().or(z.literal('')),
-  availableStocks: z.string().optional().or(z.literal('')),
+  qty: z.string().optional().nullable().or(z.literal('')),
+  unit: z.string().optional().nullable().or(z.literal('')),
+  particulars: z.string().optional().nullable().or(z.literal('')),
+  estimatedCost: z.string().optional().nullable().or(z.literal('')),
+  availableStocks: z.string().optional().nullable().or(z.literal('')),
 });
 
 const rrfItemSchema = z.object({
-  qty: z.string().optional().or(z.literal('')),
-  unit: z.string().optional().or(z.literal('')),
-  particulars: z.string().optional().or(z.literal('')),
-  estimatedCost: z.string().optional().or(z.literal('')),
-  availableStocks: z.string().optional().or(z.literal('')),
+  qty: z.string().optional().nullable().or(z.literal('')),
+  unit: z.string().optional().nullable().or(z.literal('')),
+  particulars: z.string().optional().nullable().or(z.literal('')),
+  estimatedCost: z.string().optional().nullable().or(z.literal('')),
+  availableStocks: z.string().optional().nullable().or(z.literal('')),
 });
 
 // PRF schemas
 const prfCreateBodySchema = z.object({
-  prfNo: z.string().optional().or(z.literal('')),
-  rrfNo: z.string().optional().or(z.literal('')), // Alias for backward compatibility
-  dateRequested: z.string().optional(),
-  dateNeeded: z.string().optional(),
-  to: z.string().optional().or(z.literal('')),
-  from: z.string().optional().or(z.literal('')),
-  department: z.string().optional().or(z.literal('')),
-  company: z.string().optional().or(z.literal('')),
-  remarks: z.string().optional().or(z.literal('')),
-  preparedBy: z.string().optional().or(z.literal('')),
-  verifiedBy: z.string().optional().or(z.literal('')),
-  notedBy: z.string().optional().or(z.literal('')),
-  approvedBy: z.string().optional().or(z.literal('')),
-  status: z.string().optional(),
-  requestor: z.string().optional().or(z.literal('')),
-  layout: z.string().optional().or(z.literal('')),
+  prfNo: z.string().optional().nullable().or(z.literal('')),
+  rrfNo: z.string().optional().nullable().or(z.literal('')), // Alias for backward compatibility
+  dateRequested: z.string().optional().nullable(),
+  dateNeeded: z.string().optional().nullable(),
+  to: z.string().optional().nullable().or(z.literal('')),
+  from: z.string().optional().nullable().or(z.literal('')),
+  department: z.string().optional().nullable().or(z.literal('')),
+  company: z.string().optional().nullable().or(z.literal('')),
+  remarks: z.string().optional().nullable().or(z.literal('')),
+  preparedBy: z.string().optional().nullable().or(z.literal('')),
+  verifiedBy: z.string().optional().nullable().or(z.literal('')),
+  notedBy: z.string().optional().nullable().or(z.literal('')),
+  approvedBy: z.string().optional().nullable().or(z.literal('')),
+  status: z.string().optional().nullable(),
+  requestor: z.string().optional().nullable().or(z.literal('')),
+  layout: z.string().optional().nullable().or(z.literal('')),
   items: z.array(prfItemSchema).optional(),
 });
 
 
 
 const prfUpdateBodySchema = z.object({
-  prfNo: z.string().optional().or(z.literal('')),
-  rrfNo: z.string().optional().or(z.literal('')), // Alias for backward compatibility
-  dateRequested: z.string().optional(),
-  dateNeeded: z.string().optional(),
-  to: z.string().optional().or(z.literal('')),
-  from: z.string().optional().or(z.literal('')),
-  department: z.string().optional().or(z.literal('')),
-  company: z.string().optional().or(z.literal('')),
-  remarks: z.string().optional().or(z.literal('')),
-  preparedBy: z.string().optional().or(z.literal('')),
-  verifiedBy: z.string().optional().or(z.literal('')),
-  notedBy: z.string().optional().or(z.literal('')),
-  approvedBy: z.string().optional().or(z.literal('')),
-  status: z.string().optional(),
-  requestor: z.string().optional().or(z.literal('')),
-  layout: z.string().optional().or(z.literal('')),
+  prfNo: z.string().optional().nullable().or(z.literal('')),
+  rrfNo: z.string().optional().nullable().or(z.literal('')), // Alias for backward compatibility
+  dateRequested: z.string().optional().nullable(),
+  dateNeeded: z.string().optional().nullable(),
+  to: z.string().optional().nullable().or(z.literal('')),
+  from: z.string().optional().nullable().or(z.literal('')),
+  department: z.string().optional().nullable().or(z.literal('')),
+  company: z.string().optional().nullable().or(z.literal('')),
+  remarks: z.string().optional().nullable().or(z.literal('')),
+  preparedBy: z.string().optional().nullable().or(z.literal('')),
+  verifiedBy: z.string().optional().nullable().or(z.literal('')),
+  notedBy: z.string().optional().nullable().or(z.literal('')),
+  approvedBy: z.string().optional().nullable().or(z.literal('')),
+  status: z.string().optional().nullable(),
+  requestor: z.string().optional().nullable().or(z.literal('')),
+  layout: z.string().optional().nullable().or(z.literal('')),
   archivedBy: z.string().optional().nullable(),
   disapprovalReason: z.string().optional().nullable(),
   items: z.array(prfItemSchema).optional(),
@@ -147,6 +147,8 @@ const supportTicketUpdateSchema = z.object({
   priority: z.string().optional(),
   category: z.string().optional(),
   assignedToId: z.number().optional().nullable(),
+  resolvedById: z.number().optional().nullable(),
+  resolutionNotes: z.string().optional().nullable(),
 });
 
 

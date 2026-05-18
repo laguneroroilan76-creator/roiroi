@@ -32,7 +32,14 @@ export default function ApprovedRecords() {
   const { showToast, confirm } = useToast();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isGuard = user.role === 'Guard';
-  const isAdmin = user.role === 'Admin' || user.canApprove;
+  const isAdmin = user.role === 'Admin' || 
+                  user.canApprove || 
+                  user.canApprovePRF || 
+                  user.canApproveTripTicket || 
+                  user.canApproveRFP || 
+                  user.canEndorse || 
+                  user.canVerify || 
+                  user.canApproveDeptHead;
   const isDarkMode = document.body.classList.contains('dark-mode');
 
   useEffect(() => {
@@ -131,9 +138,16 @@ export default function ApprovedRecords() {
                           record.author?.name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = filterType === 'All' || record.docType === filterType;
     const isOwn = record.authorId === user.id;
-    const isAdminOrApprover = user.role === 'Admin' || user.canApprove;
+    
+    // Detailed permission check per document type
+    const hasDocAccess = 
+      user.role === 'Admin' || 
+      user.canApprove || 
+      (record.docType === 'TRIP_TICKET' && (user.canApproveTripTicket || user.canEndorse || user.canVerify || user.canApproveDeptHead)) ||
+      (record.docType === 'PRF' && user.canApprovePRF) ||
+      (record.docType === 'RFP' && (user.canApproveRFP || user.role === 'Accounting'));
 
-    return matchesSearch && matchesType && (isAdminOrApprover || isOwn || isGuard);
+    return matchesSearch && matchesType && (hasDocAccess || isOwn || isGuard);
   });
 
   if (loading) return <div className="approved-records-page" style={{ padding: '3rem' }}>Loading authorized records...</div>;
@@ -143,12 +157,9 @@ export default function ApprovedRecords() {
       <header className="page-header" style={{ marginBottom: '3rem' }}>
         <div className="header-left">
           <div className="title-area" style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
-            <div className="icon-box" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '12px', borderRadius: '16px' }}>
-              <ClipboardCheck size={32} strokeWidth={2.5} />
-            </div>
             <div>
               <h1 style={{ fontSize: '2.5rem', fontWeight: '800', margin: 0 }}>
-                {location.state?.isInbox ? 'RFP Inbox' : 'Approved Registry'}
+                {location.state?.isInbox ? 'RFP Inbox' : 'Approved Records'}
               </h1>
             </div>
           </div>
@@ -216,7 +227,7 @@ export default function ApprovedRecords() {
                 <td>
                   <span className="status-pill-premium" style={{ 
                     background: record.status === 'Completed' || record.status === 'ARRIVED' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(59, 130, 246, 0.1)',
-                    color: record.status === 'Completed' || record.status === 'ARRIVED' ? '#10b981' : '#3b82f6',
+                    color: record.status === 'Completed' || record.status === 'ARRIVED' ? '#10b981' : '#1e293b',
                   }}>
                     {record.status === 'Completed' || record.status === 'ARRIVED' ? <CheckCircle2 size={12} /> : <Clock size={12} />}
                     {record.status?.toUpperCase() || 'APPROVED'}

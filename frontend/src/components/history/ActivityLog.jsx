@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { User } from 'lucide-react';
 
 const ActivityLog = ({ logs, onViewResource }) => {
   const pageSize = 20;
@@ -40,7 +41,7 @@ const ActivityLog = ({ logs, onViewResource }) => {
           </div>
           <div className="log-details">{formatLogDetails(log)}</div>
           <div className="card-bottom">
-            <span className="user-tag">👤 {log.user?.name || 'System'}</span>
+            <span className="user-tag" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><User size={14} /> {log.user?.name || 'System'}</span>
             <button className="inline-btn" onClick={() => onViewResource(log)}>
               View Reference
             </button>

@@ -94,9 +94,7 @@ export default function History() {
     <div className="history-page" style={{ padding: '3rem' }}>
       <header className="page-header" style={{ marginBottom: '3rem', animation: 'slideDown 0.6s ease-out' }}>
         <h1 style={{ fontSize: '3rem', fontWeight: '800', letterSpacing: '-1.5px' }}>Records & Activity</h1>
-        <p style={{ color: 'var(--text-dim)', marginTop: '0.6rem', fontSize: '1.1rem', fontWeight: '500' }}>
-          Monitor all document flows, approvals, and system changes in one centralized view.
-        </p>
+
       </header>
 
       <div className="tabs-container" style={{ display: 'flex', gap: '1.2rem', marginBottom: '3rem' }}>
@@ -173,7 +171,7 @@ export default function History() {
         .tab-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.05); color: var(--primary); }
         .tab-btn.active { 
           background: var(--primary); color: white; border-color: var(--primary); 
-          box-shadow: 0 10px 25px rgba(37, 99, 235, 0.3);
+          box-shadow: 0 10px 25px rgba(15, 23, 42, 0.3);
           transform: translateY(-3px);
         }
         

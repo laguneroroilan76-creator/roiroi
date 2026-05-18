@@ -4,202 +4,250 @@ import { useToast } from '../context/ToastContext';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-
+import { Clock, CheckCircle } from 'lucide-react';
 export default function Dashboard() {
-  const [stats, setStats] = useState({ approved: 0, pending: 0 });
-  const [tripData, setTripData] = useState([]);
-  const [prfData, setPrfData] = useState([]);
-  const [rrfData, setRrfData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  
-  const user = JSON.parse(localStorage.getItem('user'));
-  const navigate = useNavigate();
-  const { showToast } = useToast();
-  const { isDarkMode } = useTheme();
+    const [stats, setStats] = useState({ approved: 0, pending: 0 });
+    const [tripData, setTripData] = useState([]);
+    const [prfData, setPrfData] = useState([]);
+    const [rrfData, setRrfData] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#f43f5e', '#14b8a6'];
+    const user = JSON.parse(localStorage.getItem('user'));
+    const navigate = useNavigate();
+    const { showToast } = useToast();
+    const { isDarkMode } = useTheme();
 
-  const processChartData = (dataArray, requestorKey) => {
-    const counts = {};
-    dataArray.forEach(item => {
-        const name = item[requestorKey] || 'Unknown';
-        counts[name] = (counts[name] || 0) + 1;
-    });
-    return Object.keys(counts).map(name => ({
-        name,
-        value: counts[name]
-    })).sort((a, b) => b.value - a.value);
-  };
+    const COLORS = ['#1e293b', '#10b981', '#334155', '#0f172a', '#ef4444', '#06b6d4', '#f43f5e', '#14b8a6'];
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const [ticketsRes, prfsRes, rrfsRes] = await Promise.all([
-          api.get('/trip-tickets'),
-          api.get('/prfs'),
-          api.get('/rfps')
-        ]);
-
-        
-        const tickets = Array.isArray(ticketsRes.data) ? ticketsRes.data.filter(d => d.status !== 'Archived') : [];
-        const prfs = Array.isArray(prfsRes.data) ? prfsRes.data.filter(d => d.status !== 'Archived') : [];
-        const rrfs = Array.isArray(rrfsRes.data) ? rrfsRes.data.filter(d => d.status !== 'Archived') : [];
-        const allDocs = [...tickets, ...prfs, ...rrfs];
-
-        setStats({
-            approved: allDocs.filter(d => d.status === 'Approved' || d.status === 'Completed' || d.status === 'DEPARTED' || d.status === 'ARRIVED').length,
-            pending: allDocs.filter(d => d.status === 'Pending' || d.status === 'Pending Endorsement' || d.status === 'Pending Approval' || !d.status).length
+    const processChartData = (dataArray, requestorKey) => {
+        const counts = {};
+        dataArray.forEach(item => {
+            const name = item[requestorKey] || 'Unknown';
+            counts[name] = (counts[name] || 0) + 1;
         });
-
-        setTripData(processChartData(tickets.filter(d => d.status === 'Approved' || d.status === 'Completed' || d.status === 'DEPARTED' || d.status === 'ARRIVED'), 'requestorName'));
-        setPrfData(processChartData(prfs.filter(d => d.status === 'Approved' || d.status === 'Completed'), 'requestor'));
-        setRrfData(processChartData(rrfs.filter(d => d.status === 'Approved' || d.status === 'Completed'), 'requestor'));
-
-      } catch (err) {
-        console.error('Dashboard Fetch Error:', err);
-      } finally {
-        setLoading(false);
-      }
+        return Object.keys(counts).map(name => ({
+            name,
+            value: counts[name]
+        })).sort((a, b) => b.value - a.value);
     };
 
-    fetchData();
-  }, []);
+    useEffect(() => {
+        const fetchData = async () => {
+            setLoading(true);
+            try {
+                const [ticketsRes, prfsRes, rrfsRes] = await Promise.all([
+                    api.get('/trip-tickets'),
+                    api.get('/prfs'),
+                    api.get('/rfps')
+                ]);
 
-  const CustomTooltip = ({ active, payload }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="custom-tooltip glass">
-          <p className="label" style={{ fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>{`${payload[0].name}`}</p>
-          <p className="intro" style={{ margin: 0, color: 'var(--text-dim)' }}>{`Requested: ${payload[0].value}`}</p>
-        </div>
-      );
-    }
-    return null;
-  };
 
-  return (
-    <div className={`dashboard-view ${isDarkMode ? 'dark-mode' : ''}`}>
-      <div className="dashboard-content-wrapper">
-        <header className="dashboard-header">
-            <div className="header-text">
-                <h1>Dashboard Overview</h1>
-                <p>Welcome back, <span>{user?.name || 'User'}</span></p>
+                const tickets = Array.isArray(ticketsRes.data) ? ticketsRes.data.filter(d => d.status !== 'Archived') : [];
+                const prfs = Array.isArray(prfsRes.data) ? prfsRes.data.filter(d => d.status !== 'Archived') : [];
+                const rrfs = Array.isArray(rrfsRes.data) ? rrfsRes.data.filter(d => d.status !== 'Archived') : [];
+                const allDocs = [...tickets, ...prfs, ...rrfs];
+
+                const parseRecord = (record) => {
+                    if (!record.layout) return record;
+                    try {
+                        const parsed = JSON.parse(record.layout);
+                        return {
+                            ...parsed, ...record,
+                            status: record.status || parsed.status || 'Pending'
+                        };
+                    } catch (e) { return record; }
+                };
+
+                const parsedTickets = tickets.map(t => ({ ...parseRecord(t), docType: 'TRIP_TICKET' }));
+                const parsedPrfs = prfs.map(p => ({ ...parseRecord(p), docType: 'PRF' }));
+                const parsedRrfs = rrfs.map(r => ({ ...parseRecord(r), docType: 'RFP' }));
+
+                const allPending = [
+                    ...parsedTickets.filter(t => t.status === 'Pending' || t.status === 'Pending Endorsement' || t.status === 'Pending Approval' || !t.status),
+                    ...parsedPrfs.filter(p => p.status === 'Pending' || p.status === 'Pending Verification' || p.status === 'Pending Approval' || !p.status),
+                    ...parsedRrfs.filter(r => r.status === 'Pending' || r.status === 'Pending Dept Head Approval' || r.status === 'Pending Final Approval' || !r.status)
+                ];
+
+                const isAdmin = user?.role === 'Admin' || user?.canApprove;
+                const actualPending = allPending.filter(record => {
+                    if (record.docType === 'TRIP_TICKET') {
+                        const isTTApprover = isAdmin || user?.canApproveTripTicket;
+                        const isTTEndorser = isAdmin || user?.canEndorse;
+                        if (record.status === 'Pending Endorsement') return isTTEndorser || isTTApprover || record.authorId === user.id;
+                        return isTTApprover || record.authorId === user.id;
+                    }
+                    if (record.docType === 'PRF') {
+                        const isPRFApprover = isAdmin || user?.canApprovePRF;
+                        const isPRFVerifier = isAdmin || user?.canVerify;
+                        if (record.status === 'Pending Verification') return isPRFVerifier || isPRFApprover || record.authorId === user.id;
+                        return isPRFApprover || record.authorId === user.id;
+                    }
+                    if (record.docType === 'RFP') {
+                        const isRFPApprover = isAdmin || user?.canApproveRFP || user?.role === 'Accounting';
+                        const isRFPDeptHead = isAdmin || user?.canApproveDeptHead;
+                        if (record.status === 'Pending Dept Head Approval') return isRFPDeptHead || isRFPApprover || record.authorId === user.id;
+                        return isRFPApprover || record.authorId === user.id;
+                    }
+                    return record.authorId === user.id || isAdmin;
+                });
+
+                setStats({
+                    approved: allDocs.filter(d => d.status === 'Approved' || d.status === 'Completed' || d.status === 'DEPARTED' || d.status === 'ARRIVED').length,
+                    pending: actualPending.length
+                });
+
+                setTripData(processChartData(tickets.filter(d => d.status === 'Approved' || d.status === 'Completed' || d.status === 'DEPARTED' || d.status === 'ARRIVED'), 'requestorName'));
+                setPrfData(processChartData(prfs.filter(d => d.status === 'Approved' || d.status === 'Completed'), 'requestor'));
+                setRrfData(processChartData(rrfs.filter(d => d.status === 'Approved' || d.status === 'Completed'), 'requestor'));
+
+            } catch (err) {
+                console.error('Dashboard Fetch Error:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
+
+    const CustomTooltip = ({ active, payload }) => {
+        if (active && payload && payload.length) {
+            return (
+                <div className="custom-tooltip glass">
+                    <p className="label" style={{ fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>{`${payload[0].name}`}</p>
+                    <p className="intro" style={{ margin: 0, color: 'var(--text-dim)' }}>{`Requested: ${payload[0].value}`}</p>
+                </div>
+            );
+        }
+        return null;
+    };
+
+    return (
+        <div className={`dashboard-view ${isDarkMode ? 'dark-mode' : ''}`}>
+            <div className="dashboard-content-wrapper">
+                <header className="dashboard-header">
+                    <div className="header-text">
+                        <h1>Dashboard Overview</h1>
+                        <p>Welcome back, <span>{user?.name || 'User'}</span></p>
+                    </div>
+                    {loading && <div className="loader-line" />}
+                </header>
+
+                <div className="stats-grid">
+                    <div className="stat-card glass highlight-pending" onClick={() => navigate('/pending')}>
+                        <div className="stat-icon-box pending">
+                            <Clock size={28} strokeWidth={2.5} />
+                        </div>
+                        <div className="stat-info">
+                            <h3>{stats.pending}</h3>
+                            <p>Pending Approval</p>
+                        </div>
+                        <div className="arrow-hint">›</div>
+                    </div>
+
+                    <div className="stat-card glass highlight-approved" onClick={() => navigate('/approved')}>
+                        <div className="stat-icon-box approved">
+                            <CheckCircle size={28} strokeWidth={2.5} />
+                        </div>
+                        <div className="stat-info">
+                            <h3>{stats.approved}</h3>
+                            <p>Approved Records</p>
+                        </div>
+                        <div className="arrow-hint">›</div>
+                    </div>
+                </div>
+
+                <h2 className="section-title">Form Request Analytics</h2>
+                <div className="charts-grid">
+
+                    {/* Trip Tickets Chart */}
+                    <div className={`section-card ${isDarkMode ? 'dark-box' : 'light-box'}`}>
+                        <div className="section-header">
+                            <h3>Trip Tickets</h3>
+                        </div>
+                        <div className="chart-container">
+                            {tripData.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={tripData} cx="50%" cy="50%"
+                                            innerRadius={60} outerRadius={100}
+                                            paddingAngle={5} dataKey="value" stroke="none"
+                                        >
+                                            {tripData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip content={<CustomTooltip />} />
+                                        <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="empty-chart">No Trip Ticket Data</div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* PRF Chart */}
+                    <div className={`section-card ${isDarkMode ? 'dark-box' : 'light-box'}`}>
+                        <div className="section-header">
+                            <h3>Purchase Requisition (PRF)</h3>
+                        </div>
+                        <div className="chart-container">
+                            {prfData.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={prfData} cx="50%" cy="50%"
+                                            innerRadius={60} outerRadius={100}
+                                            paddingAngle={5} dataKey="value" stroke="none"
+                                        >
+                                            {prfData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip content={<CustomTooltip />} />
+                                        <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="empty-chart">No PRF Data</div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* RRF Chart */}
+                    <div className={`section-card ${isDarkMode ? 'dark-box' : 'light-box'}`}>
+                        <div className="section-header">
+                            <h3>Request For Payment (RFP)</h3>
+                        </div>
+                        <div className="chart-container">
+                            {rrfData.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={rrfData} cx="50%" cy="50%"
+                                            innerRadius={60} outerRadius={100}
+                                            paddingAngle={5} dataKey="value" stroke="none"
+                                        >
+                                            {rrfData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip content={<CustomTooltip />} />
+                                        <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="empty-chart">No RRF Data</div>
+                            )}
+                        </div>
+                    </div>
+
+                </div>
             </div>
-            {loading && <div className="loader-line" />}
-        </header>
 
-        <div className="stats-grid">
-            <div className="stat-card glass highlight-pending" onClick={() => navigate('/pending')}>
-                <div className="stat-icon-box pending"></div>
-                <div className="stat-info">
-                    <h3>{stats.pending}</h3>
-                    <p>Pending Approval</p>
-                </div>
-                <div className="arrow-hint">›</div>
-            </div>
-
-            <div className="stat-card glass highlight-approved" onClick={() => navigate('/approved')}>
-                <div className="stat-icon-box approved"></div>
-                <div className="stat-info">
-                    <h3>{stats.approved}</h3>
-                    <p>Approved Records</p>
-                </div>
-                <div className="arrow-hint">›</div>
-            </div>
-        </div>
-
-        <h2 className="section-title">Form Request Analytics</h2>
-        <div className="charts-grid">
-            
-            {/* Trip Tickets Chart */}
-            <div className={`section-card ${isDarkMode ? 'dark-box' : 'light-box'}`}>
-                <div className="section-header">
-                    <h3>Trip Tickets</h3>
-                </div>
-                <div className="chart-container">
-                    {tripData.length > 0 ? (
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie 
-                                    data={tripData} cx="50%" cy="50%" 
-                                    innerRadius={60} outerRadius={100} 
-                                    paddingAngle={5} dataKey="value" stroke="none"
-                                >
-                                    {tripData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Pie>
-                                <Tooltip content={<CustomTooltip />} />
-                                <Legend verticalAlign="bottom" height={36} iconType="circle" />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    ) : (
-                        <div className="empty-chart">No Trip Ticket Data</div>
-                    )}
-                </div>
-            </div>
-
-            {/* PRF Chart */}
-            <div className={`section-card ${isDarkMode ? 'dark-box' : 'light-box'}`}>
-                <div className="section-header">
-                    <h3>Purchase Requisition (PRF)</h3>
-                </div>
-                <div className="chart-container">
-                    {prfData.length > 0 ? (
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie 
-                                    data={prfData} cx="50%" cy="50%" 
-                                    innerRadius={60} outerRadius={100} 
-                                    paddingAngle={5} dataKey="value" stroke="none"
-                                >
-                                    {prfData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Pie>
-                                <Tooltip content={<CustomTooltip />} />
-                                <Legend verticalAlign="bottom" height={36} iconType="circle" />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    ) : (
-                        <div className="empty-chart">No PRF Data</div>
-                    )}
-                </div>
-            </div>
-
-            {/* RRF Chart */}
-            <div className={`section-card ${isDarkMode ? 'dark-box' : 'light-box'}`}>
-                <div className="section-header">
-                    <h3>Request For Payment (RFP)</h3>
-                </div>
-                <div className="chart-container">
-                    {rrfData.length > 0 ? (
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie 
-                                    data={rrfData} cx="50%" cy="50%" 
-                                    innerRadius={60} outerRadius={100} 
-                                    paddingAngle={5} dataKey="value" stroke="none"
-                                >
-                                    {rrfData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Pie>
-                                <Tooltip content={<CustomTooltip />} />
-                                <Legend verticalAlign="bottom" height={36} iconType="circle" />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    ) : (
-                        <div className="empty-chart">No RRF Data</div>
-                    )}
-                </div>
-            </div>
-
-        </div>
-      </div>
-
-      <style>{`
+            <style>{`
         .dashboard-view { padding: 3rem; min-height: 100vh; animation: fadeIn 0.8s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -228,7 +276,7 @@ export default function Dashboard() {
         
         .stat-icon-box { width: 64px; height: 64px; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 2rem; transition: 0.3s; }
         .stat-card:hover .stat-icon-box { transform: scale(1.1) rotate(5deg); }
-        .stat-icon-box.pending { background: #fffbeb; color: #f59e0b; box-shadow: 0 8px 16px rgba(245, 158, 11, 0.15); }
+        .stat-icon-box.pending { background: #fffbeb; color: #334155; box-shadow: 0 8px 16px rgba(245, 158, 11, 0.15); }
         .stat-icon-box.approved { background: #ecfdf5; color: #10b981; box-shadow: 0 8px 16px rgba(16, 185, 129, 0.15); }
         
         .stat-info h3 { font-size: 2.5rem; font-weight: 800; line-height: 1; color: var(--text-main); }
@@ -258,6 +306,6 @@ export default function Dashboard() {
         .dark-mode .header-text h1 { color: white; }
         .dark-mode .section-title { color: white; }
       `}</style>
-    </div>
-  );
+        </div>
+    );
 }

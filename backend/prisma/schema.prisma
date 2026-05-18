@@ -195,7 +195,7 @@ model User {
   canVerify           Boolean       @default(false)
   signatureUrl String?
   avatarUrl    String?
-  themeColor   String?       @default("#6366f1")
+  themeColor   String?       @default("#0f172a")
   isDarkMode   Boolean       @default(false)
   role         UserRole      @default(User)
   permissions  Json?
@@ -207,6 +207,7 @@ model User {
   tripticket   TripTicket[]
   supportTickets SupportTicket[] @relation("SupportAuthor")
   assignedSupportTickets SupportTicket[] @relation("SupportAssigned")
+  resolvedSupportTickets SupportTicket[] @relation("SupportResolvedBy")
   @@map("user")
 }
 
@@ -221,6 +222,9 @@ model SupportTicket {
   author      User     @relation("SupportAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   assignedToId Int?
   assignedTo  User?    @relation("SupportAssigned", fields: [assignedToId], references: [id])
+  resolvedById Int?
+  resolvedBy  User?    @relation("SupportResolvedBy", fields: [resolvedById], references: [id])
+  resolutionNotes String? @db.Text
   resolvedAt  DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

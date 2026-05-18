@@ -95,7 +95,7 @@ const CalendarView = ({ tickets, onTicketClick }) => {
         .dot { width: 8px; height: 8px; border-radius: 50%; }
         .dot.pending { background: #f97316; }
         .dot.approved { background: #22c55e; }
-        .dot.archived { background: #64748b; }
+        .dot.archived { background: #f1f5f9; }
 
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--glass-border); border: 1px solid var(--glass-border); border-radius: 20px; overflow: hidden; }
         .day-name { background: rgba(0,0,0,0.02); padding: 1.2rem; text-align: center; font-size: 0.8rem; font-weight: 800; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
@@ -107,7 +107,7 @@ const CalendarView = ({ tickets, onTicketClick }) => {
         .ticket-chip { font-size: 0.65rem; font-weight: 800; padding: 4px 8px; border-radius: 6px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .ticket-chip.pending { background: rgba(249, 115, 22, 0.1); color: #f97316; border-left: 3px solid #f97316; }
         .ticket-chip.approved { background: rgba(34, 197, 94, 0.1); color: #22c55e; border-left: 3px solid #22c55e; }
-        .ticket-chip.archived { background: rgba(100, 116, 139, 0.1); color: #64748b; border-left: 3px solid #64748b; }
+        .ticket-chip.archived { background: rgba(100, 116, 139, 0.1); color: #64748b; border-left: 3px solid #f1f5f9; }
         .ticket-chip:hover { transform: scale(1.05); z-index: 10; }
       `}</style>
     </div>

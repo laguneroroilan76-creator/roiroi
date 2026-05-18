@@ -101,7 +101,7 @@
 }
 
 .prf-items-table input:focus {
-  background: rgba(99, 102, 241, 0.05);
+  background: rgba(15, 23, 42, 0.05);
   outline: none;
 }
 
@@ -145,10 +145,18 @@
   border: none;
   text-align: center;
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 0.85rem;
   background: transparent;
   text-transform: uppercase;
   outline: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.read-only-sig {
+  cursor: default;
+  pointer-events: none;
 }
 
 .sig-value-display {
@@ -157,9 +165,13 @@
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 0.85rem;
   text-transform: uppercase;
   color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
 }
 
 .sig-label {
@@ -178,7 +190,7 @@
     margin: 0 !important;
     box-shadow: none !important;
   }
-  .prf-items-table th { background: #eee !important; -webkit-print-color-adjust: exact; }
+  .prf-items-table th { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .sig-box { border-bottom-color: #000 !important; }
 }
 

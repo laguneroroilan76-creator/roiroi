@@ -27,7 +27,9 @@ const createPRF = async (req, res) => {
 
 const getPRFs = async (req, res) => {
   try {
-    const prfs = await prfService.getPRFs(req.user.id, req.user.canApprove, req.user.role === 'Guard');
+    // Check if user has overall approve power or specific PRF approve power, or verifier power
+    const hasAccess = req.user.role === 'Admin' || req.user.canApprove || req.user.canApprovePRF || req.user.canVerify;
+    const prfs = await prfService.getPRFs(req.user.id, hasAccess, req.user.role === 'Guard');
     res.json(prfs);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -42,8 +44,9 @@ const getPRFById = async (req, res) => {
     const prf = await prfService.getPRFById(id);
     if (!prf) return res.status(404).json({ error: 'PRF not found' });
 
-    // Non-approvers can only view their own PRFs
-    if (!req.user.canApprove && prf.authorId !== req.user.id) {
+    // Access control: Author, Admin/Approver, or specific PRF roles
+    const hasAccess = req.user.role === 'Admin' || req.user.canApprove || req.user.canApprovePRF || req.user.canVerify || prf.authorId === req.user.id;
+    if (!hasAccess) {
       return res.status(403).json({ error: 'Access denied.' });
     }
 
@@ -61,8 +64,9 @@ const updatePRF = async (req, res) => {
     const existing = await prfService.getPRFById(id);
     if (!existing) return res.status(404).json({ error: 'PRF not found.' });
 
-    // Only the author or an approver can update
-    if (!req.user.canApprove && existing.authorId !== req.user.id) {
+    // Only the author or an authorized approver can update
+    const canUpdate = req.user.role === 'Admin' || req.user.canApprove || req.user.canApprovePRF || req.user.canVerify || existing.authorId === req.user.id;
+    if (!canUpdate) {
       return res.status(403).json({ error: 'You are not authorized to update this PRF.' });
     }
 

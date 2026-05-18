@@ -101,25 +101,30 @@ export default function Users() {
   if (loading) return <div className="users-page">Loading Users...</div>;
 
   return (
-    <div className="users-page">
-      <div className="toolbar-glass">
+    <div className="users-page" style={{ padding: '2rem 3rem' }}>
+      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
         <div className="header-left">
-          <h1 style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0 }}>User Management</h1>
-        </div>
-        <div className="header-actions" style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', flex: 1, justifyContent: 'flex-end' }}>
-          <div className="search-box-premium" style={{ maxWidth: '400px' }}>
-            <Search size={18} className="search-icon" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }} />
-            <input
-              type="text"
-              placeholder="Search by name, email, or role..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ paddingLeft: '48px' }}
-            />
+          <div className="title-area" style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
+            <div>
+              <h1 style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0 }}>User Management</h1>
+            </div>
           </div>
-          <button className="action-btn-premium primary" onClick={() => handleOpenModal()} style={{ borderRadius: '16px', padding: '12px 24px' }}>
-            Add New User
-          </button>
+        </div>
+        <button className="action-btn-premium primary" onClick={() => handleOpenModal()} style={{ borderRadius: '16px', padding: '12px 24px' }}>
+          Add New User
+        </button>
+      </header>
+
+      <div className="toolbar-glass">
+        <div className="search-box-premium">
+          <Search size={18} className="search-icon" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }} />
+          <input
+            type="text"
+            placeholder="Search by name, email, or role..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{ paddingLeft: '48px' }}
+          />
         </div>
       </div>
 
@@ -127,12 +132,11 @@ export default function Users() {
         <table className="corporate-table">
           <thead>
             <tr>
-              <th>Full Name</th>
-              <th>System Role</th>
-              <th>Email Address</th>
-              <th>Access Rights</th>
-              <th>Created</th>
-              <th style={{ textAlign: 'right' }}>Actions</th>
+              <th style={{ width: '30%' }}>Full Name</th>
+              <th style={{ width: '15%' }}>System Role</th>
+              <th style={{ width: '30%' }}>Email Address</th>
+              <th style={{ width: '15%' }}>Created</th>
+              <th style={{ width: '10%', textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -144,7 +148,7 @@ export default function Users() {
               <tr key={user.id}>
                 <td>
                   <div className="cell-document">
-                    <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'linear-gradient(135deg, var(--primary), #60a5fa)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '1.1rem', fontWeight: 800, boxShadow: '0 8px 15px rgba(37, 99, 235, 0.15)', overflow: 'hidden' }}>
+                    <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'linear-gradient(135deg, var(--primary), #60a5fa)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '1.1rem', fontWeight: 800, boxShadow: '0 8px 15px rgba(15, 23, 42, 0.15)', overflow: 'hidden' }}>
                       {user.avatarUrl ? (
                         <img src={user.avatarUrl.startsWith('http') ? user.avatarUrl : `${BASE_URL}${user.avatarUrl}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
@@ -155,25 +159,11 @@ export default function Users() {
                   </div>
                 </td>
                 <td>
-                  <span className={`role-badge ${user.role?.toLowerCase()}`} style={{ fontSize: '0.65rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', color: user.role === 'Admin' ? '#f59e0b' : (user.role === 'Accounting' ? '#8b5cf6' : 'var(--text-dim)') }}>
+                  <span className={`role-badge ${user.role?.toLowerCase()}`} style={{ fontSize: '0.65rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', color: user.role === 'Admin' ? '#334155' : (user.role === 'Accounting' ? '#0f172a' : 'var(--text-dim)') }}>
                     {user.role || 'User'}
                   </span>
                 </td>
                 <td style={{ fontWeight: 600, color: 'var(--text-dim)' }}>{user.email}</td>
-                <td>
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    {user.canApprove && <span className="approver-badge">Master</span>}
-                    {user.canApproveTripTicket && <span className="approver-badge ticket">Trip</span>}
-                    {user.canApprovePRF && <span className="approver-badge prf">PRF</span>}
-                    {user.canApproveRFP && <span className="approver-badge rfp">RFP</span>}
-                    {user.canApproveDeptHead && <span className="approver-badge dept">Dept</span>}
-                    {user.canEndorse && <span className="approver-badge endorse">Endorse</span>}
-                    {user.canVerify && <span className="approver-badge verify">Verify</span>}
-                    {!user.canApprove && !user.canApproveTripTicket && !user.canApprovePRF && !user.canApproveRFP && (
-                      <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>Standard Access</span>
-                    )}
-                  </div>
-                </td>
                 <td style={{ color: 'var(--text-dim)', fontSize: '0.9rem', fontWeight: 600 }}>{new Date(user.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</td>
                 <td>
                   <div style={{ display: 'flex', gap: '0.8rem', justifyContent: 'flex-end' }}>
@@ -192,7 +182,7 @@ export default function Users() {
         <div className="modal-overlay">
           <div className="modal-content glass premium">
             <div className="modal-header">
-              <div className="title-area">
+              <div className="modal-title">
                 <h2>{editingUser ? 'Update User Profile' : 'Register New User'}</h2>
               </div>
               <button className="close-btn" onClick={() => setIsModalOpen(false)}>×</button>
@@ -264,8 +254,8 @@ export default function Users() {
                   </div>
                 </div>
 
-                {/* Section 2: Approvals (Only for Users) */}
-                {formData.role === 'User' && (
+                {/* Section 2: Approvals */}
+                {(formData.role === 'User' || formData.role === 'Admin') && (
                   <div className="form-section highlight">
                     <div className="section-header-flex">
                       <h3 className="section-label">Approval Authorities</h3>
@@ -339,7 +329,7 @@ export default function Users() {
                 )}
 
                 {/* Section 3: Feature Access Controls */}
-                {formData.role === 'User' && (
+                {(formData.role === 'User' || formData.role === 'Admin') && (
                   <div className="form-section">
                     <h3 className="section-label">Module Access Permissions</h3>
                     <div className="module-perm-grid">

@@ -40,7 +40,7 @@ export default function GuardDashboard() {
 
   const sortedTickets = useMemo(() => {
     return tickets
-      .filter((ticket) => ticket.status === 'Approved' || ticket.status === 'DEPARTED')
+      .filter((ticket) => ['Approved', 'Ongoing', 'DEPARTED', 'ARRIVED', 'Completed'].includes(ticket.status))
       .sort((a, b) => {
       const aDate = new Date(a.createdAt || a.dateRequested || 0).getTime();
       const bDate = new Date(b.createdAt || b.dateRequested || 0).getTime();
@@ -186,8 +186,8 @@ export default function GuardDashboard() {
         }
 
         .ongoing-badge {
-          background: rgba(99, 102, 241, 0.15);
-          color: #6366f1;
+          background: rgba(15, 23, 42, 0.15);
+          color: #0f172a;
           font-size: 0.65rem;
           padding: 0.15rem 0.45rem;
           border-radius: 6px;

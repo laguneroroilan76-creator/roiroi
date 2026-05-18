@@ -8,14 +8,19 @@ const app = express();
 
 // CORS — restrict to known frontend origins only
 const allowedOrigins = [
-  `http://172.16.28.96:5173`,
+  `http://${process.env.FRONTEND_HOST || 'localhost'}:5173`,
+  `http://${process.env.FRONTEND_HOST || 'localhost'}:5174`,
   `http://localhost:5173`,
+  `http://localhost:5174`,
   `http://127.0.0.1:5173`,
+  `http://127.0.0.1:5174`,
+  `http://localhost`,
+  `http://127.0.0.1`,
 ];
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (e.g., Postman, curl, mobile apps)
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Allow requests with no origin or from common dev origins
+    if (!origin || allowedOrigins.includes(origin) || origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
       callback(null, true);
     } else {
       callback(new Error(`CORS policy: Origin ${origin} is not allowed.`));
@@ -23,6 +28,7 @@ app.use(cors({
   },
   credentials: true,
 }));
+
 
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

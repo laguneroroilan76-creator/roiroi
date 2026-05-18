@@ -28,7 +28,8 @@ const createTicket = async (req, res) => {
 
 const getTickets = async (req, res) => {
   try {
-    const tickets = await ticketService.getTickets(req.user.id, req.user.canApprove, req.user.role === 'Guard');
+    const hasAccess = req.user.canApprove || req.user.canApproveTripTicket || req.user.canEndorse;
+    const tickets = await ticketService.getTickets(req.user.id, hasAccess, req.user.role === 'Guard');
     res.json(tickets);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -43,9 +44,14 @@ const getTicketById = async (req, res) => {
     const ticket = await ticketService.getTicketById(id);
     if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
 
-    // Non-approvers and non-guards can only view their own tickets
-    const isPrivileged = req.user.canApprove || req.user.role === 'Guard';
-    if (!isPrivileged && ticket.authorId !== req.user.id) {
+    // Access control: Author, Admin/Approver, Guard, or specific Trip Ticket roles
+    const isPrivileged = req.user.canApprove || 
+                        req.user.canApproveTripTicket || 
+                        req.user.canEndorse || 
+                        req.user.role === 'Guard' || 
+                        ticket.authorId === req.user.id;
+                        
+    if (!isPrivileged) {
       return res.status(403).json({ error: 'Access denied.' });
     }
 
@@ -75,6 +81,20 @@ const updateTicket = async (req, res) => {
       req.body.archivedBy = req.user.name || 'Unknown';
     } else if (req.body.status === 'Approved') {
       req.body.archivedBy = null;
+    }
+
+    const existing = await ticketService.getTicketById(id);
+    if (!existing) return res.status(404).json({ error: 'Trip Ticket not found.' });
+
+    const canUpdate = req.user.role === 'Admin' || 
+                      req.user.canApprove || 
+                      req.user.canApproveTripTicket || 
+                      req.user.canEndorse || 
+                      req.user.role === 'Guard' || 
+                      existing.authorId === req.user.id;
+
+    if (!canUpdate) {
+      return res.status(403).json({ error: 'You are not authorized to update this Trip Ticket.' });
     }
 
     const ticket = await ticketService.updateTicket(id, req.body);

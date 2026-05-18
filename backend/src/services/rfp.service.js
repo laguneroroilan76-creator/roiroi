@@ -16,7 +16,7 @@ const createRRF = async (userId, rrfData) => {
     remarks: rest.remarks || rest.purpose || null, // Map purpose to remarks
     preparedBy: rest.preparedBy || null,
     verifiedBy: rest.verifiedBy || null,
-    approvedBy: rest.approvedBy || null,
+    status: rest.status || 'Pending Dept Head Approval',
     authorId: userId ? parseInt(userId) : null,
     layout: layout || JSON.stringify(rrfData) // Store full payload in layout
   };
@@ -73,6 +73,8 @@ const updateRRF = async (id, data) => {
     preparedBy: rest.preparedBy || undefined,
     verifiedBy: rest.verifiedBy || undefined,
     approvedBy: rest.approvedBy || undefined,
+    receivedBy: rest.receivedBy !== undefined ? rest.receivedBy : undefined,
+    receivedDate: rest.receivedDate !== undefined ? rest.receivedDate : undefined,
     status: rest.status || undefined,
     disapprovalReason: rest.disapprovalReason || undefined,
     layout: layout || JSON.stringify(data)

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { useToast } from '../context/ToastContext';
 import { useTheme } from '../context/ThemeContext';
-
+import { Camera } from 'lucide-react';
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -34,7 +34,7 @@ export default function Profile() {
     try {
       setIsUploading(true);
       const token = localStorage.getItem('token');
-      const response = await axios.post('http://172.16.28.96:5000/api/users/profile/avatar', formData, {
+      const response = await axios.post(`${window.location.protocol}//${window.location.hostname}:5000/api/users/profile/avatar`, formData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -58,7 +58,7 @@ export default function Profile() {
   const handleThemeChange = async (newColor) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.post('http://172.16.28.96:5000/api/users/profile/theme', { themeColor: newColor }, {
+      await axios.post(`${window.location.protocol}//${window.location.hostname}:5000/api/users/profile/theme`, { themeColor: newColor }, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -77,7 +77,7 @@ export default function Profile() {
     try {
       const newVal = !isDarkMode;
       const token = localStorage.getItem('token');
-      await axios.post('http://172.16.28.96:5000/api/users/profile/darkmode', { isDarkMode: newVal }, {
+      await axios.post(`${window.location.protocol}//${window.location.hostname}:5000/api/users/profile/darkmode`, { isDarkMode: newVal }, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -98,7 +98,7 @@ export default function Profile() {
   return (
     <div className="profile-page">
       <div className="page-header">
-        <h1>👤 My Profile</h1>
+        <h1>My Profile</h1>
       </div>
 
       <div className="profile-container">
@@ -107,12 +107,12 @@ export default function Profile() {
           <div className="avatar-section">
             <div className="big-avatar" onClick={() => avatarInputRef.current?.click()} title="Change Profile Picture">
               {user.avatarUrl ? (
-                <img src={user.avatarUrl.startsWith('http') ? user.avatarUrl : `http://172.16.28.96:5000${user.avatarUrl}`} alt="Avatar" className="avatar-img" />
+                <img src={user.avatarUrl.startsWith('http') ? user.avatarUrl : `${window.location.protocol}//${window.location.hostname}:5000${user.avatarUrl}`} alt="Avatar" className="avatar-img" />
               ) : (
                 user.name?.[0] || 'U'
               )}
               <div className="avatar-overlay">
-                <span className="camera-icon">📷</span>
+                <Camera size={24} className="camera-icon" />
               </div>
             </div>
             <input 
@@ -124,7 +124,7 @@ export default function Profile() {
             />
             <h2>{user.name}</h2>
             <p className="email">{user.email}</p>
-            {user.canApprove ? (
+            {user.canApprove || user.role === 'Admin' ? (
                 <span className="badge true">Forms Approver</span>
             ) : (
                 <span className="badge false">Standard User</span>
@@ -137,40 +137,19 @@ export default function Profile() {
           {/* Appearance Settings */}
           <div className="appearance-card glass">
             <div className="section-title-row">
-              <h2>🎨 Appearance</h2>
-              <div className="toggle-container" onClick={handleDarkModeToggle}>
-                <span className="toggle-label">{isDarkMode ? '🌙 Dark Mode' : '☀️ Light Mode'}</span>
-                <div className={`toggle-switch ${isDarkMode ? 'on' : ''}`}>
-                  <div className="toggle-knob" />
-                </div>
+              <h2>Appearance</h2>
+              <div className="theme_switcher" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <span className="toggle-label" style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--primary)' }}>
+                  {isDarkMode ? 'Dark Mode' : 'Light Mode'}
+                </span>
+                <label id="switch" className="switch">
+                  <input type="checkbox" checked={isDarkMode} onChange={handleDarkModeToggle} />
+                  <span className="slider round"></span>
+                </label>
               </div>
             </div>
             
-            <p className="subtitle">Personalize your system colors and display mode.</p>
-            
-            <div className="theme-selector">
-              <div className="color-presets">
-                {['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#8b5cf6', '#06b6d4'].map(color => (
-                  <div 
-                    key={color}
-                    className={`color-pill ${themeColor === color ? 'active' : ''}`}
-                    style={{ background: color }}
-                    onClick={() => handleThemeChange(color)}
-                    title={color}
-                  />
-                ))}
-                <div className="custom-color-container">
-                  <input 
-                    type="color" 
-                    value={themeColor} 
-                    onChange={(e) => handleThemeChange(e.target.value)}
-                    className="custom-color-input"
-                    title="Custom Color"
-                  />
-                  <span>Custom</span>
-                </div>
-              </div>
-            </div>
+            <p className="subtitle" style={{ marginBottom: 0 }}>Switch between dark and light display modes.</p>
           </div>
 
         </div>
@@ -222,14 +201,54 @@ export default function Profile() {
         .section-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
         .appearance-card h2 { color: var(--text-main); margin: 0; font-size: 1.6rem; font-weight: 800; }
         
-        .toggle-container { display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 10px 20px; background: var(--primary-light); border-radius: 100px; transition: all 0.3s; border: 1px solid var(--glass-border); }
-        .toggle-container:hover { transform: scale(1.05); background: var(--primary); }
-        .toggle-container:hover .toggle-label { color: white; }
-        .toggle-label { font-size: 0.9rem; font-weight: 800; color: var(--primary); transition: color 0.3s; }
-        .toggle-switch { width: 48px; height: 26px; background: rgba(0,0,0,0.1); border-radius: 100px; position: relative; transition: all 0.3s; }
-        .toggle-switch.on { background: rgba(255,255,255,0.3); }
-        .toggle-knob { width: 20px; height: 20px; background: white; border-radius: 50%; position: absolute; top: 3px; left: 3px; transition: all 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        .toggle-switch.on .toggle-knob { left: 25px; }
+        .switch {
+          position: relative;
+          display: inline-block;
+          width: 60px;
+          height: 20px;
+        }
+        .switch input {
+          opacity: 0;
+          width: 0;
+          height: 0;
+        }
+        .slider {
+          position: absolute;
+          cursor: pointer;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: var(--glass-border);
+          -webkit-transition: 0.4s;
+          transition: 0.4s;
+        }
+        .slider:before {
+          position: absolute;
+          content: '';
+          height: 30px;
+          width: 30px;
+          bottom: -5px;
+          background: var(--primary);
+          -webkit-transition: 0.4s;
+          transition: 0.4s;
+          box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .slider.round {
+          border-radius: 34px;
+        }
+        .slider.round:before {
+          border-radius: 50%;
+        }
+        input:checked + .slider {
+          background-color: var(--glass-border);
+        }
+        input:checked + .slider:before {
+          -webkit-transform: translateX(35px);
+          -ms-transform: translateX(35px);
+          transform: translateX(35px);
+          background: var(--primary);
+        }
 
         .color-presets { display: flex; flex-wrap: wrap; gap: 1.2rem; align-items: center; margin-top: 1.5rem; }
         .color-pill { 
@@ -251,8 +270,8 @@ export default function Profile() {
         .custom-color-container span { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; font-weight: 800; letter-spacing: 1px; }
 
         .dark-mode .signature-preview { background: rgba(0, 0, 0, 0.3); }
-        .dark-mode .toggle-switch { background: rgba(255,255,255,0.1); }
-        .dark-mode .toggle-knob { background: white; }
+        .dark-mode .slider:before { background: white; }
+        .dark-mode .toggle-label { color: white !important; }
       `}</style>
     </div>
   );

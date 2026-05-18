@@ -108,10 +108,10 @@ export default function ArchivedRecords() {
   };
 
   const getStatusColor = (status) => {
-    if (status === 'Archived') return { bg: 'rgba(100, 116, 139, 0.1)', text: '#64748b' };
+    if (status === 'Archived') return { bg: 'rgba(100, 116, 139, 0.1)', text: '#f1f5f9' };
     if (status === 'Disapproved') return { bg: 'rgba(239, 68, 68, 0.1)', text: '#ef4444' };
-    if (status === 'Cancelled') return { bg: 'rgba(245, 158, 11, 0.1)', text: '#f59e0b' };
-    return { bg: 'rgba(100, 116, 139, 0.1)', text: '#64748b' };
+    if (status === 'Cancelled') return { bg: 'rgba(245, 158, 11, 0.1)', text: '#334155' };
+    return { bg: 'rgba(100, 116, 139, 0.1)', text: '#f1f5f9' };
   };
 
   const filteredRecords = records.filter(record => {
@@ -129,12 +129,8 @@ export default function ArchivedRecords() {
       <header className="page-header" style={{ marginBottom: '3rem' }}>
         <div className="header-left">
           <div className="title-area" style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
-            <div className="icon-box" style={{ background: 'rgba(100, 116, 139, 0.1)', color: '#64748b', padding: '12px', borderRadius: '16px' }}>
-              <Archive size={32} strokeWidth={2.5} />
-            </div>
             <div>
-              <h1 style={{ fontSize: '2.5rem', fontWeight: '800', margin: 0 }}>Archive Vault</h1>
-              <p style={{ color: 'var(--text-dim)', margin: 0, fontWeight: 500 }}>Secure storage for historical and processed documents</p>
+              <h1 style={{ fontSize: '2.5rem', fontWeight: '800', margin: 0 }}>Archived Records</h1>
             </div>
           </div>
         </div>

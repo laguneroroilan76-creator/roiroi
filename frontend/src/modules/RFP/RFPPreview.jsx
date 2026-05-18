@@ -53,9 +53,9 @@ export default function RFPPreview({ record, onClose, onActionComplete }) {
             <div style={{ fontSize: '0.85rem', color: '#64748b' }}>Submitted on {new Date(record.createdAt).toLocaleDateString()}</div>
         </div>
         <div style={{ display: 'flex', gap: '15px' }}>
-          <button onClick={handleApprove} style={{ background: '#10b981', color: 'white', border: 'none', padding: '12px 25px', borderRadius: '12px', fontWeight: 800, cursor: 'pointer' }}>Approve</button>
-          <button onClick={() => setShowReasonModal(true)} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '12px 25px', borderRadius: '12px', fontWeight: 800, cursor: 'pointer' }}>Disapprove</button>
-          <button onClick={onClose} style={{ background: '#f1f5f9', color: '#475569', border: 'none', padding: '12px 25px', borderRadius: '12px', fontWeight: 800, cursor: 'pointer' }}>Cancel</button>
+          <button onClick={handleApprove} style={{ background: 'var(--primary)', color: '#ffffff' }}>Approve</button>
+          <button onClick={() => setShowReasonModal(true)} style={{ background: '#ffffff', color: '#0f172a', border: '1px solid #cbd5e1' }}>Disapprove</button>
+          <button onClick={onClose} style={{ background: '#64748b', color: '#475569', border: 'none', padding: '12px 25px', borderRadius: '12px', fontWeight: 800, cursor: 'pointer' }}>Cancel</button>
         </div>
       </div>
 
@@ -179,7 +179,7 @@ export default function RFPPreview({ record, onClose, onActionComplete }) {
             />
             <div style={{ display: 'flex', gap: '1.2rem' }}>
               <button onClick={confirmDisapprove} disabled={!disReason.trim()} style={{ flex: 1, padding: '15px', background: disReason.trim() ? '#ef4444' : '#94a3b8', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 800 }}>Confirm</button>
-              <button onClick={() => setShowReasonModal(false)} style={{ flex: 1, padding: '15px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '12px', fontWeight: 800 }}>Cancel</button>
+              <button onClick={() => setShowReasonModal(false)} style={{ flex: 1, padding: '15px', background: '#64748b', color: '#475569', border: 'none', borderRadius: '12px', fontWeight: 800 }}>Cancel</button>
             </div>
           </div>
         </div>

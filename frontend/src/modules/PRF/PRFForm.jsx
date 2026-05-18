@@ -24,7 +24,7 @@ export default function PRFForm() {
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user?.role === 'Admin' || user?.canApprove;
-  const canApprovePRF = user?.role === 'Admin' || user?.canApprove || user?.canApprovePRF;
+  const canApprovePRF = user?.role === 'Admin' || user?.canApprove || user?.canApprovePRF || user?.canVerify;
   const isGuard = user?.role === 'Guard';
   
   const [status, setStatus] = useState(initialData?.status || 'Pending');
@@ -68,12 +68,11 @@ export default function PRFForm() {
   }, [location.state]);
 
   const isFieldDisabled = (fieldName, baseDisabled = false) => {
+    if (!initialData) return false;
     // Signature fields should always be locked for non-authorities
     if (fieldName === 'verifiedBy' || fieldName === 'approvedBy') {
-      if (status === 'Pending' && isReviewMode) {
-        if (fieldName === 'verifiedBy') return !(user?.role === 'Admin' || user?.canApprove || user?.canVerify);
-        if (fieldName === 'approvedBy') return !(user?.role === 'Admin' || user?.canApprove);
-      }
+      if (status === 'Pending Verification' && fieldName === 'verifiedBy') return !(user?.role === 'Admin' || user?.canApprove || user?.canVerify);
+      if (status === 'Pending Approval' && fieldName === 'approvedBy') return !(user?.role === 'Admin' || user?.canApprove || user?.canApprovePRF);
       return true;
     }
 
@@ -97,7 +96,7 @@ export default function PRFForm() {
   const handleSave = async () => {
     try {
       const items = (formData?.items || []).filter(it => it?.particulars?.trim() !== '');
-      const payload = { ...formData, status: 'Pending', items };
+      const payload = { ...formData, status: 'Pending Verification', items };
       if (isReviewMode && initialData?.id) {
         await api.put(`/prfs/${initialData.id}`, payload);
         showToast('Purchase Requisition Updated!', 'success');
@@ -109,6 +108,24 @@ export default function PRFForm() {
     } catch (err) { 
       const msg = err.response?.data?.error || err.message || 'Error saving Purchase Requisition';
       showToast(msg, 'error'); 
+    }
+  };
+
+  const handleVerify = async () => {
+    if (!await confirm('Verify this PRF?')) return;
+    try {
+      const items = (formData?.items || []).filter(it => it?.particulars?.trim() !== '');
+      const payload = { 
+        ...formData, 
+        status: 'Pending Approval', 
+        verifiedBy: user.name || user.email || 'VERIFIER', 
+        items 
+      };
+      await api.put(`/prfs/${initialData.id}`, payload);
+      showToast('Purchase Requisition Verified!', 'success');
+      navigate('/dashboard');
+    } catch (err) {
+      showToast('Error verifying PRF', 'error');
     }
   };
 
@@ -174,14 +191,26 @@ export default function PRFForm() {
             <button className="tool-btn print-btn" onClick={() => window.print()} style={{ background: '#334155', color: 'white' }}>Print</button>
           )}
           {!isReviewMode && !isReadOnly && <button className="tool-btn save" onClick={handleSave}>Submit Request</button>}
-          {status === 'Pending' && isReviewMode && canApprovePRF && (
+          
+          {isReviewMode && (
             <>
-              <button className="tool-btn approve" onClick={handleApprove}>Approve</button>
-              <button className="tool-btn disapprove" onClick={() => setShowReasonModal(true)}>Disapprove</button>
+              {status === 'Pending Verification' && (user?.role === 'Admin' || user?.canApprove || user?.canVerify) && (
+                <>
+                  <button className="tool-btn approve" onClick={handleVerify} style={{ background: 'var(--primary)', color: '#ffffff' }}>Verify</button>
+                  <button className="tool-btn disapprove" onClick={() => setShowReasonModal(true)}>Disapprove</button>
+                </>
+              )}
+              {status === 'Pending Approval' && (user?.role === 'Admin' || user?.canApprove || user?.canApprovePRF) && (
+                <>
+                  <button className="tool-btn approve" onClick={handleApprove}>Approve</button>
+                  <button className="tool-btn disapprove" onClick={() => setShowReasonModal(true)}>Disapprove</button>
+                </>
+              )}
             </>
           )}
-          {status === 'Pending' && isReviewMode && isOwner && (
-            <button className="tool-btn cancel" onClick={handleCancelRequest} style={{ background: '#64748b', color: 'white', marginRight: '10px' }}>Cancel Request</button>
+
+          {(status === 'Pending' || status === 'Pending Verification' || status === 'Pending Approval') && isReviewMode && isOwner && (
+            <button className="tool-btn cancel" onClick={handleCancelRequest} style={{ marginRight: '10px' }}>Cancel Request</button>
           )}
           {status === 'Approved' && isAdmin && <button className="tool-btn archive-btn" onClick={handleArchive}>Archive</button>}
         </div>
@@ -248,12 +277,58 @@ export default function PRFForm() {
         .custom-form-page { background: #ffffff; min-height: 100vh; padding: 100px 20px 60px; display: flex; flex-direction: column; align-items: center; font-family: 'Outfit', sans-serif; color: #1e293b; }
         .sticky-toolbar { position: fixed; top: 0; left: 280px; right: 0; padding: 1rem 3rem; display: flex; justify-content: space-between; align-items: center; z-index: 900; border-bottom: 1px solid #e2e8f0; background: #ffffff; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
         .tool-group { display: flex; gap: 12px; align-items: center; }
-        .tool-btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 700; transition: all 0.2s; font-size: 0.95rem; }
-        .tool-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .tool-btn {
+          align-items: center;
+          appearance: none;
+          background-color: #ffffff;
+          border-radius: 8px;
+          border-width: 0;
+          box-shadow: rgba(0, 0, 0, 0.1) 0 2px 4px, rgba(0, 0, 0, 0.05) 0 7px 13px -3px, rgba(0, 0, 0, 0.2) 0 -3px 0 inset;
+          box-sizing: border-box;
+          color: #0f172a;
+          cursor: pointer;
+          display: inline-flex;
+          height: 44px;
+          justify-content: center;
+          line-height: 1;
+          list-style: none;
+          overflow: hidden;
+          padding-left: 20px;
+          padding-right: 20px;
+          position: relative;
+          text-align: left;
+          text-decoration: none;
+          transition: box-shadow 0.15s, transform 0.15s;
+          user-select: none;
+          -webkit-user-select: none;
+          touch-action: manipulation;
+          white-space: nowrap;
+          will-change: box-shadow, transform;
+          font-size: 0.85rem;
+          font-weight: 800;
+          font-family: inherit;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          gap: 8px;
+        }
+
+        .tool-btn:focus {
+          box-shadow: rgba(0, 0, 0, 0.2) 0 0 0 1.5px inset, rgba(0, 0, 0, 0.1) 0 2px 4px, rgba(0, 0, 0, 0.05) 0 7px 13px -3px, rgba(0, 0, 0, 0.2) 0 -3px 0 inset;
+        }
+
+        .tool-btn:hover {
+          box-shadow: rgba(0, 0, 0, 0.15) 0 4px 8px, rgba(0, 0, 0, 0.1) 0 7px 13px -3px, rgba(0, 0, 0, 0.2) 0 -3px 0 inset;
+          transform: translateY(-2px);
+        }
+
+        .tool-btn:active {
+          box-shadow: rgba(0, 0, 0, 0.25) 0 3px 7px inset;
+          transform: translateY(2px);
+        }
         .tool-btn.back { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
         .tool-btn.save { background: var(--primary); color: white; }
-        .tool-btn.approve { background: #10b981; color: white; }
-        .tool-btn.disapprove { background: #ef4444; color: white; }
+        .tool-btn.approve { background: var(--primary); color: white; }
+        .tool-btn.disapprove { background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; }
         .tool-btn.archive-btn { background: var(--primary); color: white; filter: brightness(1.1); }
         .tool-btn.print-btn { background: #334155; color: white; }
         .form-container { width: 100%; max-width: 1000px; background: #ffffff; border-radius: 12px; padding: 3rem; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }

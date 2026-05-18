@@ -10,16 +10,17 @@ const createTicket = async (userId, ticketData) => {
   });
 };
 
-const getTickets = async (userId, role) => {
-  // IT and Admin see all tickets
-  const isIT = role === 'IT' || role === 'Admin';
-  const where = isIT ? {} : { authorId: parseInt(userId) };
+const getTickets = async (userId, role, hasSupportAccess = false) => {
+  // IT, Admin, and users with Support permissions see all tickets
+  const canSeeAll = role === 'IT' || role === 'Admin' || hasSupportAccess;
+  const where = canSeeAll ? {} : { authorId: parseInt(userId) };
   
   return await prisma.supportTicket.findMany({
     where,
     include: { 
-      author: { select: { name: true, email: true, avatarUrl: true } },
-      assignedTo: { select: { name: true, email: true } }
+      author: { select: { id: true, name: true, email: true, avatarUrl: true } },
+      assignedTo: { select: { id: true, name: true, email: true } },
+      resolvedBy: { select: { id: true, name: true, email: true } }
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -29,8 +30,9 @@ const getTicketById = async (id) => {
   return await prisma.supportTicket.findUnique({
     where: { id: parseInt(id) },
     include: { 
-      author: { select: { name: true, email: true, avatarUrl: true } },
-      assignedTo: { select: { name: true, email: true } }
+      author: { select: { id: true, name: true, email: true, avatarUrl: true } },
+      assignedTo: { select: { id: true, name: true, email: true } },
+      resolvedBy: { select: { id: true, name: true, email: true } }
     }
   });
 };
@@ -46,7 +48,8 @@ const updateTicket = async (id, data) => {
     data: updateData,
     include: { 
       author: { select: { name: true, email: true } },
-      assignedTo: { select: { name: true, email: true } }
+      assignedTo: { select: { name: true, email: true } },
+      resolvedBy: { select: { name: true, email: true } }
     }
   });
 };

@@ -37,10 +37,10 @@ const createTicket = async (userId, ticketData) => {
 
 const getTickets = async (userId, canApprove, isGuard = false) => {
   const where = (canApprove || isGuard) ? {} : { authorId: userId };
-  return await prisma.tripTicket.findMany({ 
+  return await prisma.tripTicket.findMany({
     where,
     include: { author: { select: { name: true } } },
-    orderBy: { createdAt: 'desc' } 
+    orderBy: { createdAt: 'desc' }
   });
 };
 
@@ -82,7 +82,7 @@ const updateTicket = async (id, data) => {
   if (updateData.etdOffice && updateData.etaDestination) {
     const occupied = await getOccupiedResources(updateData.etdOffice, updateData.etaDestination);
     const conflicts = occupied.filter(o => o.id !== parseInt(id));
-    
+
     if (updateData.driver && conflicts.some(o => o.driver === updateData.driver)) {
       throw new Error(`Driver ${updateData.driver} is already booked for this schedule.`);
     }

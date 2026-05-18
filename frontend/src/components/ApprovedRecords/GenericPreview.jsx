@@ -1,5 +1,6 @@
 import React from 'react';
 import { Detail } from './PreviewComponents';
+import { Archive } from 'lucide-react';
 
 export default function GenericPreview({ record, onClose, onArchive }) {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -29,9 +30,9 @@ export default function GenericPreview({ record, onClose, onArchive }) {
           {isAdmin && (
             <button
               onClick={() => onArchive(record)}
-              style={{ border: 'none', borderRadius: '10px', padding: '0.6rem 0.9rem', cursor: 'pointer', background: '#f59e0b', color: 'white', fontWeight: 700 }}
+              style={{ border: 'none', borderRadius: '10px', padding: '0.6rem 0.9rem', cursor: 'pointer', background: '#334155', color: 'white', fontWeight: 700 }}
             >
-              📥 Archive
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Archive size={16} /> Archive</div>
             </button>
           )}
           <button
