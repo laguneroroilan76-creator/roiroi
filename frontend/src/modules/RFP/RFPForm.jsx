@@ -96,6 +96,7 @@ export default function RFPForm() {
   const handleSave = async () => {
     try {
       const payload = { ...formData, status: 'Pending Dept Head Approval', requestor: user?.name || 'Unknown' };
+      delete payload.layout;
       if (initialData?.id) {
         await api.put(`/rfps/${initialData.id}`, payload);
       } else {
@@ -113,13 +114,16 @@ export default function RFPForm() {
   const handleDeptHeadApprove = async () => {
     if (!await confirm('Approve as Dept Head?')) return;
     try {
-      await api.put(`/rfps/${initialData.id}`, { 
+      const payload = { 
         ...formData, 
         status: 'Pending Final Approval',
-        deptHead: user.name || user.email || 'DEPT HEAD' 
-      });
+        deptHead: user.name || user.email || 'DEPT HEAD',
+        verifiedBy: user.name || user.email || 'DEPT HEAD' 
+      };
+      delete payload.layout;
+      await api.put(`/rfps/${initialData.id}`, payload);
       showToast('Dept Head Approved!', 'success');
-      navigate('/dashboard');
+      navigate('/pending');
     } catch (err) {
       showToast('Error approving', 'error');
     }
@@ -128,13 +132,15 @@ export default function RFPForm() {
   const handleApprove = async () => {
     if (!await confirm('Approve this RFP?')) return;
     try {
-      await api.put(`/rfps/${initialData.id}`, { 
+      const payload = { 
         ...formData, 
         status: 'Approved',
         approvedBy: user.name || user.email || 'ADMIN' 
-      });
+      };
+      delete payload.layout;
+      await api.put(`/rfps/${initialData.id}`, payload);
       showToast('Approved!', 'success');
-      navigate('/dashboard');
+      navigate('/pending');
     } catch (err) {
       showToast('Error approving', 'error');
     }
@@ -151,7 +157,7 @@ export default function RFPForm() {
         disapprovalReason: disReason 
       });
       showToast('Disapproved', 'info');
-      navigate('/dashboard');
+      navigate('/pending');
     } catch (err) {
       showToast('Error disapproving', 'error');
     }
@@ -205,7 +211,7 @@ export default function RFPForm() {
     }
 
     if (formData.status !== 'Pending') {
-      if (isAccounting && (location.state?.isInbox || location.state?.isReview) && ['rfpNo', 'prfNo', 'poNumber', 'siNumber'].includes(fieldName)) return false;
+      if (isAccounting && formData.status === 'Approved' && ['rfpNo', 'prfNo', 'poNumber', 'siNumber'].includes(fieldName)) return false;
       return true;
     }
     if (readOnly) {
@@ -241,7 +247,7 @@ export default function RFPForm() {
               )}
             </>
           )}
-          {isAccounting && (location.state?.isInbox || location.state?.isReview) && formData.status === 'Approved' && !formData.receivedBy && (
+          {isAccounting && formData.status === 'Approved' && !formData.receivedBy && (
             <button onClick={handleReceive} className="tool-btn receive-btn" style={{ background: 'var(--primary)', color: 'white', marginRight: '10px' }}>Receive RFP</button>
           )}
           {formData.receivedBy && <div className="status-badge received" style={{ background: '#0f172a', color: 'white', padding: '5px 12px', borderRadius: '100px', fontSize: '0.75rem', fontWeight: 800, marginLeft: '10px' }}>RECEIVED</div>}

@@ -1,7 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { 
+  LayoutDashboard, 
+  FileText, 
+  CheckSquare, 
+  CheckCircle, 
+  Calendar, 
+  History, 
+  MessageSquare, 
+  Archive, 
+  Car, 
+  Users 
+} from 'lucide-react';
 
-export default function Sidebar({ isOpen, onClose }) {
+export default function Sidebar({ isOpen, onClose, isCollapsed }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [showForms, setShowForms] = useState(false);
@@ -39,11 +51,15 @@ export default function Sidebar({ isOpen, onClose }) {
       setShowForms(true);
     }
 
+    if (isCollapsed) {
+      setShowForms(false);
+    }
+
     // Reset dropdowns if we are in review or archived view to keep sidebar clean
     if (isReview || isArchived) {
       setShowForms(false);
     }
-  }, [location.pathname, location.state]);
+  }, [location.pathname, location.state, isCollapsed]);
 
 
   const handleLogout = () => {
@@ -52,23 +68,29 @@ export default function Sidebar({ isOpen, onClose }) {
   };
 
   return (
-    <aside className="glass-sidebar">
+    <aside className={`glass-sidebar ${isOpen ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-header">
-        <div className="logo" onClick={() => navigate('/dashboard')} style={{ cursor: 'pointer', padding: '0.5rem 0' }}>
-          <img src="/HDI Primary Logo .png" alt="HDI Logo" style={{ width: '140px', height: 'auto', display: 'block' }} />
+        <div className="logo" onClick={() => navigate('/dashboard')} style={{ cursor: 'pointer', padding: '0.5rem 0', display: 'flex', justifyContent: 'center' }}>
+          {isCollapsed ? (
+            <img src="/HDI Primary Logo .png" alt="HDI Logo" style={{ width: '40px', height: 'auto', display: 'block', objectFit: 'cover', objectPosition: 'left' }} />
+          ) : (
+            <img src="/HDI Primary Logo .png" alt="HDI Logo" style={{ width: '140px', height: 'auto', display: 'block' }} />
+          )}
         </div>
       </div>
 
       <nav className="sidebar-nav">
         {!isGuard && (
-          <div className={`nav-item ${isActive('/dashboard') ? 'active' : ''}`} onClick={() => { navigate('/dashboard'); onClose(); }}>
-            Dashboard
+          <div className={`nav-item ${isActive('/dashboard') ? 'active' : ''}`} onClick={() => { navigate('/dashboard'); onClose(); }} title="Dashboard">
+            <LayoutDashboard size={20} />
+            <span className="nav-text">Dashboard</span>
           </div>
         )}
 
         {isGuard && (
-          <div className={`nav-item ${isActive('/guard-dashboard') ? 'active' : ''}`} onClick={() => { navigate('/guard-dashboard'); onClose(); }}>
-            Trip Ticket Log
+          <div className={`nav-item ${isActive('/guard-dashboard') ? 'active' : ''}`} onClick={() => { navigate('/guard-dashboard'); onClose(); }} title="Trip Ticket Log">
+            <Car size={20} />
+            <span className="nav-text">Trip Ticket Log</span>
           </div>
         )}
 
@@ -77,8 +99,10 @@ export default function Sidebar({ isOpen, onClose }) {
             <div
               className={`nav-item ${['/trip-ticket', '/prf', '/rfp'].includes(location.pathname) && !location.state?.readOnly && !location.state?.isReview ? 'active' : ''}`}
               onClick={() => setShowForms(!showForms)}
+              title="Forms"
             >
-              Forms
+              <FileText size={20} />
+              <span className="nav-text">Forms</span>
               <span className={`chevron ${showForms ? 'open' : ''}`}>›</span>
             </div>
             {showForms && (
@@ -121,8 +145,9 @@ export default function Sidebar({ isOpen, onClose }) {
           user?.canVerify || 
           user?.canApproveDeptHead || 
           isAccounting) && !isGuard && (
-          <div className={`nav-item ${isActive('/pending') || (['/trip-ticket', '/prf', '/rfp'].includes(location.pathname) && location.state?.isReview) ? 'active' : ''}`} onClick={() => { navigate('/pending'); onClose(); }}>
-            Pending Approvals
+          <div className={`nav-item ${isActive('/pending') || (['/trip-ticket', '/prf', '/rfp'].includes(location.pathname) && location.state?.isReview) ? 'active' : ''}`} onClick={() => { navigate('/pending'); onClose(); }} title="Pending Approvals">
+            <CheckSquare size={20} />
+            <span className="nav-text">Pending Approvals</span>
           </div>
         )}
 
@@ -130,82 +155,66 @@ export default function Sidebar({ isOpen, onClose }) {
           <div 
             className={`nav-item ${(isActive('/approved') && !location.state?.isInbox) || (['/trip-ticket', '/prf', '/rfp'].includes(location.pathname) && location.state?.readOnly && !location.state?.isReview && !location.state?.isArchived && !location.state?.isInbox) ? 'active' : ''}`}
             onClick={() => { navigate('/approved'); onClose(); }}
+            title="Approved Records"
           >
-            Approved Records
+            <CheckCircle size={20} />
+            <span className="nav-text">Approved Records</span>
           </div>
         )}
 
 
         {(isAdmin || isDriver) && !isAccounting && (
-          <div className={`nav-item ${isActive('/driver-schedule') ? 'active' : ''}`} onClick={() => { navigate('/driver-schedule'); onClose(); }}>
-            Driving Schedule
+          <div className={`nav-item ${isActive('/driver-schedule') ? 'active' : ''}`} onClick={() => { navigate('/driver-schedule'); onClose(); }} title="Driving Schedule">
+            <Calendar size={20} />
+            <span className="nav-text">Driving Schedule</span>
           </div>
         )}
 
         {!isGuard && canView('history') && (
-          <div className={`nav-item ${isActive('/history') ? 'active' : ''}`} onClick={() => { navigate('/history'); onClose(); }}>
-            {(user?.canApprove || 
-              user?.canApprovePRF || 
-              user?.canApproveTripTicket || 
-              user?.canApproveRFP || 
-              user?.canEndorse || 
-              user?.canVerify || 
-              user?.canApproveDeptHead) ? "History & Activity" : "My Requests"}
+          <div className={`nav-item ${isActive('/history') ? 'active' : ''}`} onClick={() => { navigate('/history'); onClose(); }} title="History & Activity">
+            <History size={20} />
+            <span className="nav-text">
+              {(user?.canApprove || 
+                user?.canApprovePRF || 
+                user?.canApproveTripTicket || 
+                user?.canApproveRFP || 
+                user?.canEndorse || 
+                user?.canVerify || 
+                user?.canApproveDeptHead) ? "History & Activity" : "My Requests"}
+            </span>
           </div>
         )}
 
         {!isGuard && canView('support') && (
-          <div className={`nav-item ${isActive('/support') ? 'active' : ''}`} onClick={() => { navigate('/support'); onClose(); }}>
-            Support Log
+          <div className={`nav-item ${isActive('/support') ? 'active' : ''}`} onClick={() => { navigate('/support'); onClose(); }} title="Support Log">
+            <MessageSquare size={20} />
+            <span className="nav-text">Support Log</span>
           </div>
         )}
 
         {isAdmin && !isGuard && !isAccounting && canView('archived') && (
-          <div className={`nav-item ${isActive('/archived') || (['/trip-ticket', '/prf', '/rfp'].includes(location.pathname) && location.state?.isArchived) ? 'active' : ''}`} onClick={() => { navigate('/archived'); onClose(); }}>
-            Archived Records
+          <div className={`nav-item ${isActive('/archived') || (['/trip-ticket', '/prf', '/rfp'].includes(location.pathname) && location.state?.isArchived) ? 'active' : ''}`} onClick={() => { navigate('/archived'); onClose(); }} title="Archived Records">
+            <Archive size={20} />
+            <span className="nav-text">Archived Records</span>
           </div>
         )}
 
         {isAdmin && !isGuard && !isAccounting && canView('vehicles') && (
-          <div className={`nav-item ${isActive('/vehicles') ? 'active' : ''}`} onClick={() => { navigate('/vehicles'); onClose(); }}>
-            Vehicle Management
+          <div className={`nav-item ${isActive('/vehicles') ? 'active' : ''}`} onClick={() => { navigate('/vehicles'); onClose(); }} title="Vehicle Management">
+            <Car size={20} />
+            <span className="nav-text">Vehicle Management</span>
           </div>
         )}
 
         {isAdmin && !isGuard && !isAccounting && canView('users') && (
-          <div className={`nav-item ${isActive('/users') ? 'active' : ''}`} onClick={() => { navigate('/users'); onClose(); }}>
-            User Management
+          <div className={`nav-item ${isActive('/users') ? 'active' : ''}`} onClick={() => { navigate('/users'); onClose(); }} title="User Management">
+            <Users size={20} />
+            <span className="nav-text">User Management</span>
           </div>
         )}
 
-        {isAccounting && (
-          <div 
-            className={`nav-item ${(location.pathname === '/approved' || location.pathname === '/rfp') && location.state?.isInbox ? 'active' : ''}`}
-            onClick={() => { navigate('/approved', { state: { filter: 'RFP', isInbox: true } }); onClose(); }}
-          >
-            RFP Inbox
-          </div>
-        )}
+
       </nav>
-
-      <div className="sidebar-footer">
-        <div className="user-info clickable-profile" onClick={() => { navigate('/profile'); onClose(); }} title="View Profile & Signature">
-          <div className="user-avatar">
-            {user?.avatarUrl ? (
-              <img src={user.avatarUrl.startsWith('http') ? user.avatarUrl : `${window.location.protocol}//${window.location.hostname}:5000${user.avatarUrl}`} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '10px' }} />
-            ) : (
-              user?.name?.[0] || 'U'
-            )}
-          </div>
-          <div className="user-details">
-            <p className="user-name">{user?.name || 'User'}</p>
-            <p className="user-email">{user?.email}</p>
-          </div>
-        </div>
-        <button className="logout-btn" onClick={handleLogout}>
-          Logout
-        </button>
-      </div>
 
       <style>{`
         .glass-sidebar {
@@ -222,6 +231,25 @@ export default function Sidebar({ isOpen, onClose }) {
             transition: var(--transition-smooth);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
+
+        .glass-sidebar.collapsed {
+            width: 80px;
+        }
+
+        .glass-sidebar.collapsed .nav-item,
+        .glass-sidebar.collapsed .sub-item {
+            justify-content: center;
+            padding: 0.8rem 0;
+        }
+
+        .glass-sidebar.collapsed .nav-text {
+            display: none;
+        }
+        
+        .glass-sidebar.collapsed .nav-item span.chevron {
+            display: none;
+        }
+
 
         @media (max-width: 1024px) {
           .glass-sidebar {
@@ -329,20 +357,20 @@ export default function Sidebar({ isOpen, onClose }) {
             .glass-sidebar { display: none !important; }
         }
 
-        .dark-mode .glass-sidebar { background: #0f172a; border-right: 1px solid #1e293b; }
-        .dark-mode .sidebar-header, .dark-mode .sidebar-footer { border-color: #1e293b; }
-        .dark-mode .nav-item { color: #94a3b8; }
-        .dark-mode .nav-item:hover { background: #1e293b; color: white; }
-        .dark-mode .nav-item.active { background: white; color: #0f172a; }
-        .dark-mode .sub-nav { border-color: #1e293b; }
-        .dark-mode .sub-item { color: #94a3b8; }
-        .dark-mode .sub-item:hover { background: #1e293b; color: white; }
-        .dark-mode .sub-item.active { background: #1e293b; color: white; }
-        .dark-mode .user-info:hover { background: #1e293b; }
-        .dark-mode .user-name { color: white; }
-        .dark-mode .user-avatar { background: white; color: #0f172a; }
-        .dark-mode .logout-btn { background: #0f172a; color: white; border-color: #1e293b; }
-        .dark-mode .logout-btn:hover { background: #1e293b; }
+        body[data-theme='dark'] .glass-sidebar { background: #0f172a; border-right: 1px solid #1e293b; }
+        body[data-theme='dark'] .sidebar-header, body[data-theme='dark'] .sidebar-footer { border-color: #1e293b; }
+        body[data-theme='dark'] .nav-item { color: #94a3b8; }
+        body[data-theme='dark'] .nav-item:hover { background: #1e293b; color: white; }
+        body[data-theme='dark'] .nav-item.active { background: white; color: #0f172a; }
+        body[data-theme='dark'] .sub-nav { border-color: #1e293b; }
+        body[data-theme='dark'] .sub-item { color: #94a3b8; }
+        body[data-theme='dark'] .sub-item:hover { background: #1e293b; color: white; }
+        body[data-theme='dark'] .sub-item.active { background: #1e293b; color: white; }
+        body[data-theme='dark'] .user-info:hover { background: #1e293b; }
+        body[data-theme='dark'] .user-name { color: white; }
+        body[data-theme='dark'] .user-avatar { background: white; color: #0f172a; }
+        body[data-theme='dark'] .logout-btn { background: #0f172a; color: white; border-color: #1e293b; }
+        body[data-theme='dark'] .logout-btn:hover { background: #1e293b; }
       `}</style>
     </aside>
   );

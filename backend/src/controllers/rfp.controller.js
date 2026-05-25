@@ -1,5 +1,6 @@
 const rfpService = require('../services/rfp.service');
 const activityService = require('../services/activity.service');
+const { createNotification } = require('./notification.controller');
 
 const createRFP = async (req, res) => {
   try {
@@ -12,6 +13,13 @@ const createRFP = async (req, res) => {
       rfp.id, 
       `${req.user.name || 'Unknown User'} created RFP #${rfp.rrfNo || rfp.id}`
     );
+
+    await createNotification({
+      message: `${req.user.name || 'A user'} submitted a new RFP #${rfp.rrfNo || rfp.id}`,
+      type: 'NEW_RFP',
+      targetRole: 'RFP_Approver',
+      link: '/forms/rfp'
+    });
     
     res.status(201).json(rfp);
   } catch (err) {

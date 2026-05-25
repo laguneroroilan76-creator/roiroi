@@ -1,6 +1,7 @@
 const prfService = require('../services/prf.service');
 const activityService = require('../services/activity.service');
 const { prfCreateBodySchema, prfUpdateBodySchema, formatZodErrors, idParamSchema } = require('../utils/validation');
+const { createNotification } = require('./notification.controller');
 
 const createPRF = async (req, res) => {
   try {
@@ -14,6 +15,13 @@ const createPRF = async (req, res) => {
       prf.id, 
       `${req.user.name || 'Unknown User'} created PRF #${prf.prfNo || prf.id}`
     );
+
+    await createNotification({
+      message: `${req.user.name || 'A user'} submitted a new PRF #${prf.prfNo || prf.id}`,
+      type: 'NEW_PRF',
+      targetRole: 'PRF_Approver',
+      link: '/forms/prf'
+    });
     
     res.status(201).json(prf);
   } catch (err) {

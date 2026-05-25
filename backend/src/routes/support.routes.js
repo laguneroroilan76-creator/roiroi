@@ -11,4 +11,7 @@ router.get('/:id', supportController.getTicketById);
 router.put('/:id', supportController.updateTicket);
 router.delete('/:id', supportController.deleteTicket);
 
+router.get('/:id/messages', supportController.getMessages);
+router.post('/:id/messages', supportController.addMessage);
+
 module.exports = router;

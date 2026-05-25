@@ -147,6 +147,11 @@ export default function ApprovedRecords() {
       (record.docType === 'PRF' && user.canApprovePRF) ||
       (record.docType === 'RFP' && (user.canApproveRFP || user.role === 'Accounting'));
 
+    // Hide from Approved Records for Accounting if it's still pending for them
+    if (!location.state?.isInbox && user.role === 'Accounting' && record.docType === 'RFP' && record.status === 'Approved' && !record.receivedBy) {
+      return false;
+    }
+
     return matchesSearch && matchesType && (hasDocAccess || isOwn || isGuard);
   });
 

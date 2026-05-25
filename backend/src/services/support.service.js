@@ -60,4 +60,27 @@ const deleteTicket = async (id) => {
   });
 };
 
-module.exports = { createTicket, getTickets, getTicketById, updateTicket, deleteTicket };
+const getMessages = async (ticketId) => {
+  return await prisma.supportMessage.findMany({
+    where: { ticketId: parseInt(ticketId) },
+    include: {
+      sender: { select: { id: true, name: true, role: true, avatarUrl: true } }
+    },
+    orderBy: { createdAt: 'asc' }
+  });
+};
+
+const addMessage = async (ticketId, senderId, message) => {
+  return await prisma.supportMessage.create({
+    data: {
+      ticketId: parseInt(ticketId),
+      senderId: parseInt(senderId),
+      message
+    },
+    include: {
+      sender: { select: { id: true, name: true, role: true, avatarUrl: true } }
+    }
+  });
+};
+
+module.exports = { createTicket, getTickets, getTicketById, updateTicket, deleteTicket, getMessages, addMessage };

@@ -1,5 +1,6 @@
 const supportService = require('../services/support.service');
 const { supportTicketCreateSchema, supportTicketUpdateSchema, idParamSchema, formatZodErrors } = require('../utils/validation');
+const { createNotification } = require('./notification.controller');
 
 const createTicket = async (req, res) => {
   try {
@@ -9,6 +10,14 @@ const createTicket = async (req, res) => {
     }
     
     const ticket = await supportService.createTicket(req.user.id, validation.data);
+
+    await createNotification({
+      message: `${req.user.name || 'A user'} submitted a new Support Ticket: ${ticket.subject}`,
+      type: 'NEW_SUPPORT',
+      targetRole: 'IT',
+      link: '/support'
+    });
+
     res.status(201).json(ticket);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -104,4 +113,64 @@ const deleteTicket = async (req, res) => {
   }
 };
 
-module.exports = { createTicket, getTickets, getTicketById, updateTicket, deleteTicket };
+const getMessages = async (req, res) => {
+  try {
+    const paramValidation = idParamSchema.safeParse(req.params);
+    if (!paramValidation.success) return res.status(400).json({ error: formatZodErrors(paramValidation.error) });
+
+    const ticketId = paramValidation.data.id;
+    const ticket = await supportService.getTicketById(ticketId);
+    if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
+
+    const permissions = typeof req.user.permissions === 'string' ? JSON.parse(req.user.permissions) : (req.user.permissions || {});
+    const hasSupportAccess = req.user.role === 'IT' || req.user.role === 'Admin' || permissions?.support?.view || permissions?.support?.edit;
+    
+    if (!hasSupportAccess && ticket.authorId !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const messages = await supportService.getMessages(ticketId);
+    res.json(messages);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+const addMessage = async (req, res) => {
+  try {
+    const paramValidation = idParamSchema.safeParse(req.params);
+    if (!paramValidation.success) return res.status(400).json({ error: formatZodErrors(paramValidation.error) });
+
+    const ticketId = paramValidation.data.id;
+    const { message } = req.body;
+    
+    if (!message || message.trim() === '') {
+      return res.status(400).json({ error: 'Message cannot be empty' });
+    }
+
+    const ticket = await supportService.getTicketById(ticketId);
+    if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
+
+    const permissions = typeof req.user.permissions === 'string' ? JSON.parse(req.user.permissions) : (req.user.permissions || {});
+    const hasSupportAccess = req.user.role === 'IT' || req.user.role === 'Admin' || permissions?.support?.view || permissions?.support?.edit;
+    
+    if (!hasSupportAccess && ticket.authorId !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const newMessage = await supportService.addMessage(ticketId, req.user.id, message);
+    
+    try {
+      const io = require('../utils/socket').getIO();
+      io.to(`ticket_${ticketId}`).emit('new_message', newMessage);
+    } catch (socketErr) {
+      console.error('Socket error:', socketErr);
+    }
+
+    res.status(201).json(newMessage);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+module.exports = { createTicket, getTickets, getTicketById, updateTicket, deleteTicket, getMessages, addMessage };

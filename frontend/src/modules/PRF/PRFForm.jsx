@@ -24,7 +24,7 @@ export default function PRFForm() {
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user?.role === 'Admin' || user?.canApprove;
-  const canApprovePRF = user?.role === 'Admin' || user?.canApprove || user?.canApprovePRF || user?.canVerify;
+  const canApprovePRF = user?.role === 'Admin' || user?.canApprove || user?.canApprovePRF || user?.canVerify || user?.role === 'Accounting';
   const isGuard = user?.role === 'Guard';
   
   const [status, setStatus] = useState(initialData?.status || 'Pending');
@@ -72,7 +72,7 @@ export default function PRFForm() {
     // Signature fields should always be locked for non-authorities
     if (fieldName === 'verifiedBy' || fieldName === 'approvedBy') {
       if (status === 'Pending Verification' && fieldName === 'verifiedBy') return !(user?.role === 'Admin' || user?.canApprove || user?.canVerify);
-      if (status === 'Pending Approval' && fieldName === 'approvedBy') return !(user?.role === 'Admin' || user?.canApprove || user?.canApprovePRF);
+      if (status === 'Pending Approval' && fieldName === 'approvedBy') return !(user?.role === 'Admin' || user?.canApprove || user?.canApprovePRF || user?.role === 'Accounting');
       return true;
     }
 
@@ -123,7 +123,7 @@ export default function PRFForm() {
       };
       await api.put(`/prfs/${initialData.id}`, payload);
       showToast('Purchase Requisition Verified!', 'success');
-      navigate('/dashboard');
+      navigate('/pending');
     } catch (err) {
       showToast('Error verifying PRF', 'error');
     }
@@ -141,7 +141,7 @@ export default function PRFForm() {
       };
       await api.put(`/prfs/${initialData.id}`, payload);
       showToast('Purchase Requisition Approved!', 'success');
-      navigate('/dashboard');
+      navigate('/pending');
     } catch (err) {
       console.error(err);
       const msg = err.response?.data?.error || err.message || 'Error saving PRF';
@@ -156,7 +156,7 @@ export default function PRFForm() {
       const payload = { ...formData, status: 'Disapproved', disapprovalReason: disReason, items: formData.items.filter(it => it.particulars.trim() !== '') };
       await api.put(`/prfs/${initialData.id}`, payload);
       showToast('Disapproved', 'info');
-      navigate('/archived');
+      navigate('/pending');
     } catch (err) { showToast('Error disapproving', 'error'); }
   };
 
@@ -200,7 +200,7 @@ export default function PRFForm() {
                   <button className="tool-btn disapprove" onClick={() => setShowReasonModal(true)}>Disapprove</button>
                 </>
               )}
-              {status === 'Pending Approval' && (user?.role === 'Admin' || user?.canApprove || user?.canApprovePRF) && (
+              {status === 'Pending Approval' && (user?.role === 'Admin' || user?.canApprove || user?.canApprovePRF || user?.role === 'Accounting') && (
                 <>
                   <button className="tool-btn approve" onClick={handleApprove}>Approve</button>
                   <button className="tool-btn disapprove" onClick={() => setShowReasonModal(true)}>Disapprove</button>

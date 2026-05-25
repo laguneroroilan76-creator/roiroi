@@ -13,6 +13,8 @@ const activityRoutes = require('./activity.routes');
 const driverRoutes = require('./driver.routes');
 const vehicleRoutes = require('./vehicle.routes');
 const supportRoutes = require('./support.routes');
+const notificationRoutes = require('./notification.routes');
+const statsRoutes = require('./stats.routes');
 
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
@@ -25,5 +27,7 @@ router.use('/activity', activityRoutes);
 router.use('/drivers', driverRoutes);
 router.use('/vehicles', vehicleRoutes);
 router.use('/support', supportRoutes);
+router.use('/notifications', notificationRoutes);
+router.use('/stats', statsRoutes);
 
 module.exports = router;

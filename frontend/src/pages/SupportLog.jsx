@@ -6,8 +6,10 @@ import {
   PlusCircle, Search, Trash2, Edit3, CheckCircle2,
   Clock, CheckSquare, LifeBuoy, Filter, AlertCircle,
   MoreVertical, ChevronRight, User, Hash, Tag,
-  Eye, Settings2
+  Eye, Settings2, MessageCircle
 } from 'lucide-react';
+
+import FloatingChat from '../components/FloatingChat';
 
 export default function SupportLog() {
   const [tickets, setTickets] = useState([]);
@@ -21,7 +23,7 @@ export default function SupportLog() {
   const [isResolveModalOpen, setIsResolveModalOpen] = useState(false);
   const [resolvingTicket, setResolvingTicket] = useState(null);
   const [resolveNote, setResolveNote] = useState('');
-
+  const [activeChatTicket, setActiveChatTicket] = useState(null);
   const { showToast } = useToast();
   const { isDarkMode } = useTheme();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -32,6 +34,15 @@ export default function SupportLog() {
   useEffect(() => {
     fetchTickets();
   }, []);
+
+  useEffect(() => {
+    if (activeChatTicket) {
+      const updated = tickets.find(t => t.id === activeChatTicket.id);
+      if (updated && updated.status !== activeChatTicket.status) {
+        setActiveChatTicket(updated);
+      }
+    }
+  }, [tickets]);
 
   const fetchTickets = async () => {
     try {
@@ -61,6 +72,19 @@ export default function SupportLog() {
       setFormData({ subject: '', description: '', priority: 'Medium', category: 'Others', resolutionNotes: '' });
     }
     setIsModalOpen(true);
+  };
+
+
+
+  const handleAcceptRequest = async () => {
+    try {
+      await api.put(`/support/${editingTicket.id}`, { status: 'In Progress' });
+      showToast('Request accepted. You can now chat with the requestor.', 'success');
+      setIsModalOpen(false);
+      fetchTickets();
+    } catch (err) {
+      showToast('Failed to accept request', 'error');
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -246,10 +270,22 @@ export default function SupportLog() {
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'flex-end' }}>
-                      {canManageSupport && ticket.status !== 'Resolved' && (
+                      {canManageSupport && ticket.status === 'Pending' && (
+                        <button className="action-btn-premium" onClick={(e) => { e.stopPropagation(); setEditingTicket(ticket); handleAcceptRequest(); }} style={{ background: '#3b82f6', color: '#ffffff' }}>
+                          <CheckSquare size={16} />
+                          <span>Accept</span>
+                        </button>
+                      )}
+                      {canManageSupport && ticket.status === 'In Progress' && (
                         <button className="action-btn-premium" onClick={() => handleResolve(ticket)} style={{ background: 'var(--primary)', color: '#ffffff' }}>
                           <CheckCircle2 size={16} />
                           <span>Resolve</span>
+                        </button>
+                      )}
+                      {(ticket.status === 'In Progress' || ticket.status === 'Resolved') && (
+                        <button className="action-btn-premium" onClick={() => setActiveChatTicket(ticket)} style={{ background: '#10b981', color: '#ffffff' }}>
+                          <MessageCircle size={16} />
+                          <span>Chat</span>
                         </button>
                       )}
                       <button className="action-btn-premium" onClick={() => handleOpenModal(ticket)}>
@@ -376,6 +412,11 @@ export default function SupportLog() {
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn-cancel" onClick={() => setIsModalOpen(false)}>Cancel</button>
+                {canManageSupport && editingTicket?.status === 'Pending' && (
+                  <button type="button" className="btn-submit" onClick={(e) => { e.preventDefault(); handleAcceptRequest(); }} style={{ background: '#3b82f6' }}>
+                    Accept Request
+                  </button>
+                )}
                 {(!editingTicket || (editingTicket.status !== 'Resolved' && (canManageSupport || editingTicket.status === 'Pending'))) && (
                   <button type="submit" className="btn-submit">
                     {editingTicket ? 'Update Ticket' : 'Submit Request'}
@@ -426,8 +467,9 @@ export default function SupportLog() {
         </div>
       )}
 
+      {/* Floating Chat Widget */}
+      <FloatingChat ticket={activeChatTicket} onClose={() => setActiveChatTicket(null)} />
 
     </div>
   );
 }
-

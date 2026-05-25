@@ -1,0 +1,147 @@
+.drivers-page {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.drivers-page .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.drivers-page .header-left h1 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.drivers-page .add-btn {
+  background: #0f172a;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.drivers-page .add-btn:hover {
+  background: #1e293b;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+}
+
+.drivers-page .table-container {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+
+.drivers-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.drivers-table th {
+  background: #f8fafc;
+  padding: 1rem 1.5rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #64748b;
+  border-bottom: 1px solid #e2e8f0;
+  letter-spacing: 0.05em;
+}
+
+.drivers-table td {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: middle;
+}
+
+.drivers-table tr:last-child td {
+  border-bottom: none;
+}
+
+.drivers-table tr:hover td {
+  background: #f8fafc;
+}
+
+.driver-info-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.d-name {
+  font-weight: 600;
+  color: #0f172a;
+  font-size: 0.95rem;
+}
+
+.drivers-table .status-pill {
+  padding: 0.35rem 0.85rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-block;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.drivers-table .status-pill.active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.drivers-table .status-pill.inactive {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.actions-cell {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.action-link {
+  background: none;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.action-link.edit {
+  color: #3b82f6;
+}
+
+.action-link.edit:hover {
+  color: #2563eb;
+}
+
+.action-link.delete {
+  color: #ef4444;
+}
+
+.action-link.delete:hover {
+  color: #dc2626;
+}
+
+.empty-row {
+  text-align: center;
+  padding: 3rem !important;
+  color: #64748b;
+  font-style: italic;
+}

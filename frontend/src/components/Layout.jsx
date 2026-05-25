@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import Topbar from './Topbar';
 import api from '../services/api';
-import { Menu, X } from 'lucide-react';
 
 export default function Layout({ children }) {
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false); // Mobile sidebar toggle
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    return localStorage.getItem('sidebarCollapsed') === 'true';
+  }); // Desktop sidebar collapse
 
   useEffect(() => {
     const refreshUser = async () => {
@@ -22,35 +25,17 @@ export default function Layout({ children }) {
     refreshUser();
   }, []);
   
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-gradient)' }}>
-      {/* Hamburger Menu - Only visible on mobile */}
-      <button 
-        className="mobile-menu-toggle no-print"
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        style={{
-          position: 'fixed',
-          top: '1.5rem',
-          left: '1.5rem',
-          zIndex: 2001,
-          width: '45px',
-          height: '45px',
-          borderRadius: '12px',
-          background: 'var(--primary)',
-          color: 'white',
-          border: 'none',
-          display: 'none', // Managed by CSS media query
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '1.5rem',
-          cursor: 'pointer',
-          boxShadow: '0 4px 15px rgba(15, 23, 42, 0.3)'
-        }}
-      >
-        {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
-      </button>
-
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      {/* Mobile menu toggle is now handled by Topbar, but we keep this for extreme edge cases if needed or remove it */}
+      
+      <Sidebar 
+        isOpen={sidebarOpen} 
+        onClose={() => setSidebarOpen(false)} 
+        isCollapsed={isSidebarCollapsed}
+      />
       
       {/* Overlay for mobile sidebar */}
       {sidebarOpen && (
@@ -68,23 +53,33 @@ export default function Layout({ children }) {
         />
       )}
 
-      <main className="main-content" key={location.pathname}>
-        {children}
+      <main className={`main-content ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`} key={location.pathname}>
+        <Topbar 
+          user={user} 
+          toggleSidebar={() => {
+            const newState = !isSidebarCollapsed;
+            setIsSidebarCollapsed(newState);
+            localStorage.setItem('sidebarCollapsed', newState);
+          }} 
+          isSidebarCollapsed={isSidebarCollapsed}
+        />
+
+        <div className="content-wrapper">
+          {children}
+        </div>
       </main>
 
       <style>{`
         @media (max-width: 1024px) {
-          .mobile-menu-toggle { display: flex !important; }
           .sidebar-overlay { display: block !important; }
-          .main-content { padding-top: 5rem !important; }
         }
         @media print {
-          .mobile-menu-toggle, .sidebar-overlay, .glass-sidebar {
+          .sidebar-overlay, .glass-sidebar, .topbar {
             display: none !important;
           }
-          .main-content {
-            padding-top: 0 !important;
-          }
+        }
+        .content-wrapper {
+          padding: 2rem;
         }
       `}</style>
     </div>

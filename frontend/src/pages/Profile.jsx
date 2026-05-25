@@ -134,31 +134,57 @@ export default function Profile() {
 
         {/* Right Column: Settings */}
         <div className="settings-column">
-          {/* Appearance Settings */}
-          <div className="appearance-card glass">
-            <div className="section-title-row">
-              <h2>Appearance</h2>
-              <div className="theme_switcher" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                <span className="toggle-label" style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--primary)' }}>
-                  {isDarkMode ? 'Dark Mode' : 'Light Mode'}
-                </span>
-                <label id="switch" className="switch">
-                  <input type="checkbox" checked={isDarkMode} onChange={handleDarkModeToggle} />
-                  <span className="slider round"></span>
-                </label>
-              </div>
+          <div className="corporate-settings-card glass">
+            <div className="settings-header">
+              <h2>Account Settings</h2>
+              <p>Manage your personal information and system access.</p>
             </div>
             
-            <p className="subtitle" style={{ marginBottom: 0 }}>Switch between dark and light display modes.</p>
-          </div>
+            <div className="settings-section">
+              <h3 className="section-subtitle">Personal Details</h3>
+              <div className="details-list">
+                <div className="detail-row">
+                  <span className="detail-label">Full Name</span>
+                  <span className="detail-value">{user.name || 'Not provided'}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Email Address</span>
+                  <span className="detail-value">{user.email}</span>
+                </div>
+              </div>
+            </div>
 
+            <div className="settings-section">
+              <h3 className="section-subtitle">System Access</h3>
+              <div className="details-list">
+                <div className="detail-row">
+                  <span className="detail-label">Assigned Role</span>
+                  <span className="detail-value role-value">{user.role}</span>
+                </div>
+                <div className="detail-row" style={{ alignItems: 'flex-start' }}>
+                  <span className="detail-label" style={{ marginTop: '5px' }}>Permissions</span>
+                  <div className="detail-value permissions-list">
+                    {user.canApprove && <span className="badge true">Full Approver</span>}
+                    {user.canApprovePRF && <span className="badge true">PRF Approver</span>}
+                    {user.canApproveRFP && <span className="badge true">RFP Approver</span>}
+                    {user.canApproveTripTicket && <span className="badge true">Trip Ticket Approver</span>}
+                    {user.canApproveDeptHead && <span className="badge true">Dept Head</span>}
+                    {user.canEndorse && <span className="badge true">Endorser</span>}
+                    {user.canVerify && <span className="badge true">Verifier</span>}
+                    {!user.canApprove && !user.canApprovePRF && !user.canApproveRFP && !user.canApproveTripTicket && !user.canApproveDeptHead && !user.canEndorse && !user.canVerify && <span className="badge false">Standard Access</span>}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
         </div>
       </div>
       <style>{`
-        .profile-page { padding: 3rem; max-width: 1000px; margin: 0 auto; color: var(--text-main); }
+        .profile-page { padding: 2rem 3rem; max-width: 100%; margin: 0; color: var(--text-main); }
         .page-header h1 { font-size: 2.5rem; font-weight: 800; margin-bottom: 2rem; color: var(--text-main); letter-spacing: -1px; }
         
-        .profile-container { display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; }
+        .profile-container { display: grid; grid-template-columns: 350px 1fr; gap: 3rem; }
         
         .profile-card { padding: 3rem 2rem; text-align: center; border-radius: 24px; border: 1px solid var(--glass-border); background: var(--card-bg); height: fit-content; box-shadow: var(--card-shadow); backdrop-filter: blur(10px); }
         .big-avatar { 
@@ -194,61 +220,25 @@ export default function Profile() {
         .signature-preview img { max-width: 100%; max-height: 100%; object-fit: contain; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.1)); }
         .no-signature { color: var(--text-dim); font-style: italic; font-weight: 500; }
 
-        .upload-controls { display: flex; justify-content: center; }
-        .upload-btn { background: var(--primary); padding: 1.2rem 2.5rem; font-size: 1rem; color: white; border-radius: 16px; font-weight: 700; width: auto; }
+        .corporate-settings-card { padding: 3rem; border-radius: 24px; border: 1px solid var(--glass-border); background: var(--card-bg); box-shadow: var(--card-shadow); backdrop-filter: blur(10px); }
+        .settings-header { margin-bottom: 2.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--glass-border); }
+        .settings-header h2 { color: var(--text-main); margin: 0 0 0.5rem 0; font-size: 1.8rem; font-weight: 800; letter-spacing: -0.5px; }
+        .settings-header p { color: var(--text-dim); margin: 0; font-size: 0.95rem; font-weight: 500; }
         
-        .appearance-card { padding: 3rem; border-radius: 24px; border: 1px solid var(--glass-border); background: var(--card-bg); box-shadow: var(--card-shadow); backdrop-filter: blur(10px); }
-        .section-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
-        .appearance-card h2 { color: var(--text-main); margin: 0; font-size: 1.6rem; font-weight: 800; }
+        .settings-section { margin-bottom: 2.5rem; }
+        .settings-section:last-child { margin-bottom: 0; }
+        .section-subtitle { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--primary); font-weight: 800; margin-bottom: 1.2rem; }
         
-        .switch {
-          position: relative;
-          display: inline-block;
-          width: 60px;
-          height: 20px;
-        }
-        .switch input {
-          opacity: 0;
-          width: 0;
-          height: 0;
-        }
-        .slider {
-          position: absolute;
-          cursor: pointer;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background-color: var(--glass-border);
-          -webkit-transition: 0.4s;
-          transition: 0.4s;
-        }
-        .slider:before {
-          position: absolute;
-          content: '';
-          height: 30px;
-          width: 30px;
-          bottom: -5px;
-          background: var(--primary);
-          -webkit-transition: 0.4s;
-          transition: 0.4s;
-          box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
-        .slider.round {
-          border-radius: 34px;
-        }
-        .slider.round:before {
-          border-radius: 50%;
-        }
-        input:checked + .slider {
-          background-color: var(--glass-border);
-        }
-        input:checked + .slider:before {
-          -webkit-transform: translateX(35px);
-          -ms-transform: translateX(35px);
-          transform: translateX(35px);
-          background: var(--primary);
-        }
+        .details-list { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--glass-border); border-radius: 16px; overflow: hidden; background: var(--primary-light); }
+        .detail-row { display: flex; padding: 1.2rem 1.5rem; border-bottom: 1px solid var(--glass-border); align-items: center; background: var(--card-bg); transition: var(--transition-smooth); }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-row:hover { background: var(--primary-light); }
+        
+        .detail-label { flex: 0 0 160px; color: var(--text-dim); font-size: 0.9rem; font-weight: 700; }
+        .detail-value { flex: 1; color: var(--text-main); font-size: 1rem; font-weight: 600; }
+        .role-value { font-weight: 800; color: var(--primary); }
+        
+        .permissions-list { display: flex; flex-wrap: wrap; gap: 8px; }
 
         .color-presets { display: flex; flex-wrap: wrap; gap: 1.2rem; align-items: center; margin-top: 1.5rem; }
         .color-pill { 

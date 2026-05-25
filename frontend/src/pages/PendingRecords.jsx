@@ -54,6 +54,7 @@ export default function PendingRecords() {
         } catch (e) { return record; }
       };
 
+      const parsedRrfs = rrfsRes.data.map(r => parseRecord(r));
       const allPending = [
         ...ticketsRes.data.filter(t => t.status === 'Pending' || t.status === 'Pending Endorsement' || t.status === 'Pending Approval' || !t.status).map(t => ({ 
             ...parseRecord(t), 
@@ -70,8 +71,8 @@ export default function PendingRecords() {
             requestorName: p.requestor || p.author?.name || `PRF #${p.prfNo || p.id}`,
             status: p.status || 'Pending Verification'
         })),
-        ...rrfsRes.data.filter(r => r.status === 'Pending' || r.status === 'Pending Dept Head Approval' || r.status === 'Pending Final Approval' || (r.status === 'Approved' && !r.receivedBy) || !r.status).map(r => ({
-            ...parseRecord(r),
+        ...parsedRrfs.filter(r => r.status === 'Pending' || r.status === 'Pending Dept Head Approval' || r.status === 'Pending Final Approval' || (r.status === 'Approved' && !r.receivedBy) || !r.status).map(r => ({
+            ...r,
             docType: 'RFP',
             displayType: 'RFP',
             apiEndpoint: '/rfps',
@@ -98,7 +99,7 @@ export default function PendingRecords() {
         }
 
         if (record.docType === 'PRF') {
-            const isPRFApprover = isAdmin || user?.canApprovePRF;
+            const isPRFApprover = isAdmin || user?.canApprovePRF || user?.role === 'Accounting';
             const isPRFVerifier = isAdmin || user?.canVerify;
 
             if (record.status === 'Pending Verification') {

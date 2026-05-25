@@ -1,5 +1,6 @@
 const ticketService = require('../services/ticket.service');
 const activityService = require('../services/activity.service');
+const { createNotification } = require('./notification.controller');
 
 const createTicket = async (req, res) => {
   try {
@@ -19,6 +20,13 @@ const createTicket = async (req, res) => {
       ticket.id, 
       `${req.user.name || 'Unknown User'} created Trip Ticket for ${ticket.requestorName || 'N/A'}`
     );
+
+    await createNotification({
+      message: `${req.user.name || 'A user'} submitted a new Trip Ticket for ${ticket.requestorName || 'N/A'}`,
+      type: 'NEW_TRIPTICKET',
+      targetRole: 'TripTicket_Approver',
+      link: '/forms/tripticket'
+    });
     
     res.status(201).json(ticket);
   } catch (err) {
