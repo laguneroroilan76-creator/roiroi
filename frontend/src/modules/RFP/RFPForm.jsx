@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
+import { PlusCircle } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -235,24 +236,27 @@ export default function RFPForm() {
             <>
               {formData.status === 'Pending Dept Head Approval' && (user?.role === 'Admin' || user?.canApprove || user?.canApproveDeptHead) && (
                 <>
-                  <button onClick={handleDeptHeadApprove} className="tool-btn approve" style={{ background: 'var(--primary)', color: '#ffffff' }}>Approve Dept Head</button>
+                  <button onClick={handleDeptHeadApprove} className="tool-btn approve" style={{ background: '#2563eb', color: '#ffffff' }}>Approve Dept Head</button>
                   <button onClick={handleDisapprove} className="tool-btn disapprove" style={{ background: '#ffffff', color: '#0f172a', border: '1px solid #cbd5e1' }}>Disapprove</button>
                 </>
               )}
               {formData.status === 'Pending Final Approval' && (user?.role === 'Admin' || user?.canApprove || user?.canApproveRFP) && (
                 <>
-                  <button onClick={handleApprove} className="tool-btn approve" style={{ background: 'var(--primary)', color: '#ffffff' }}>Approve Final</button>
+                  <button onClick={handleApprove} className="tool-btn approve" style={{ background: '#2563eb', color: '#ffffff' }}>Approve Final</button>
                   <button onClick={handleDisapprove} className="tool-btn disapprove" style={{ background: '#ffffff', color: '#0f172a', border: '1px solid #cbd5e1' }}>Disapprove</button>
                 </>
               )}
             </>
           )}
           {isAccounting && formData.status === 'Approved' && !formData.receivedBy && (
-            <button onClick={handleReceive} className="tool-btn receive-btn" style={{ background: 'var(--primary)', color: 'white', marginRight: '10px' }}>Receive RFP</button>
+            <button onClick={handleReceive} className="tool-btn receive-btn" style={{ background: '#2563eb', color: 'white', marginRight: '10px' }}>Receive RFP</button>
           )}
           {formData.receivedBy && <div className="status-badge received" style={{ background: '#0f172a', color: 'white', padding: '5px 12px', borderRadius: '100px', fontSize: '0.75rem', fontWeight: 800, marginLeft: '10px' }}>RECEIVED</div>}
           {!isReadOnly && (formData.status === 'Pending' || formData.status === 'Pending Dept Head Approval') && (
-            <button onClick={handleSave} className="tool-btn save" style={{ background: 'var(--primary)', color: 'white' }}>Submit Request</button>
+            <button className="action-btn-premium primary" onClick={handleSave} style={{ borderRadius: '16px', padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <PlusCircle size={20} />
+              <span>Submit Request</span>
+            </button>
           )}
           {isReviewMode && (formData.status === 'Pending Dept Head Approval' || formData.status === 'Pending Final Approval') && isOwner && (
             <button onClick={handleCancelRequest} className="tool-btn cancel" style={{ background: '#64748b', color: 'white', marginRight: '10px' }}>Cancel Request</button>

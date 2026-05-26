@@ -86,7 +86,7 @@ export default function NotificationBell({ user }) {
   return (
     <div className="notification-bell-wrapper" ref={dropdownRef}>
       <button className="bell-trigger" onClick={() => setIsOpen(!isOpen)}>
-        <Bell size={24} />
+        <Bell size={20} />
         {unreadCount > 0 && (
           <span className="bell-badge">
             {unreadCount > 99 ? '99+' : unreadCount}
@@ -105,30 +105,55 @@ export default function NotificationBell({ user }) {
             )}
           </div>
           
-          <div className="bell-list">
-            {notifications.length === 0 ? (
-              <div className="bell-empty">
-                <Bell size={32} />
-                <p>No new notifications</p>
-              </div>
-            ) : (
-              notifications.map(notif => (
-                <div 
-                  key={notif.id} 
-                  className={`bell-item ${!notif.isRead ? 'unread' : ''}`}
-                  onClick={() => handleMarkAsRead(notif.id, notif.link)}
-                >
-                  {!notif.isRead && <div className="unread-dot"></div>}
-                  <div className="bell-content">
-                    <p>{notif.message}</p>
-                    <span className="bell-time">
-                      {new Date(notif.createdAt).toLocaleString()}
-                    </span>
-                  </div>
+            <div className="bell-list">
+              {notifications.length === 0 ? (
+                <div className="bell-empty">
+                  <Bell size={32} />
+                  <p>No new notifications</p>
                 </div>
-              ))
-            )}
-          </div>
+              ) : (
+                notifications.map(notif => (
+                  <div 
+                    key={notif.id} 
+                    className={`bell-item ${!notif.isRead ? 'unread' : ''}`}
+                  >
+                    <div className="bell-item-header" onClick={() => handleMarkAsRead(notif.id, notif.link)} style={{ cursor: 'pointer', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                      <div style={{ marginTop: '5px', width: '8px', flexShrink: 0 }}>
+                        {!notif.isRead && <div className="unread-dot"></div>}
+                      </div>
+                      <div className="bell-content" style={{ flex: 1 }}>
+                        <p style={{ fontWeight: !notif.isRead ? '700' : '400', marginBottom: '4px' }}>{notif.message}</p>
+                        <span className="bell-time">
+                          {new Date(notif.createdAt).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Quick Actions Footer */}
+                    {notif.type && notif.type.startsWith('NEW_') && !notif.isRead && (
+                      <div className="bell-actions" style={{ display: 'flex', gap: '8px', paddingLeft: '20px', marginTop: '12px' }}>
+                        <button 
+                          style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: '700', borderRadius: '8px', background: '#2563eb', color: '#ffffff', border: 'none', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)' }}
+                          onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notif.id, '/pending'); }}
+                          onMouseOver={(e) => e.target.style.background = '#1d4ed8'}
+                          onMouseOut={(e) => e.target.style.background = '#2563eb'}
+                        >
+                          Review Request
+                        </button>
+                        <button 
+                          style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: '700', borderRadius: '8px', background: 'transparent', color: 'var(--text-dim)', border: '1px solid var(--glass-border)', cursor: 'pointer', transition: 'all 0.2s' }}
+                          onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notif.id); }}
+                          onMouseOver={(e) => { e.target.style.background = 'var(--primary-light)'; e.target.style.color = 'var(--text-main)'; }}
+                          onMouseOut={(e) => { e.target.style.background = 'transparent'; e.target.style.color = 'var(--text-dim)'; }}
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
         </div>
       )}
     </div>

@@ -5,7 +5,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
   throw new Error('FATAL ERROR: JWT_SECRET is not defined in .env');
 }
-const VALID_ROLES = ['User', 'Admin', 'Driver', 'Guard', 'Accounting'];
+const VALID_ROLES = ['User', 'Admin', 'Driver', 'Guard', 'Accounting', 'IT'];
 
 const login = async (email, password) => {
   const user = await prisma.user.findUnique({ where: { email } });

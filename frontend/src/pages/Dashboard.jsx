@@ -3,66 +3,92 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { Clock, CheckCircle, Bell, ChevronRight, XCircle, Activity, Calendar, Users, Car, FileText, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { LineChart, Line, ResponsiveContainer } from 'recharts';
+import { Clock, CheckCircle, XCircle, Activity, Calendar, Users, Car, FileText, ArrowUpRight, ArrowDownRight, ChevronRight, Zap, Settings, X } from 'lucide-react';
 
-const DynamicKPICard = ({ title, value, icon: Icon, color, bg, onClick, trend, sparklineData, dataKey }) => {
+const DynamicKPICard = ({ title, value, icon: Icon, color, onClick, trend, sparklineData, dataKey }) => {
     const isPositive = trend && !trend.startsWith('-');
     const TrendIcon = isPositive ? ArrowUpRight : ArrowDownRight;
-    
+
     return (
-        <div className="stat-card glass" onClick={onClick} style={{ cursor: onClick ? 'pointer' : 'default' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '1rem', zIndex: 2 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div className="stat-icon-box" style={{ background: bg, color: color }}>
-                        <Icon size={24} strokeWidth={2.5} />
+        <div className="kpi-card" onClick={onClick} style={{ cursor: onClick ? 'pointer' : 'default' }}>
+            <div className="kpi-card-inner">
+                <div className="kpi-top">
+                    <div className="kpi-icon" data-color={color} style={{ background: `${color}15`, color: color }}>
+                        <Icon size={20} strokeWidth={2} />
                     </div>
                     {trend && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '20px', background: isPositive ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: isPositive ? '#10b981' : '#ef4444', fontSize: '0.75rem', fontWeight: 700 }}>
-                            <TrendIcon size={14} strokeWidth={3} />
+                        <div className={`kpi-trend ${isPositive ? 'positive' : 'negative'}`}>
+                            <TrendIcon size={14} strokeWidth={2.5} />
                             {trend}
                         </div>
                     )}
                 </div>
-                
-                <div className="stat-info" style={{ marginTop: '0.5rem' }}>
-                    <h3>{value}</h3>
-                    <p>{title}</p>
-                </div>
-
+                <div className="kpi-value">{value}</div>
+                <div className="kpi-label">{title}</div>
                 {sparklineData && sparklineData.length > 0 && dataKey && (
-                    <div style={{ height: '40px', width: '100%', marginTop: 'auto', marginLeft: '-10px' }}>
+                    <div className="kpi-sparkline">
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={sparklineData}>
-                                <Line type="monotone" dataKey={dataKey} stroke={color} strokeWidth={3} dot={false} isAnimationActive={true} />
+                                <Line type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2} dot={false} isAnimationActive={true} />
                             </LineChart>
                         </ResponsiveContainer>
                     </div>
                 )}
             </div>
-            {onClick && <div className="arrow-hint"><ChevronRight /></div>}
+            {onClick && <ChevronRight size={16} className="kpi-arrow" />}
         </div>
     );
 };
+
+import AnalyticsCharts from '../components/shared/AnalyticsCharts';
+import ActivityTimeline from '../components/shared/ActivityTimeline';
 import { io } from 'socket.io-client';
+import { PageSkeleton } from '../components/shared/Skeleton';
 
 export default function Dashboard() {
-    const [stats, setStats] = useState({ 
-        approved: 0, pending: 0, rejected: 0, ongoing: 0, 
-        today: 0, totalForms: 0, activeUsers: 0, availableVehicles: 0, activeDrivers: 0 
+    const [stats, setStats] = useState({
+        approved: 0, pending: 0, rejected: 0, ongoing: 0,
+        today: 0, totalForms: 0, activeUsers: 0, availableVehicles: 0, activeDrivers: 0
     });
     const [tripData, setTripData] = useState([]);
     const [prfData, setPrfData] = useState([]);
     const [rrfData, setRrfData] = useState([]);
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [showCustomizeModal, setShowCustomizeModal] = useState(false);
+    const [kpiPrefs, setKpiPrefs] = useState(() => {
+        const defaultPrefs = {
+            pending: true, approved: true, rejected: true, ongoing: true,
+            today: true, availableVehicles: true, activeDrivers: true, totalForms: true,
+            analytics: true, recentActivity: true
+        };
+        const saved = localStorage.getItem('kpiPrefs');
+        if (saved) {
+            return { ...defaultPrefs, ...JSON.parse(saved) };
+        }
+        return defaultPrefs;
+    });
 
     const user = JSON.parse(localStorage.getItem('user'));
     const navigate = useNavigate();
     const { showToast } = useToast();
     const { isDarkMode } = useTheme();
 
-    const COLORS = ['#1e293b', '#10b981', '#334155', '#0f172a', '#ef4444', '#06b6d4', '#f43f5e', '#14b8a6'];
+    const isAdmin = user?.role === 'Admin';
+    const isGuard = user?.role === 'Guard';
+    const isAccounting = user?.role === 'Accounting';
+    const hasPendingAccess = !isGuard && (
+        isAdmin || 
+        user?.canApprove || 
+        user?.canApprovePRF || 
+        user?.canApproveTripTicket || 
+        user?.canApproveRFP || 
+        user?.canEndorse || 
+        user?.canVerify || 
+        user?.canApproveDeptHead || 
+        isAccounting
+    );
 
     const processChartData = (dataArray, requestorKey) => {
         const counts = {};
@@ -116,11 +142,21 @@ export default function Dashboard() {
                     api.get('/stats')
                 ]);
 
+                let tickets = Array.isArray(ticketsRes.data) ? ticketsRes.data.filter(d => d.status !== 'Archived') : [];
+                let prfs = Array.isArray(prfsRes.data) ? prfsRes.data.filter(d => d.status !== 'Archived') : [];
+                let rrfs = Array.isArray(rrfsRes.data) ? rrfsRes.data.filter(d => d.status !== 'Archived') : [];
 
-                const tickets = Array.isArray(ticketsRes.data) ? ticketsRes.data.filter(d => d.status !== 'Archived') : [];
-                const prfs = Array.isArray(prfsRes.data) ? prfsRes.data.filter(d => d.status !== 'Archived') : [];
-                const rrfs = Array.isArray(rrfsRes.data) ? rrfsRes.data.filter(d => d.status !== 'Archived') : [];
-                const allDocs = [...tickets, ...prfs, ...rrfs];
+                if (user?.role !== 'Admin' && !user?.canApprove) {
+                    const isMyDoc = (d) => String(d.userId) === String(user?.id) || d.requestorName === user?.name || d.requestor === user?.name;
+                    
+                    const canSeeAllTT = user?.canApproveTripTicket || user?.canEndorse;
+                    const canSeeAllPRF = user?.canApprovePRF || user?.canVerify || user?.role === 'Accounting';
+                    const canSeeAllRFP = user?.canApproveRFP || user?.canApproveDeptHead || user?.role === 'Accounting';
+
+                    tickets = tickets.filter(d => canSeeAllTT || isMyDoc(d));
+                    prfs = prfs.filter(d => canSeeAllPRF || isMyDoc(d));
+                    rrfs = rrfs.filter(d => canSeeAllRFP || isMyDoc(d));
+                }
 
                 const parseRecord = (record) => {
                     if (!record.layout) return record;
@@ -137,44 +173,70 @@ export default function Dashboard() {
                 const parsedPrfs = prfs.map(p => ({ ...parseRecord(p), docType: 'PRF' }));
                 const parsedRrfs = rrfs.map(r => ({ ...parseRecord(r), docType: 'RFP' }));
 
-                const allPending = [
-                    ...parsedTickets.filter(t => t.status === 'Pending' || t.status === 'Pending Endorsement' || t.status === 'Pending Approval' || !t.status),
-                    ...parsedPrfs.filter(p => p.status === 'Pending' || p.status === 'Pending Verification' || p.status === 'Pending Approval' || !p.status),
-                    ...parsedRrfs.filter(r => r.status === 'Pending' || r.status === 'Pending Dept Head Approval' || r.status === 'Pending Final Approval' || (r.status === 'Approved' && !r.receivedBy) || !r.status)
-                ];
-
                 const allParsedDocs = [...parsedTickets, ...parsedPrfs, ...parsedRrfs];
 
-                const isAdmin = user?.role === 'Admin' || user?.canApprove;
-                const actualPending = allPending.filter(record => {
-                    if (record.docType === 'TRIP_TICKET') {
-                        const isTTApprover = isAdmin || user?.canApproveTripTicket;
-                        const isTTEndorser = isAdmin || user?.canEndorse;
-                        if (record.status === 'Pending Endorsement') return isTTEndorser || isTTApprover || record.authorId === user.id;
-                        return isTTApprover || record.authorId === user.id;
-                    }
-                    if (record.docType === 'PRF') {
-                        const isPRFApprover = isAdmin || user?.canApprovePRF || user?.role === 'Accounting';
-                        const isPRFVerifier = isAdmin || user?.canVerify;
-                        if (record.status === 'Pending Verification') return isPRFVerifier || isPRFApprover || record.authorId === user.id;
-                        return isPRFApprover || record.authorId === user.id;
-                    }
-                    if (record.docType === 'RFP') {
-                        const isRFPApprover = isAdmin || user?.canApproveRFP || user?.role === 'Accounting';
-                        const isRFPDeptHead = isAdmin || user?.canApproveDeptHead;
-                        if (record.status === 'Pending Dept Head Approval') return isRFPDeptHead || isRFPApprover || record.authorId === user.id;
-                        return isRFPApprover || record.authorId === user.id;
-                    }
-                    return record.authorId === user.id || isAdmin;
-                });
+                let pending = 0;
+                let rejected = 0;
+                let ongoing = 0;
+                let today = 0;
+                const totalForms = allParsedDocs.length;
+                const todayDate = new Date().toDateString();
+
+                if (user?.role !== 'Admin' && !user?.canApprove) {
+                    allParsedDocs.forEach(d => {
+                        if (d.status && d.status.includes('Pending')) {
+                            const isAdminUser = user?.role === 'Admin' || user?.canApprove;
+                            let canApproveThis = false;
+                            const isMyDocObj = String(d.userId) === String(user?.id) || d.requestorName === user?.name || d.requestor === user?.name;
+                            
+                            if (d.docType === 'TRIP_TICKET') {
+                                const isTTApprover = isAdminUser || user?.canApproveTripTicket;
+                                const isTTEndorser = isAdminUser || user?.canEndorse;
+                                if (d.status === 'Pending Endorsement') canApproveThis = isTTEndorser || isMyDocObj;
+                                else if (d.status === 'Pending Approval') canApproveThis = isTTApprover || isMyDocObj;
+                                else canApproveThis = isTTApprover || isMyDocObj;
+                            } else if (d.docType === 'PRF') {
+                                const isPRFApprover = isAdminUser || user?.canApprovePRF || user?.role === 'Accounting';
+                                const isPRFVerifier = isAdminUser || user?.canVerify;
+                                if (d.status === 'Pending Verification') canApproveThis = isPRFVerifier || isMyDocObj;
+                                else if (d.status === 'Pending Approval') canApproveThis = isPRFApprover || isMyDocObj;
+                                else canApproveThis = isPRFApprover || isMyDocObj;
+                            } else if (d.docType === 'RFP') {
+                                const isRFPApprover = isAdminUser || user?.canApproveRFP || user?.role === 'Accounting';
+                                const isRFPDeptHead = isAdminUser || user?.canApproveDeptHead;
+                                if (d.status === 'Pending Dept Head Approval') canApproveThis = isRFPDeptHead || isMyDocObj;
+                                else if (d.status === 'Pending Final Approval' || d.status === 'Pending Accounting') canApproveThis = isRFPApprover || isMyDocObj;
+                                else canApproveThis = isRFPApprover || isMyDocObj;
+                            }
+                            
+                            if (canApproveThis) pending++;
+                        }
+                        
+                        if (d.status === 'Disapproved' || d.status === 'Rejected') rejected++;
+                        if (d.status === 'Ongoing' || d.status === 'DEPARTED') ongoing++;
+                        
+                        const dDate = new Date(d.createdAt).toDateString();
+                        if (dDate === todayDate) today++;
+                    });
+                } else {
+                    pending = statsRes.data.pending;
+                    rejected = statsRes.data.rejected;
+                    ongoing = statsRes.data.ongoing;
+                    today = statsRes.data.today;
+                }
 
                 setStats({
                     ...statsRes.data,
                     approved: allParsedDocs.filter(d => {
                         if (user?.role === 'Accounting' && d.docType === 'RFP' && d.status === 'Approved' && !d.receivedBy) return false;
-                        return d.status === 'Approved' || d.status === 'Completed' || d.status === 'DEPARTED' || d.status === 'ARRIVED';
+                        if (d.docType === 'TRIP_TICKET' && (d.status === 'DEPARTED' || ((d.status === 'Approved' || d.status === 'Completed' || d.status === 'ARRIVED') && !d.guardIn))) return false;
+                        return d.status === 'Approved' || d.status === 'Completed' || d.status === 'DEPARTED' || d.status === 'ARRIVED' || d.status === 'Resolved';
                     }).length,
-                    pending: statsRes.data.pending
+                    pending,
+                    rejected,
+                    ongoing,
+                    today,
+                    totalForms: (user?.role === 'Admin' || user?.canApprove) ? statsRes.data.totalForms : totalForms
                 });
 
                 setTripData(processChartData(tickets.filter(d => d.status === 'Approved' || d.status === 'Completed' || d.status === 'DEPARTED' || d.status === 'ARRIVED'), 'requestorName'));
@@ -191,234 +253,314 @@ export default function Dashboard() {
         fetchData();
     }, []);
 
-    const CustomTooltip = ({ active, payload }) => {
-        if (active && payload && payload.length) {
-            return (
-                <div className="custom-tooltip glass">
-                    <p className="label" style={{ fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>{`${payload[0].name}`}</p>
-                    <p className="intro" style={{ margin: 0, color: 'var(--text-dim)' }}>{`Requested: ${payload[0].value}`}</p>
-                </div>
-            );
-        }
-        return null;
-    };
+    if (loading) return <PageSkeleton type="dashboard" />;
 
     return (
-        <div className={`dashboard-view ${isDarkMode ? 'dark-mode' : ''}`}>
-            <div className="dashboard-content-wrapper">
+        <div className="dashboard-view">
+            <div className="dashboard-content">
                 <header className="dashboard-header">
-                    <div className="header-text">
-                        <h1>Dashboard Overview</h1>
-                        <p>Welcome back, <span>{user?.name || 'User'}</span></p>
+                    <div>
+                        <h1 className="dashboard-title">Dashboard</h1>
+                        <p className="dashboard-subtitle">Welcome back, <span className="dashboard-user">{user?.name || 'User'}</span></p>
                     </div>
-                    {loading && <div className="loader-line" />}
                 </header>
 
-                <div className="stats-grid expanded">
-                    <DynamicKPICard title="Pending" value={stats.pending} icon={Clock} color="#f59e0b" bg="#fffbeb" onClick={() => navigate('/pending')} trend={stats.trends?.pending} sparklineData={stats.sparklines} dataKey="pending" />
-                    <DynamicKPICard title="Completed" value={stats.approved} icon={CheckCircle} color="#10b981" bg="#ecfdf5" onClick={() => navigate('/approved')} trend={stats.trends?.approved} sparklineData={stats.sparklines} dataKey="approved" />
-                    <DynamicKPICard title="Rejected" value={stats.rejected} icon={XCircle} color="#ef4444" bg="#fef2f2" onClick={() => navigate('/archived')} trend={stats.trends?.rejected} sparklineData={stats.sparklines} dataKey="rejected" />
-                    <DynamicKPICard title="Ongoing" value={stats.ongoing} icon={Activity} color="#3b82f6" bg="#eff6ff" onClick={() => navigate('/history')} trend={stats.trends?.ongoing} sparklineData={stats.sparklines} dataKey="ongoing" />
-                    <DynamicKPICard title="Today's Requests" value={stats.today} icon={Calendar} color="#d946ef" bg="#fdf4ff" onClick={() => navigate('/history')} />
-                    <DynamicKPICard title="Available Vehicles" value={stats.availableVehicles} icon={Car} color="#f97316" bg="#fff7ed" onClick={() => navigate('/vehicles')} />
-                    <DynamicKPICard title="Active Drivers" value={stats.activeDrivers} icon={Users} color="#64748b" bg="#f8fafc" onClick={() => navigate('/active-drivers')} />
-                    <DynamicKPICard title="Total Forms" value={stats.totalForms} icon={FileText} color="#22c55e" bg="#f0fdf4" />
+                {/* Quick Actions */}
+                <div className="quick-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: '0.8rem', overflowX: 'auto', flex: 1 }}>
+                        <button className="quick-action-btn" onClick={() => navigate('/trip-ticket', { state: null })}>
+                            <Car size={16} /> New Trip Ticket
+                        </button>
+                        <button className="quick-action-btn" onClick={() => navigate('/prf', { state: null })}>
+                            <FileText size={16} /> New PRF
+                        </button>
+                        <button className="quick-action-btn" onClick={() => navigate('/rfp', { state: null })}>
+                            <FileText size={16} /> New RFP
+                        </button>
+                        {hasPendingAccess && (
+                            <button className="quick-action-btn accent" onClick={() => navigate('/pending')}>
+                                <Zap size={16} /> View Pending
+                            </button>
+                        )}
+                    </div>
+                    <button className="quick-action-btn" onClick={() => setShowCustomizeModal(true)} style={{ marginLeft: '1rem', flexShrink: 0 }}>
+                        <Settings size={16} /> Customize
+                    </button>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr', gap: '2rem', marginTop: '2rem' }}>
-                    <div className="charts-section">
-                        <h2 className="section-title">Form Request Analytics</h2>
-                        <div className="charts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem' }}>
-
-                            {/* Trip Tickets Chart */}
-                            <div className={`section-card ${isDarkMode ? 'dark-box' : 'light-box'}`} style={{ padding: '1rem' }}>
-                                <div className="section-header">
-                                    <h3 style={{ fontSize: '1rem' }}>Trip Tickets</h3>
-                                </div>
-                                <div className="chart-container" style={{ height: '200px' }}>
-                                    {tripData.length > 0 ? (
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart>
-                                                <Pie
-                                                    data={tripData} cx="50%" cy="50%"
-                                                    innerRadius={50} outerRadius={80}
-                                                    paddingAngle={5} dataKey="value" stroke="none"
-                                                >
-                                                    {tripData.map((entry, index) => (
-                                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                    ))}
-                                                </Pie>
-                                                <Tooltip content={<CustomTooltip />} />
-                                                <Legend verticalAlign="bottom" height={24} iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                    ) : (
-                                        <div className="empty-chart">No Trip Ticket Data</div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* PRF Chart */}
-                            <div className={`section-card ${isDarkMode ? 'dark-box' : 'light-box'}`} style={{ padding: '1rem' }}>
-                                <div className="section-header">
-                                    <h3 style={{ fontSize: '1rem' }}>Purchase Requisition</h3>
-                                </div>
-                                <div className="chart-container" style={{ height: '200px' }}>
-                                    {prfData.length > 0 ? (
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart>
-                                                <Pie
-                                                    data={prfData} cx="50%" cy="50%"
-                                                    innerRadius={50} outerRadius={80}
-                                                    paddingAngle={5} dataKey="value" stroke="none"
-                                                >
-                                                    {prfData.map((entry, index) => (
-                                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                    ))}
-                                                </Pie>
-                                                <Tooltip content={<CustomTooltip />} />
-                                                <Legend verticalAlign="bottom" height={24} iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                    ) : (
-                                        <div className="empty-chart">No PRF Data</div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* RRF Chart */}
-                            <div className={`section-card ${isDarkMode ? 'dark-box' : 'light-box'}`} style={{ gridColumn: '1 / -1', padding: '1rem' }}>
-                                <div className="section-header">
-                                    <h3 style={{ fontSize: '1rem' }}>Request For Payment</h3>
-                                </div>
-                                <div className="chart-container" style={{ height: '200px' }}>
-                                    {rrfData.length > 0 ? (
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart>
-                                                <Pie
-                                                    data={rrfData} cx="50%" cy="50%"
-                                                    innerRadius={50} outerRadius={80}
-                                                    paddingAngle={5} dataKey="value" stroke="none"
-                                                >
-                                                    {rrfData.map((entry, index) => (
-                                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                    ))}
-                                                </Pie>
-                                                <Tooltip content={<CustomTooltip />} />
-                                                <Legend verticalAlign="bottom" height={24} iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                    ) : (
-                                        <div className="empty-chart">No RRF Data</div>
-                                    )}
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
-
-                    <div className="notifications-section">
-                        <h2 className="section-title">Live Notifications</h2>
-                        <div className={`section-card ${isDarkMode ? 'dark-box' : 'light-box'}`} style={{ padding: '1rem', height: '100%', maxHeight: '550px', overflowY: 'auto' }}>
-                            {notifications.length === 0 ? (
-                                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.9rem' }}>No recent notifications.</div>
-                            ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                    {notifications.map(notif => (
-                                        <div key={notif.id} style={{ display: 'flex', alignItems: 'center', justifyItems: 'space-between', padding: '0.75rem', background: notif.isRead ? 'transparent' : 'rgba(16, 185, 129, 0.05)', borderRadius: '10px', border: `1px solid ${notif.isRead ? 'var(--glass-border)' : 'rgba(16, 185, 129, 0.2)'}`, cursor: 'pointer', transition: '0.2s' }} onClick={async () => {
-                                            if (!notif.isRead) {
-                                                try {
-                                                    await api.put(`/notifications/${notif.id}/read`);
-                                                    setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, isRead: true } : n));
-                                                } catch (e) { console.error(e); }
-                                            }
-                                            if (notif.link) navigate(notif.link);
-                                        }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
-                                                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', flexShrink: 0 }}>
-                                                    <Bell size={16} />
-                                                </div>
-                                                <div>
-                                                    <div style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '2px', fontSize: '0.85rem' }}>{notif.message}</div>
-                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>{new Date(notif.createdAt).toLocaleString()}</div>
-                                                </div>
-                                            </div>
-                                            <ChevronRight size={16} color="var(--text-dim)" style={{ flexShrink: 0 }} />
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                {/* KPI Grid */}
+                <div className="kpi-grid">
+                    {kpiPrefs.pending && <DynamicKPICard title="Pending" value={stats.pending} icon={Clock} color="#F59E0B" onClick={() => navigate('/pending')} trend={stats.trends?.pending} sparklineData={stats.sparklines} dataKey="pending" />}
+                    {kpiPrefs.approved && <DynamicKPICard title="Completed" value={stats.approved} icon={CheckCircle} color="#22C55E" onClick={() => navigate('/approved')} trend={stats.trends?.approved} sparklineData={stats.sparklines} dataKey="approved" />}
+                    {kpiPrefs.rejected && <DynamicKPICard title="Rejected" value={stats.rejected} icon={XCircle} color="#EF4444" onClick={() => navigate('/archived', { state: { statusFilter: 'Rejected' } })} trend={stats.trends?.rejected} sparklineData={stats.sparklines} dataKey="rejected" />}
+                    {kpiPrefs.ongoing && <DynamicKPICard title="Ongoing" value={stats.ongoing} icon={Activity} color={isDarkMode ? '#ffffff' : '#000000'} onClick={() => navigate('/ongoing')} trend={stats.trends?.ongoing} sparklineData={stats.sparklines} dataKey="ongoing" />}
+                    {kpiPrefs.today && <DynamicKPICard title="Today's Requests" value={stats.today} icon={Calendar} color="#22D3EE" onClick={() => navigate('/today')} />}
+                    {kpiPrefs.availableVehicles && <DynamicKPICard title="Available Vehicles" value={stats.availableVehicles} icon={Car} color="#F97316" onClick={() => navigate('/vehicles')} />}
+                    {kpiPrefs.activeDrivers && <DynamicKPICard title="Active Drivers" value={stats.activeDrivers} icon={Users} color="#64748B" onClick={() => navigate('/active-drivers')} />}
+                    {kpiPrefs.totalForms && <DynamicKPICard title="Total Forms" value={stats.totalForms} icon={FileText} color={isDarkMode ? '#ffffff' : '#000000'} />}
                 </div>
+
+                {/* Charts + Activity */}
+                {(kpiPrefs.analytics || kpiPrefs.recentActivity) && (
+                    <div className="dashboard-grid-2" style={{ gridTemplateColumns: (!kpiPrefs.analytics || !kpiPrefs.recentActivity) ? '1fr' : '2.5fr 1fr' }}>
+                        {kpiPrefs.analytics && (
+                            <div className="dashboard-charts">
+                                <AnalyticsCharts />
+                            </div>
+                        )}
+                        {kpiPrefs.recentActivity && (
+                            <div className="dashboard-activity">
+                                <h2 className="section-heading">Recent Activity</h2>
+                                <div className="activity-card">
+                                    <ActivityTimeline />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
-            <style>{`
-        .dashboard-view { padding: 3rem; min-height: 100vh; animation: fadeIn 0.8s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+            {/* Customize Modal */}
+            {showCustomizeModal && (
+                <div className="modal-overlay" onClick={() => setShowCustomizeModal(false)}>
+                    <div className="modal-content customize-modal" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>Customize Dashboard</h2>
+                            <button className="close-btn" onClick={() => setShowCustomizeModal(false)}>
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="modal-body">
+                            <p className="customize-desc">Select which statistics you want to see on your dashboard.</p>
+                            <div className="kpi-toggles">
+                                {Object.keys(kpiPrefs).map(key => (
+                                    <label key={key} className="kpi-toggle-item">
+                                        <div className="toggle-info">
+                                            <span className="toggle-name">{key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</span>
+                                        </div>
+                                        <div className="toggle-switch">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={kpiPrefs[key]} 
+                                                onChange={() => {
+                                                    const newPrefs = { ...kpiPrefs, [key]: !kpiPrefs[key] };
+                                                    setKpiPrefs(newPrefs);
+                                                    localStorage.setItem('kpiPrefs', JSON.stringify(newPrefs));
+                                                }}
+                                            />
+                                            <span className="slider-round"></span>
+                                        </div>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
-        .dashboard-content-wrapper { max-width: 1400px; margin: 0 auto; }
+            <style>{`
+        .dashboard-view { 
+          padding: 1.5rem; 
+          min-height: 100vh; 
+          animation: fadeIn 0.5s ease-out; 
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .dashboard-content { max-width: 100%; margin: 0 auto; }
         
-        .dashboard-header { margin-bottom: 3rem; }
-        .header-text h1 { font-size: 2.8rem; font-weight: 800; margin-bottom: 4px; color: var(--text-main); letter-spacing: -1.5px; }
-        .header-text p { font-size: 1.1rem; color: var(--text-dim); font-weight: 500; }
-        .header-text p span { color: var(--primary); font-weight: 800; position: relative; }
-        .header-text p span::after { content: ''; position: absolute; bottom: 2px; left: 0; width: 100%; height: 6px; background: var(--primary-light); z-index: -1; border-radius: 4px; }
+        .dashboard-header { margin-bottom: 1.5rem; }
+        .dashboard-title { 
+          font-size: 1.75rem; font-weight: 700; margin-bottom: 4px; color: var(--text-main); 
+          letter-spacing: -0.5px; 
+        }
+        .dashboard-subtitle { font-size: 0.9rem; color: var(--text-dim); font-weight: 400; }
+        .dashboard-user { color: var(--text-main); font-weight: 600; }
         
-        .loader-line { height: 4px; width: 100%; background: var(--primary-light); overflow: hidden; border-radius: 10px; margin-top: 1.5rem; }
-        .loader-line::after { content: ''; display: block; height: 100%; width: 40%; background: var(--primary); animation: slide 1.2s infinite ease-in-out; }
+        .loader-line { height: 3px; width: 100%; background: var(--primary-light); overflow: hidden; border-radius: 10px; margin-top: 1rem; }
+        .loader-line::after { content: ''; display: block; height: 100%; width: 40%; background: var(--text-main); animation: slide 1.2s infinite ease-in-out; border-radius: 10px; }
         @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
 
-        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem; margin-bottom: 3rem; }
-        .stats-grid.expanded { grid-template-columns: repeat(4, 1fr); gap: 1.5rem; }
-        @media (max-width: 1024px) {
-            .stats-grid.expanded { grid-template-columns: repeat(2, 1fr); }
+        /* Quick Actions */
+        .quick-actions {
+          display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;
         }
-        @media (max-width: 768px) {
-            .stats-grid.expanded { grid-template-columns: 1fr; }
+        .quick-action-btn {
+          display: flex; align-items: center; gap: 6px;
+          padding: 0.5rem 1rem; border-radius: var(--radius-sm);
+          border: 1px solid var(--glass-border); background: var(--card-bg);
+          color: var(--text-dim); font-size: 0.8rem; font-weight: 500;
+          cursor: pointer; transition: var(--transition-smooth);
+          font-family: inherit;
+        }
+        .quick-action-btn:hover {
+          border-color: var(--text-main); color: var(--text-main);
+          transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .quick-action-btn.accent {
+          background: var(--text-main); color: var(--card-bg); border-color: var(--text-main);
+        }
+        .quick-action-btn.accent:hover {
+          background: var(--text-dim); border-color: var(--text-dim); color: var(--card-bg);
         }
 
-        .stat-card { 
-            background: var(--card-bg); padding: 2rem; border-radius: 30px; border: 1px solid var(--glass-border); 
-            display: flex; align-items: center; gap: 2rem; transition: var(--transition-smooth); 
-            cursor: pointer; position: relative; overflow: hidden;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.03);
+        /* KPI Grid */
+        .kpi-grid { 
+          display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; 
         }
-        .stat-card:hover { transform: translateY(-10px); box-shadow: 0 25px 50px rgba(0,0,0,0.08); border-color: var(--primary); }
-        .stat-card::after { content: ''; position: absolute; top: 0; right: 0; width: 100px; height: 100px; background: var(--primary-light); filter: blur(40px); border-radius: 50%; opacity: 0; transition: 0.5s; }
-        .stat-card:hover::after { opacity: 1; }
-        
-        .stat-icon-box { width: 64px; height: 64px; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 2rem; transition: 0.3s; }
-        .stat-card:hover .stat-icon-box { transform: scale(1.1) rotate(5deg); }
-        .stat-icon-box.pending { background: #fffbeb; color: #334155; box-shadow: 0 8px 16px rgba(245, 158, 11, 0.15); }
-        .stat-icon-box.approved { background: #ecfdf5; color: #10b981; box-shadow: 0 8px 16px rgba(16, 185, 129, 0.15); }
-        
-        .stat-info h3 { font-size: 2.5rem; font-weight: 800; line-height: 1; color: var(--text-main); }
-        .stat-info p { font-size: 0.85rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-top: 6px; }
-        
-        .arrow-hint { position: absolute; right: 2rem; font-size: 1.8rem; color: var(--text-dim); opacity: 0.2; transition: all 0.4s; }
-        .stat-card:hover .arrow-hint { opacity: 1; transform: translateX(8px); color: var(--primary); }
+        @media (max-width: 1200px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 640px) { .kpi-grid { grid-template-columns: 1fr; } }
 
-        .section-title { font-size: 1.8rem; font-weight: 800; color: var(--text-main); margin-bottom: 1.5rem; letter-spacing: -0.5px; }
+        .kpi-card { 
+          background: var(--card-bg); 
+          padding: 1.25rem; 
+          border-radius: var(--radius-lg); 
+          border: 1px solid var(--glass-border); 
+          display: flex; align-items: center; gap: 0; 
+          transition: var(--transition-smooth); 
+          cursor: pointer; position: relative; overflow: hidden;
+          box-shadow: var(--card-shadow);
+        }
+        .kpi-card:hover { 
+          transform: translateY(-2px); 
+          box-shadow: var(--premium-shadow); 
+          border-color: var(--text-main); 
+        }
         
-        .charts-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; }
+        .kpi-card-inner { display: flex; flex-direction: column; width: 100%; gap: 0.75rem; }
+        .kpi-top { display: flex; justify-content: space-between; align-items: center; }
         
-        .section-card { border-radius: 32px; padding: 2rem; background: var(--card-bg); border: 1px solid var(--glass-border); box-shadow: 0 20px 40px rgba(0,0,0,0.02); position: relative; }
+        .kpi-icon { 
+          width: 40px; height: 40px; border-radius: var(--radius-md); 
+          display: flex; align-items: center; justify-content: center; 
+          transition: var(--transition-smooth); 
+        }
+        .kpi-card:hover .kpi-icon { transform: scale(1.05); }
+                /* Turn purple KPI icons black on hover for better contrast */
+                .kpi-card:hover .kpi-icon[data-color="#8B5CF6"],
+                .kpi-card:hover .kpi-icon[data-color="#6366F1"],
+                .kpi-card:hover .kpi-icon[data-color="#6D28D9"],
+                .kpi-card:hover .kpi-icon[data-color="#7C3AED"],
+                .kpi-card:hover .kpi-icon[data-color="#A78BFA"] {
+                    background: #1e293b !important;
+                    color: #ffffff !important;
+                }
         
-        .section-header { display: flex; justify-content: center; align-items: center; margin-bottom: 1rem; }
-        .section-header h3 { font-size: 1.2rem; font-weight: 800; color: var(--text-main); letter-spacing: 0.5px; text-transform: uppercase; opacity: 0.8;}
+        .kpi-trend {
+          display: flex; align-items: center; gap: 2px;
+          padding: 2px 8px; border-radius: 100px;
+          font-size: 0.7rem; font-weight: 600;
+        }
+        .kpi-trend.positive { background: var(--success-light); color: var(--success); }
+        .kpi-trend.negative { background: var(--danger-light); color: var(--danger); }
 
-        .chart-container { height: 320px; width: 100%; display: flex; align-items: center; justify-content: center; }
-        .empty-chart { color: var(--text-dim); font-weight: 600; text-align: center; font-size: 0.9rem; }
-        
-        .custom-tooltip { padding: 12px 16px; background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .kpi-value { font-size: 1.75rem; font-weight: 700; line-height: 1; color: var(--text-main); }
+        .kpi-label { font-size: 0.8rem; font-weight: 500; color: var(--text-dim); }
 
-        /* DARK MODE SPECIFICS */
-        .dark-mode .stat-card { background: var(--card-bg); color: white; }
-        .dark-mode .stat-info h3 { color: white; }
-        .dark-mode .section-card { background: var(--card-bg); color: white; }
-        .dark-mode .header-text h1 { color: white; }
-        .dark-mode .section-title { color: white; }
+        .kpi-sparkline { height: 32px; width: 100%; margin-top: 0.25rem; }
+        
+        .kpi-arrow { 
+          position: absolute; right: 1rem; color: var(--text-muted); 
+          opacity: 0; transition: var(--transition-smooth); 
+        }
+        .kpi-card:hover .kpi-arrow { opacity: 1; transform: translateX(2px); color: var(--text-main); }
+
+        /* Dashboard Grid */
+        .dashboard-grid-2 { 
+          display: grid; grid-template-columns: 2.5fr 1fr; gap: 1.5rem; 
+        }
+        @media (max-width: 1024px) { .dashboard-grid-2 { grid-template-columns: 1fr; } }
+
+        .section-heading { 
+          font-size: 1rem; font-weight: 600; color: var(--text-main); 
+          margin-bottom: 0.75rem; 
+        }
+
+        .activity-card { 
+          background: var(--card-bg); border-radius: var(--radius-lg); 
+          border: 1px solid var(--glass-border); padding: 1rem; 
+          height: 380px; overflow-y: auto; box-shadow: var(--card-shadow);
+        }
+
+        .section-title { 
+          font-size: 1rem; font-weight: 600; color: var(--text-main); 
+          margin-bottom: 1rem; 
+        }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider-round {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: var(--border-color);
+            transition: .3s;
+            border-radius: 34px;
+        }
+        .slider-round:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+        input:checked + .slider-round {
+            background-color: #10b981;
+        }
+        input:checked + .slider-round:before {
+            transform: translateX(20px);
+        }
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(4px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1000;
+        }
+        .modal-content.customize-modal {
+            background: var(--card-bg);
+            border-radius: 12px;
+            width: 90%; max-width: 400px;
+            max-height: 85vh;
+            display: flex; flex-direction: column;
+            padding: 1.5rem;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--glass-border);
+        }
+        .modal-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding-bottom: 1rem; border-bottom: 1px solid var(--glass-border);
+        }
+        .modal-body {
+            overflow-y: auto;
+            padding-right: 0.5rem;
+            margin-top: 1rem;
+            flex: 1;
+        }
+        .modal-header h2 { margin: 0; font-size: 1.2rem; color: var(--text-main); }
+        .close-btn { background: none; border: none; color: var(--text-dim); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 4px; }
+        .close-btn:hover { color: var(--text-main); background: rgba(0,0,0,0.05); }
+        .customize-desc { font-size: 0.9rem; color: var(--text-dim); margin-bottom: 1.2rem; }
+        .kpi-toggles { display: flex; flex-direction: column; gap: 0.6rem; }
+        .kpi-toggle-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.6rem 0.8rem; background: var(--bg-main);
+            border: 1px solid var(--glass-border); border-radius: 8px; cursor: pointer;
+            transition: var(--transition-smooth);
+        }
+        .kpi-toggle-item:hover { border-color: var(--text-dim); }
+        .toggle-name { font-weight: 600; color: var(--text-main); font-size: 0.9rem; }
       `}</style>
         </div>
     );

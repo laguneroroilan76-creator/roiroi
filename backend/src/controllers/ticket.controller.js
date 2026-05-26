@@ -18,7 +18,7 @@ const createTicket = async (req, res) => {
       'CREATE', 
       'TRIP_TICKET', 
       ticket.id, 
-      `${req.user.name || 'Unknown User'} created Trip Ticket for ${ticket.requestorName || 'N/A'}`
+      `${req.user.name || 'Unknown User'} created a Trip Ticket (Form #${ticket.id})`
     );
 
     await createNotification({
@@ -108,18 +108,37 @@ const updateTicket = async (req, res) => {
     const ticket = await ticketService.updateTicket(id, req.body);
     
     let actionType = 'UPDATE';
-    let message = `${req.user.name || 'Unknown User'} updated status to ${ticket.status}`;
+    let message = `${req.user.name || 'Unknown User'} updated Trip Ticket #${ticket.id} status to ${ticket.status}`;
 
     if (req.user.role === 'Guard') {
-      message = `${req.user.name || 'Unknown User'} updated Trip Ticket guard log`;
+      message = `${req.user.name || 'Unknown User'} updated Trip Ticket #${ticket.id} guard log`;
     }
 
     if (req.user.role !== 'Guard' && ticket.status === 'Approved') {
       actionType = 'APPROVE';
-      message = `${req.user.name || 'Unknown User'} approved Trip Ticket`;
+      message = `${req.user.name || 'Unknown User'} approved Trip Ticket #${ticket.id}`;
+      await createNotification({
+        message: `Your Trip Ticket has been Approved by ${req.user.name || 'an Approver'}`,
+        type: 'APPROVED',
+        targetUserId: ticket.authorId,
+        link: '/history'
+      });
     } else if (req.user.role !== 'Guard' && ticket.status === 'Archived') {
       actionType = 'ARCHIVE';
-      message = `${req.user.name || 'Unknown User'} archived Trip Ticket`;
+      message = `${req.user.name || 'Unknown User'} archived Trip Ticket #${ticket.id}`;
+      await createNotification({
+        message: `Your Trip Ticket was Rejected by ${req.user.name || 'an Approver'}`,
+        type: 'REJECTED',
+        targetUserId: ticket.authorId,
+        link: '/history'
+      });
+    } else if (req.user.role !== 'Guard' && ticket.status === 'Pending Approval') {
+      await createNotification({
+        message: `Trip Ticket endorsed and pending your approval`,
+        type: 'INFO',
+        targetRole: 'TripTicket_Approver',
+        link: '/pending'
+      });
     }
 
     await activityService.logActivity(req.user.id, actionType, 'TRIP_TICKET', ticket.id, message);
@@ -146,7 +165,7 @@ const deleteTicket = async (req, res) => {
       'DELETE', 
       'TRIP_TICKET', 
       id, 
-      `${req.user.name || 'Unknown User'} permanently deleted Trip Ticket`
+      `${req.user.name || 'Unknown User'} permanently deleted Trip Ticket #${id}`
     );
     res.json({ message: 'Ticket deleted successfully' });
   } catch (err) {

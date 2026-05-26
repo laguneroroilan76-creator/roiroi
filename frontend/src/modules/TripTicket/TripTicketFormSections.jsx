@@ -117,9 +117,19 @@ export const FleetAssignment = ({ formData, handleChange, isFieldDisabled, isRea
           <option value="">Select Driver</option>
           {drivers.map(d => {
             const isOccupied = occupiedDrivers.includes(d.name);
+            const isInactive = d.status?.toLowerCase() === 'inactive';
+            const disableOption = isOccupied || isInactive;
+            
+            let label = d.name;
+            if (isInactive) {
+                label += ' (INACTIVE)';
+            } else if (isOccupied) {
+                label += ' (OCCUPIED)';
+            }
+
             return (
-              <option key={d.id} value={d.name} disabled={isOccupied}>
-                {d.name} {isOccupied ? '(OCCUPIED)' : ''}
+              <option key={d.id} value={d.name} disabled={disableOption}>
+                {label}
               </option>
             );
           })}
@@ -134,9 +144,19 @@ export const FleetAssignment = ({ formData, handleChange, isFieldDisabled, isRea
           <option value="">Select Vehicle</option>
           {vehicles.map(v => {
             const isOccupied = occupiedVehicles.includes(v.name);
+            const isInactive = v.status?.toLowerCase() !== 'active';
+            const disableOption = isOccupied || isInactive;
+
+            let label = v.name;
+            if (isInactive) {
+                label += ` (${v.status?.toUpperCase() || 'UNAVAILABLE'})`;
+            } else if (isOccupied) {
+                label += ' (OCCUPIED)';
+            }
+
             return (
-              <option key={v.id} value={v.name} disabled={isOccupied}>
-                {v.name} {isOccupied ? '(OCCUPIED)' : ''}
+              <option key={v.id} value={v.name} disabled={disableOption}>
+                {label}
               </option>
             );
           })}

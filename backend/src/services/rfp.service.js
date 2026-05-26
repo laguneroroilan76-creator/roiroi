@@ -45,7 +45,7 @@ const getRRFs = async (userId, canApprove, role) => {
   }
   return await prisma.rrf.findMany({
     where,
-    include: { items: true, author: { select: { name: true } } },
+    include: { items: true, author: { select: { name: true, avatarUrl: true } } },
     orderBy: { createdAt: 'desc' },
   });
 };

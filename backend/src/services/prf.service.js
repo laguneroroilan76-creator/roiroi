@@ -45,7 +45,7 @@ const getPRFs = async (userId, canApprove, isGuard = false) => {
   const where = (canApprove || isGuard) ? {} : { authorId: userId };
   return await prisma.prf.findMany({
     where,
-    include: { items: true, author: { select: { name: true } } },
+    include: { items: true, author: { select: { name: true, avatarUrl: true } } },
     orderBy: { createdAt: 'desc' },
   });
 };

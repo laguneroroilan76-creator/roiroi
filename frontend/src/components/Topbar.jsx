@@ -1,23 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
-import { Moon, Sun, User, LogOut, Settings, Menu } from 'lucide-react';
+import { Moon, Sun, User, LogOut, Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from '../context/ThemeContext';
 import NotificationBell from './NotificationBell';
 import './Topbar.css';
 
 export default function Topbar({ user, toggleSidebar, isSidebarCollapsed }) {
-  const [isDark, setIsDark] = useState(false);
+  const { isDarkMode, toggleDarkMode } = useTheme();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check initial theme
-    const theme = localStorage.getItem('theme');
-    if (theme === 'dark') {
-      setIsDark(true);
-      document.body.setAttribute('data-theme', 'dark');
-    }
-    
     const handleClickOutside = (event) => {
       if (profileRef.current && !profileRef.current.contains(event.target)) {
         setShowProfileMenu(false);
@@ -26,17 +20,6 @@ export default function Topbar({ user, toggleSidebar, isSidebarCollapsed }) {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const toggleTheme = () => {
-    const newTheme = !isDark ? 'dark' : 'light';
-    setIsDark(!isDark);
-    localStorage.setItem('theme', newTheme);
-    if (newTheme === 'dark') {
-      document.body.setAttribute('data-theme', 'dark');
-    } else {
-      document.body.removeAttribute('data-theme');
-    }
-  };
 
   const handleLogout = () => {
     localStorage.clear();
@@ -64,8 +47,8 @@ export default function Topbar({ user, toggleSidebar, isSidebarCollapsed }) {
       </div>
 
       <div className="topbar-right">
-        <button className="icon-btn theme-toggle" onClick={toggleTheme} title="Toggle Dark Mode">
-          {isDark ? <Sun size={20} /> : <Moon size={20} />}
+        <button className="icon-btn theme-toggle" onClick={() => toggleDarkMode()} title="Toggle Dark Mode">
+          {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
         </button>
         
         <div className="bell-container">
@@ -90,9 +73,6 @@ export default function Topbar({ user, toggleSidebar, isSidebarCollapsed }) {
               <div className="dropdown-divider"></div>
               <button className="dropdown-item" onClick={() => { navigate('/profile'); setShowProfileMenu(false); }}>
                 <User size={16} /> My Profile
-              </button>
-              <button className="dropdown-item" onClick={() => { navigate('/profile'); setShowProfileMenu(false); }}>
-                <Settings size={16} /> Settings
               </button>
               <div className="dropdown-divider"></div>
               <button className="dropdown-item text-danger" onClick={handleLogout}>

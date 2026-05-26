@@ -44,6 +44,8 @@ exports.getDashboardStats = async (req, res) => {
       
       let category = '';
 
+      const isTripTicket = form.driver !== undefined || form.plateNumber !== undefined || form.etdOffice !== undefined;
+
       // Pending
       if (s === 'Pending' || 
           s === 'Pending Verification' || 
@@ -55,28 +57,20 @@ exports.getDashboardStats = async (req, res) => {
         pending++;
         category = 'pending';
       }
-      // Approved / Resolved
-      else if (s === 'Approved' || s === 'Resolved' || s === 'Completed' || s === 'ARRIVED') {
-        approved++;
-        category = 'approved';
-      }
-      // Rejected / Archived
-      else if (s === 'Archived' || s === 'Disapproved' || s === 'Closed' || s === 'Cancelled' || s === 'CANCELLED') {
+      // Rejected / Cancelled (Excluding normal Archived)
+      else if (s === 'Disapproved' || s === 'Closed' || s === 'Cancelled' || s === 'CANCELLED') {
         rejected++;
         category = 'rejected';
       }
       // Ongoing (In Progress)
-      else if (s === 'In Progress' || s === 'Ongoing' || s === 'DEPARTED') {
+      else if (s === 'In Progress' || s === 'Ongoing' || s === 'DEPARTED' || (isTripTicket && (s === 'Approved' || s === 'Completed' || s === 'ARRIVED') && !form.guardIn)) {
         ongoing++;
         category = 'ongoing';
       }
-      
-      // Special logic for ongoing TripTickets (Approved but currently traveling)
-      if (form.status === 'Approved' && form.guardOut && !form.guardIn) {
-        if (category !== 'ongoing') {
-           ongoing++;
-           category = 'ongoing';
-        }
+      // Approved / Resolved (Completed)
+      else if (s === 'Approved' || s === 'Resolved' || s === 'Completed' || s === 'ARRIVED') {
+        approved++;
+        category = 'approved';
       }
 
       // Populate trends and sparklines
@@ -116,7 +110,7 @@ exports.getDashboardStats = async (req, res) => {
     const [activeUsers, availableVehicles, activeDrivers] = await Promise.all([
       prisma.user.count(),
       prisma.vehicle.count({ where: { status: 'Active' } }),
-      prisma.driver.count({ where: { status: 'Active' } })
+      prisma.user.count({ where: { role: 'Driver' } })
     ]);
 
     res.json({
@@ -125,7 +119,7 @@ exports.getDashboardStats = async (req, res) => {
       rejected,
       ongoing,
       today: todayCount,
-      totalForms: allForms.length,
+      totalForms: allForms.filter(f => f.status !== 'Archived').length,
       activeUsers,
       availableVehicles,
       activeDrivers,
@@ -136,5 +130,147 @@ exports.getDashboardStats = async (req, res) => {
   } catch (error) {
     console.error('Failed to get dashboard stats:', error);
     res.status(500).json({ error: 'Failed to fetch dashboard stats' });
+  }
+};
+
+exports.getAnalyticsData = async (req, res) => {
+  try {
+    const period = req.query.period || 'this_month'; // 'today', 'this_week', 'this_month', 'yearly', 'custom'
+    const { start, end } = req.query;
+
+    const now = new Date();
+    let startDate = new Date();
+    startDate.setHours(0,0,0,0);
+    let endDate = new Date();
+    endDate.setHours(23,59,59,999);
+
+    if (period === 'today') {
+        // already set to today
+    } else if (period === 'this_week') {
+        startDate.setDate(now.getDate() - now.getDay()); // Sunday
+    } else if (period === 'this_month') {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else if (period === 'yearly') {
+        startDate = new Date(now.getFullYear(), 0, 1);
+    } else if (period === 'custom' && start && end) {
+        startDate = new Date(start);
+        startDate.setHours(0,0,0,0);
+        endDate = new Date(end);
+        endDate.setHours(23,59,59,999);
+    } else if (period === 'all_time') {
+        startDate = new Date('2000-01-01');
+    }
+
+    const [prfs, rrfs, triptickets] = await Promise.all([
+      prisma.prf.findMany({ where: { createdAt: { gte: startDate, lte: endDate } } }),
+      prisma.rrf.findMany({ where: { createdAt: { gte: startDate, lte: endDate } } }),
+      prisma.tripTicket.findMany({ where: { createdAt: { gte: startDate, lte: endDate } } })
+    ]);
+
+    const allForms = [
+        ...prfs.map(f => ({ ...f, docType: 'PRF' })),
+        ...rrfs.map(f => ({ ...f, docType: 'RRF' })),
+        ...triptickets.map(f => ({ ...f, docType: 'TRIP_TICKET' }))
+    ];
+
+    const monthlyTrendsMap = {};
+    const isGroupingByMonth = period === 'yearly' || period === 'all_time';
+
+    if (isGroupingByMonth) {
+        let currentIter = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+        while (currentIter <= endDate) {
+            const key = currentIter.toLocaleString('en-US', { month: 'short', year: '2-digit' });
+            if (!monthlyTrendsMap[key]) monthlyTrendsMap[key] = { name: key, submitted: 0, approved: 0, rejected: 0, completed: 0 };
+            currentIter.setMonth(currentIter.getMonth() + 1);
+        }
+    } else {
+        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+            const key = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            monthlyTrendsMap[key] = { name: key, submitted: 0, approved: 0, rejected: 0, completed: 0 };
+        }
+    }
+
+    const departmentStatsMap = {};
+    let prfCount = 0;
+    let rrfCount = 0;
+    let ttCount = 0;
+
+    const workloadMap = {};
+    for (const key in monthlyTrendsMap) {
+        workloadMap[key] = { name: key, active: 0 };
+    }
+
+    allForms.forEach(form => {
+        const s = form.status || 'Pending';
+        const formDate = new Date(form.createdAt);
+        let key = '';
+
+        if (isGroupingByMonth) {
+            key = formDate.toLocaleString('en-US', { month: 'short', year: '2-digit' });
+        } else {
+            key = formDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        if (form.docType === 'PRF') prfCount++;
+        if (form.docType === 'RRF') rrfCount++;
+        if (form.docType === 'TRIP_TICKET') ttCount++;
+
+        const dept = form.department || 'General';
+        if (!departmentStatsMap[dept]) departmentStatsMap[dept] = { name: dept, volume: 0, approved: 0, approvalRate: 0 };
+        departmentStatsMap[dept].volume++;
+
+        let category = '';
+        if (s === 'Pending' || s.includes('Pending')) {
+            category = 'submitted';
+        } else if (s === 'Approved' || s === 'DEPARTED') {
+            category = 'approved';
+            departmentStatsMap[dept].approved++;
+        } else if (s === 'Archived' || s === 'Disapproved' || s === 'Closed' || s.includes('Cancel')) {
+            category = 'rejected';
+        } else if (s === 'Resolved' || s === 'Completed' || s === 'ARRIVED') {
+            category = 'completed';
+            departmentStatsMap[dept].approved++;
+        }
+
+        if (monthlyTrendsMap[key]) {
+            monthlyTrendsMap[key].submitted++;
+            if (category === 'approved') monthlyTrendsMap[key].approved++;
+            if (category === 'rejected') monthlyTrendsMap[key].rejected++;
+            if (category === 'completed') monthlyTrendsMap[key].completed++;
+        }
+
+        if (workloadMap[key]) {
+            if (category === 'submitted' || category === 'approved' || category === 'ongoing') {
+                workloadMap[key].active++;
+            }
+        }
+    });
+
+    const monthlyTrends = Object.values(monthlyTrendsMap);
+    const workloadActivity = Object.values(workloadMap);
+    
+    const departmentStatsRaw = Object.values(departmentStatsMap);
+    departmentStatsRaw.forEach(d => {
+        d.approvalRate = Math.round((d.approved / d.volume) * 100);
+    });
+    const departmentStats = departmentStatsRaw.sort((a,b) => b.volume - a.volume).slice(0, 10);
+
+    const formTypeStats = [
+        { name: 'Trip Tickets', value: ttCount },
+        { name: 'Purchase Req', value: prfCount },
+        { name: 'Payment Req', value: rrfCount }
+    ].filter(f => f.value > 0);
+
+    res.json({
+        monthlyTrends,
+        departmentStats,
+        formTypeStats,
+        workloadActivity,
+        totalForms: allForms.filter(f => f.status !== 'Archived').length
+    });
+
+  } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Failed to get analytics' });
   }
 };

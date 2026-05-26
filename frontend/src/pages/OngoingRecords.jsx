@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { PageSkeleton } from '../components/shared/Skeleton';
 
-export default function PendingRecords() {
+export default function OngoingRecords() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -56,82 +56,62 @@ export default function PendingRecords() {
       };
 
       const parsedRrfs = rrfsRes.data.map(r => parseRecord(r));
-      const allPending = [
-        ...ticketsRes.data.filter(t => t.status === 'Pending' || t.status === 'Pending Endorsement' || t.status === 'Pending Approval' || !t.status).map(t => ({ 
+      const allOngoing = [
+        ...ticketsRes.data.filter(t => t.status === 'Ongoing' || t.status === 'DEPARTED' || t.status === 'Approved').map(t => ({ 
             ...parseRecord(t), 
             docType: 'TRIP_TICKET',
             displayType: 'TT',
             apiEndpoint: '/trip-tickets',
             requestorName: t.requestorName || t.author?.name || 'Unnamed Request'
         })),
-        ...prfsRes.data.filter(p => p.status === 'Pending' || p.status === 'Pending Verification' || p.status === 'Pending Approval' || !p.status).map(p => ({
+        ...prfsRes.data.filter(p => p.status === 'Ongoing').map(p => ({
             ...parseRecord(p),
             docType: 'PRF',
             displayType: 'PRF',
             apiEndpoint: '/prfs',
-            requestorName: p.requestor || p.author?.name || `PRF #${p.prfNo || p.id}`,
-            status: p.status || 'Pending Verification'
+            requestorName: p.requestor || p.author?.name || `PRF #${p.prfNo || p.id}`
         })),
-        ...parsedRrfs.filter(r => r.status === 'Pending' || r.status === 'Pending Dept Head Approval' || r.status === 'Pending Final Approval' || (r.status === 'Approved' && !r.receivedBy) || !r.status).map(r => ({
+        ...parsedRrfs.filter(r => r.status === 'Ongoing').map(r => ({
             ...r,
             docType: 'RFP',
             displayType: 'RFP',
             apiEndpoint: '/rfps',
-            requestorName: r.requestor || r.author?.name || `RFP #${r.rrfNo || r.id}`,
-            status: r.status || 'Pending Dept Head Approval'
+            requestorName: r.requestor || r.author?.name || `RFP #${r.rrfNo || r.id}`
         }))
       ];
 
-      const filteredPending = allPending.filter(record => {
+      const filteredOngoing = allOngoing.filter(record => {
         const isAdmin = user?.role === 'Admin' || user?.canApprove;
+        const isMyDoc = record.authorId === user.id || record.requestorName === user.name || record.requestor === user.name;
         
-        // Granular filtering per document type
+        if (isAdmin || isMyDoc) return true;
+        
         if (record.docType === 'TRIP_TICKET') {
-            const isTTApprover = isAdmin || user?.canApproveTripTicket;
-            const isTTEndorser = isAdmin || user?.canEndorse;
-
-            if (record.status === 'Pending Endorsement') {
-                return isTTEndorser || record.authorId === user.id;
-            }
-            if (record.status === 'Pending Approval') {
-                return isTTApprover || record.authorId === user.id;
-            }
-            return isTTApprover || record.authorId === user.id;
+            const isTTApprover = user?.canApproveTripTicket;
+            const isTTEndorser = user?.canEndorse;
+            if (record.status === 'Pending Endorsement') return isTTEndorser;
+            if (record.status === 'Pending Approval') return isTTApprover;
+            return isTTApprover || isTTEndorser;
         }
-
         if (record.docType === 'PRF') {
-            const isPRFApprover = isAdmin || user?.canApprovePRF || user?.role === 'Accounting';
-            const isPRFVerifier = isAdmin || user?.canVerify;
-
-            if (record.status === 'Pending Verification') {
-                return isPRFVerifier || record.authorId === user.id;
-            }
-            if (record.status === 'Pending Approval') {
-                return isPRFApprover || record.authorId === user.id;
-            }
-            return isPRFApprover || record.authorId === user.id;
+            const isPRFApprover = user?.canApprovePRF || user?.role === 'Accounting';
+            const isPRFVerifier = user?.canVerify;
+            if (record.status === 'Pending Verification') return isPRFVerifier;
+            if (record.status === 'Pending Approval') return isPRFApprover;
+            return isPRFApprover || isPRFVerifier;
         }
-
-        if (record.docType === 'RFP') {
-            const isRFPApprover = isAdmin || user?.canApproveRFP || user?.role === 'Accounting';
-            const isRFPDeptHead = isAdmin || user?.canApproveDeptHead;
-
-            if (record.status === 'Pending Dept Head Approval') {
-                return isRFPDeptHead || record.authorId === user.id;
-            }
-            if (record.status === 'Pending Final Approval') {
-                return isRFPApprover || record.authorId === user.id;
-            }
-            if (record.status === 'Pending Accounting') {
-                return isRFPApprover || record.authorId === user.id;
-            }
-            return isRFPApprover || record.authorId === user.id;
+        if (record.docType === 'RFP' || record.docType === 'RRF') {
+            const isRFPApprover = user?.canApproveRFP || user?.role === 'Accounting';
+            const isRFPDeptHead = user?.canApproveDeptHead;
+            if (record.status === 'Pending Dept Head Approval') return isRFPDeptHead;
+            if (record.status === 'Pending Final Approval' || record.status === 'Pending Accounting') return isRFPApprover;
+            return isRFPApprover || isRFPDeptHead;
         }
-
-        return record.authorId === user.id || isAdmin;
+        
+        return false;
       });
 
-      setRecords(filteredPending.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+      setRecords(filteredOngoing.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
     } catch (err) {
       showToast('Error fetching pending records', 'error');
     } finally {
@@ -164,7 +144,7 @@ export default function PendingRecords() {
         <div className="header-left">
           <div className="title-area" style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
             <div>
-              <h1 style={{ fontSize: '2.5rem', fontWeight: '800', margin: 0 }}>Pending Approvals</h1>
+              <h1 style={{ fontSize: '2.5rem', fontWeight: '800', margin: 0 }}>Ongoing Records</h1>
             </div>
           </div>
         </div>
@@ -238,19 +218,12 @@ export default function PendingRecords() {
                 </td>
                 <td>
                   {(() => {
-                    const isPendingAccounting = record.docType === 'RFP' && record.status === 'Approved' && !record.receivedBy;
-                    const displayStatusText = isPendingAccounting ? 'Pending Accounting' : record.status;
-                    const isOrange = record.status === 'Pending Approval' || record.status === 'Pending Final Approval' || isPendingAccounting;
                     return (
                       <span className="status-pill-premium" style={{ 
-                        background: isOrange
-                          ? 'rgba(249, 115, 22, 0.1)' // Orange for final/accounting approval stage
-                          : 'rgba(245, 158, 11, 0.1)', // Yellow for initial pending stage
-                        color: isOrange
-                          ? '#f97316'
-                          : '#334155'
+                        background: 'rgba(37, 99, 235, 0.1)',
+                        color: '#2563eb'
                       }}>
-                        <Clock size={12} /> {displayStatusText?.toUpperCase() || 'PENDING'}
+                        <Layers size={12} /> {record.status?.toUpperCase() || 'ONGOING'}
                       </span>
                     );
                   })()}
@@ -263,7 +236,7 @@ export default function PendingRecords() {
                 <td style={{ textAlign: 'right' }}>
                   <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                     <button className="action-btn-premium primary" onClick={(e) => { e.stopPropagation(); handleReview(record); }}>
-                      REVIEW <ArrowRight size={14} />
+                      VIEW DETAILS <ArrowRight size={14} />
                     </button>
                   </div>
                 </td>
@@ -278,7 +251,7 @@ export default function PendingRecords() {
                     </div>
                     <div style={{ textAlign: 'center' }}>
                       <h2 style={{ fontSize: '1.8rem', fontWeight: 800, margin: '0 0 0.5rem', color: 'var(--text-main)' }}>All caught up!</h2>
-                      <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 500 }}>No documents matching your criteria are pending approval.</p>
+                      <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 500 }}>No documents are currently ongoing.</p>
                     </div>
                   </div>
                 </td>

@@ -79,7 +79,9 @@ export default function Layout({ children }) {
           }
         }
         .content-wrapper {
-          padding: 2rem;
+          padding: 0.5rem;
+          width: 100%;
+          max-width: 100%;
         }
       `}</style>
     </div>

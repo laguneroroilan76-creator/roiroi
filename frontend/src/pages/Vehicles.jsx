@@ -22,6 +22,7 @@ export default function Vehicles() {
     status: 'Active'
   });
   const { showToast } = useToast();
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   useEffect(() => {
     fetchVehicles();
@@ -110,9 +111,11 @@ export default function Vehicles() {
         <div className="header-left">
           <h1>Vehicle Management</h1>
         </div>
-        <button className="btn add-btn" onClick={() => handleOpenModal()}>
-          <span>+</span> Register New Vehicle
-        </button>
+        {(user?.role === 'Admin' || user?.permissions?.vehicles?.manage) && (
+          <button className="btn add-btn" onClick={() => handleOpenModal()}>
+            <span>+</span> Register New Vehicle
+          </button>
+        )}
       </div>
 
       <div className="table-container">
@@ -123,7 +126,7 @@ export default function Vehicles() {
               <th>Plate Number</th>
               <th>Specifications</th>
               <th>Status</th>
-              <th style={{ textAlign: 'right' }}>Actions</th>
+              {(user?.role === 'Admin' || user?.permissions?.vehicles?.manage) && <th style={{ textAlign: 'right' }}>Actions</th>}
             </tr>
           </thead>
           <tbody>
@@ -149,17 +152,19 @@ export default function Vehicles() {
                     {vehicle.status}
                   </span>
                 </td>
-                <td>
-                  <div className="actions-cell">
-                    <button className="action-link edit" onClick={() => handleOpenModal(vehicle)}>Edit</button>
-                    <button className="action-link delete" onClick={() => handleDelete(vehicle.id)}>Delete</button>
-                  </div>
-                </td>
+                {(user?.role === 'Admin' || user?.permissions?.vehicles?.manage) && (
+                  <td>
+                    <div className="actions-cell">
+                      <button className="action-link edit" onClick={() => handleOpenModal(vehicle)}>Edit</button>
+                      <button className="action-link delete" onClick={() => handleDelete(vehicle.id)}>Delete</button>
+                    </div>
+                  </td>
+                )}
               </tr>
             ))}
             {vehicles.length === 0 && (
               <tr>
-                <td colSpan="5" className="empty-row">
+                <td colSpan={(user?.role === 'Admin' || user?.permissions?.vehicles?.manage) ? "5" : "4"} className="empty-row">
                   No records found in the vehicle registry.
                 </td>
               </tr>

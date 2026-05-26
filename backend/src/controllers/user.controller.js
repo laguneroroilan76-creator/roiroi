@@ -13,6 +13,17 @@ const getUsers = async (req, res) => {
   }
 };
 
+const getMe = async (req, res) => {
+  try {
+    const user = await userService.getUserById(req.user.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const { password, ...safeUser } = user;
+    res.json(safeUser);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 const getGuardUsers = async (req, res) => {
   try {
     const guards = await userService.getGuardUsers();
@@ -136,6 +147,6 @@ const deleteUser = async (req, res) => {
 };
 
 module.exports = { 
-  getUsers, getGuardUsers, updateSignature, updateAvatar, updateTheme, 
+  getUsers, getGuardUsers, getMe, updateSignature, updateAvatar, updateTheme, 
   updateDarkMode, getActivityLogs, getActivityFeed, updateUserData, deleteUser
 };

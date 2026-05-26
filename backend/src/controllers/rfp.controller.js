@@ -11,7 +11,7 @@ const createRFP = async (req, res) => {
       'CREATE', 
       'RFP', 
       rfp.id, 
-      `${req.user.name || 'Unknown User'} created RFP #${rfp.rrfNo || rfp.id}`
+      `${req.user.name || 'Unknown User'} created an RFP (Form #${rfp.rrfNo || rfp.id})`
     );
 
     await createNotification({
@@ -80,14 +80,40 @@ const updateRFP = async (req, res) => {
     const rfp = await rfpService.updateRRF(id, req.body);
     
     let actionType = 'UPDATE';
-    let message = `${req.user.name || 'Unknown User'} updated RFP status to ${rfp.status}`;
+    let message = `${req.user.name || 'Unknown User'} updated RFP #${rfp.rrfNo || rfp.id} status to ${rfp.status}`;
 
     if (rfp.status === 'Approved') {
       actionType = 'APPROVE';
-      message = `${req.user.name || 'Unknown User'} approved RFP`;
+      message = `${req.user.name || 'Unknown User'} approved RFP #${rfp.rrfNo || rfp.id}`;
+      await createNotification({
+        message: `Your RFP #${rfp.rrfNo || rfp.id} has been Approved`,
+        type: 'APPROVED',
+        targetUserId: rfp.authorId,
+        link: '/history'
+      });
     } else if (rfp.status === 'Archived') {
       actionType = 'ARCHIVE';
-      message = `${req.user.name || 'Unknown User'} archived RFP`;
+      message = `${req.user.name || 'Unknown User'} archived RFP #${rfp.rrfNo || rfp.id}`;
+      await createNotification({
+        message: `Your RFP #${rfp.rrfNo || rfp.id} was Rejected`,
+        type: 'REJECTED',
+        targetUserId: rfp.authorId,
+        link: '/history'
+      });
+    } else if (rfp.status === 'Pending Dept Head Approval') {
+      await createNotification({
+        message: `RFP #${rfp.rrfNo || rfp.id} verified and pending Dept Head approval`,
+        type: 'INFO',
+        targetRole: 'DeptHead',
+        link: '/pending'
+      });
+    } else if (rfp.status === 'Pending Final Approval') {
+      await createNotification({
+        message: `RFP #${rfp.rrfNo || rfp.id} pending Final Approval`,
+        type: 'INFO',
+        targetRole: 'RFP_Approver',
+        link: '/pending'
+      });
     }
 
     await activityService.logActivity(req.user.id, actionType, 'RFP', rfp.id, message);
@@ -117,7 +143,7 @@ const deleteRFP = async (req, res) => {
       'DELETE', 
       'RFP', 
       id, 
-      `${req.user.name || 'Unknown User'} permanently deleted RFP`
+      `${req.user.name || 'Unknown User'} permanently deleted RFP #${id}`
     );
     res.json({ message: 'RFP deleted successfully' });
   } catch (err) {

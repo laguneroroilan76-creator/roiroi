@@ -4,6 +4,7 @@ import StatusPill from '../shared/StatusPill';
 
 const TicketTable = ({ tickets, onView, typeLabel }) => {
   const headers = [
+    { label: '#', style: { width: '40px', textAlign: 'center' } },
     { label: 'Requestor' },
     { label: 'Type' },
     { label: 'Date' },
@@ -13,13 +14,20 @@ const TicketTable = ({ tickets, onView, typeLabel }) => {
 
   return (
     <PremiumTable headers={headers} emptyMessage="No trip tickets found.">
-      {tickets.map(ticket => (
+      {tickets.map((ticket, index) => (
         <tr key={ticket.id} className="fade-in">
+          <td style={{ textAlign: 'center', fontWeight: '600', color: 'var(--text-dim)' }}>
+            {index + 1}
+          </td>
           <td>
             <div className="user-info">
-              <div className="avatar-small">
-                {ticket.requestorName?.[0] || 'T'}
-              </div>
+              {ticket.author?.avatarUrl ? (
+                <img src={ticket.author.avatarUrl.startsWith('http') ? ticket.author.avatarUrl : `${window.location.protocol}//${window.location.hostname}:5000${ticket.author.avatarUrl}`} alt="Avatar" className="avatar-small" style={{ objectFit: 'cover' }} />
+              ) : (
+                <div className="avatar-small">
+                  {ticket.requestorName?.[0] || 'T'}
+                </div>
+              )}
               <span className="bold">{ticket.requestorName}</span>
             </div>
           </td>

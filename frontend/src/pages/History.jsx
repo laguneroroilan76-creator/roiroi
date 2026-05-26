@@ -6,6 +6,7 @@ import { historyService } from '../services/history.service';
 import TicketTable from '../components/history/TicketTable';
 import CalendarView from '../components/history/CalendarView';
 import ActivityLog from '../components/history/ActivityLog';
+import { PageSkeleton } from '../components/shared/Skeleton';
 
 export default function History() {
   const location = useLocation();
@@ -88,7 +89,7 @@ export default function History() {
     if (record) handleViewRecord(record, log.resource);
   };
 
-  if (loading) return <div className="history-page" style={{ padding: '3rem', color: 'var(--text-main)' }}>Loading System Records...</div>;
+  if (loading) return <PageSkeleton type="table" />;
 
   return (
     <div className="history-page" style={{ padding: '3rem' }}>
@@ -170,7 +171,7 @@ export default function History() {
         }
         .tab-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.05); color: var(--primary); }
         .tab-btn.active { 
-          background: var(--primary); color: white; border-color: var(--primary); 
+          background: var(--primary); color: var(--bg-gradient); border-color: var(--primary); 
           box-shadow: 0 10px 25px rgba(15, 23, 42, 0.3);
           transform: translateY(-3px);
         }

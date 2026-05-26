@@ -11,6 +11,8 @@ import Profile from './pages/Profile';
 import ApprovedRecords from './pages/ApprovedRecords';
 import ArchivedRecords from './pages/ArchivedRecords';
 import PendingRecords from './pages/PendingRecords';
+import OngoingRecords from './pages/OngoingRecords';
+import TodayRecords from './pages/TodayRecords';
 import Vehicles from './pages/Vehicles';
 import DriverSchedule from './pages/DriverSchedule';
 import ActiveDrivers from './pages/ActiveDrivers';
@@ -97,6 +99,14 @@ function App() {
             <Route 
               path="/pending" 
               element={<ProtectedRoute><Layout><PendingRecords /></Layout></ProtectedRoute>} 
+            />
+            <Route 
+              path="/ongoing" 
+              element={<ProtectedRoute><Layout><OngoingRecords /></Layout></ProtectedRoute>} 
+            />
+            <Route 
+              path="/today" 
+              element={<ProtectedRoute><Layout><TodayRecords /></Layout></ProtectedRoute>} 
             />
             <Route 
               path="/vehicles" 

@@ -198,6 +198,8 @@ model User {
   themeColor   String?       @default("#0f172a")
   isDarkMode   Boolean       @default(false)
   role         UserRole      @default(User)
+  status       String        @default("Active")
+  inactiveReason String?     @db.Text
   permissions  Json?
   activitylog  ActivityLog[]
   prf          Prf[]

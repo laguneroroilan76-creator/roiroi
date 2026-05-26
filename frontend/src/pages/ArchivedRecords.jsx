@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import api from '../services/api';
 import { 
@@ -20,6 +20,8 @@ export default function ArchivedRecords() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('All');
+  const location = useLocation();
+  const [statusFilter, setStatusFilter] = useState(location.state?.statusFilter || 'All');
   const navigate = useNavigate();
   const { showToast, confirm } = useToast();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -108,10 +110,10 @@ export default function ArchivedRecords() {
   };
 
   const getStatusColor = (status) => {
-    if (status === 'Archived') return { bg: 'rgba(100, 116, 139, 0.1)', text: '#f1f5f9' };
+    if (status === 'Archived') return { bg: 'rgba(100, 116, 139, 0.1)', text: '#475569' };
     if (status === 'Disapproved') return { bg: 'rgba(239, 68, 68, 0.1)', text: '#ef4444' };
     if (status === 'Cancelled') return { bg: 'rgba(245, 158, 11, 0.1)', text: '#334155' };
-    return { bg: 'rgba(100, 116, 139, 0.1)', text: '#f1f5f9' };
+    return { bg: 'rgba(100, 116, 139, 0.1)', text: '#475569' };
   };
 
   const filteredRecords = records.filter(record => {
@@ -119,7 +121,12 @@ export default function ArchivedRecords() {
                           record.author?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           record.purpose?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = filterType === 'All' || record.type === filterType;
-    return matchesSearch && matchesType;
+    
+    let matchesStatus = true;
+    if (statusFilter === 'Archived') matchesStatus = record.status === 'Archived';
+    if (statusFilter === 'Rejected') matchesStatus = record.status === 'Disapproved' || record.status === 'Cancelled';
+
+    return matchesSearch && matchesType && matchesStatus;
   });
 
   if (loading) return <div className="archived-records-page" style={{ padding: '3rem' }}>Loading archived registry...</div>;
@@ -149,11 +156,19 @@ export default function ArchivedRecords() {
         <div className="filter-group-premium">
           <div className="filter-item-premium">
             <Filter size={16} />
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <option value="All">All Statuses</option>
+              <option value="Archived">Archived Only</option>
+              <option value="Rejected">Rejected & Cancelled</option>
+            </select>
+          </div>
+          <div className="filter-item-premium">
+            <Filter size={16} />
             <select value={filterType} onChange={(e) => setFilterType(e.target.value)}>
               <option value="All">All Types</option>
-              <option value="TRIP_TICKET">Trip Tickets</option>
-              <option value="PRF">Purchase Requests</option>
-              <option value="RFP">Payment Requests</option>
+              <option value="TRIP_TICKET">Trip Ticket</option>
+              <option value="PRF">Purchase Requisition (PRF)</option>
+              <option value="RFP">Request For Payment (RFP)</option>
             </select>
           </div>
         </div>
@@ -163,6 +178,7 @@ export default function ArchivedRecords() {
         <table className="corporate-table">
           <thead>
             <tr>
+              <th style={{ width: '40px', textAlign: 'center' }}>#</th>
               <th>Document Details</th>
               <th>Status & Reason</th>
               <th>Archived Date</th>
@@ -170,8 +186,11 @@ export default function ArchivedRecords() {
             </tr>
           </thead>
           <tbody>
-            {filteredRecords.map(record => (
+            {filteredRecords.map((record, index) => (
               <tr key={`${record.type}-${record.id}`} onClick={() => handleView(record)} style={{ cursor: 'pointer' }}>
+                <td style={{ textAlign: 'center', fontWeight: '600', color: 'var(--text-muted)' }}>
+                  {index + 1}
+                </td>
                 <td>
                   <div className="cell-document">
                     <div className="cell-icon-box">

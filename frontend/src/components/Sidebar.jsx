@@ -9,8 +9,11 @@ import {
   History, 
   MessageSquare, 
   Archive, 
-  Car, 
-  Users 
+  Car,
+  Users,
+  LogOut,
+  ChevronDown,
+  HeadphonesIcon
 } from 'lucide-react';
 
 export default function Sidebar({ isOpen, onClose, isCollapsed }) {
@@ -33,10 +36,18 @@ export default function Sidebar({ isOpen, onClose, isCollapsed }) {
   const isDriver = user?.role === 'Driver';
   const isAccounting = user?.role === 'Accounting';
 
-  // Helper to check permission
   const canView = (module) => {
-    if (isAdmin) return true;
-    if (!user?.permissions) return true; // Default to true if no permissions object (legacy)
+    if (isAdmin || user?.role === 'IT') return true;
+    
+    // Sensitive modules require explicit 'true' permission if not Admin/IT
+    if (['archived', 'vehicles', 'users'].includes(module)) {
+        if (!user?.permissions) return false;
+        const perms = typeof user.permissions === 'string' ? JSON.parse(user.permissions) : user.permissions;
+        return perms?.[module]?.view === true;
+    }
+
+    // Standard modules (Forms, History, Support) are opt-out (visible by default unless explicitly revoked)
+    if (!user?.permissions) return true; 
     const perms = typeof user.permissions === 'string' ? JSON.parse(user.permissions) : user.permissions;
     return perms?.[module]?.view !== false;
   };
@@ -66,6 +77,10 @@ export default function Sidebar({ isOpen, onClose, isCollapsed }) {
     localStorage.clear();
     navigate('/');
   };
+
+  const userInitials = user?.name 
+    ? user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+    : 'U';
 
   return (
     <aside className={`glass-sidebar ${isOpen ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
@@ -103,7 +118,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed }) {
             >
               <FileText size={20} />
               <span className="nav-text">Forms</span>
-              <span className={`chevron ${showForms ? 'open' : ''}`}>›</span>
+              <ChevronDown size={16} className={`chevron-icon ${showForms ? 'open' : ''}`} />
             </div>
             {showForms && (
               <div className="sub-nav">
@@ -185,192 +200,202 @@ export default function Sidebar({ isOpen, onClose, isCollapsed }) {
           </div>
         )}
 
-        {!isGuard && canView('support') && (
-          <div className={`nav-item ${isActive('/support') ? 'active' : ''}`} onClick={() => { navigate('/support'); onClose(); }} title="Support Log">
-            <MessageSquare size={20} />
-            <span className="nav-text">Support Log</span>
-          </div>
-        )}
+        <div className={`nav-item ${isActive('/support') ? 'active' : ''}`} onClick={() => { navigate('/support'); onClose(); }} title="Support Log">
+          <HeadphonesIcon className="nav-icon" size={20} />
+          <span className="nav-text">Support Log</span>
+        </div>
 
-        {isAdmin && !isGuard && !isAccounting && canView('archived') && (
+        {!isGuard && !isAccounting && (isAdmin || user?.role === 'IT' || canView('archived')) && (
           <div className={`nav-item ${isActive('/archived') || (['/trip-ticket', '/prf', '/rfp'].includes(location.pathname) && location.state?.isArchived) ? 'active' : ''}`} onClick={() => { navigate('/archived'); onClose(); }} title="Archived Records">
             <Archive size={20} />
             <span className="nav-text">Archived Records</span>
           </div>
         )}
 
-        {isAdmin && !isGuard && !isAccounting && canView('vehicles') && (
+        {!isGuard && !isAccounting && (isAdmin || user?.role === 'IT' || canView('vehicles')) && (
           <div className={`nav-item ${isActive('/vehicles') ? 'active' : ''}`} onClick={() => { navigate('/vehicles'); onClose(); }} title="Vehicle Management">
             <Car size={20} />
             <span className="nav-text">Vehicle Management</span>
           </div>
         )}
 
-        {isAdmin && !isGuard && !isAccounting && canView('users') && (
+        {!isGuard && !isAccounting && (isAdmin || user?.role === 'IT' || canView('users')) && (
           <div className={`nav-item ${isActive('/users') ? 'active' : ''}`} onClick={() => { navigate('/users'); onClose(); }} title="User Management">
             <Users size={20} />
             <span className="nav-text">User Management</span>
           </div>
         )}
 
-
       </nav>
+
 
       <style>{`
         .glass-sidebar {
-            width: 280px;
+            width: 260px;
             height: 100vh;
-            background: #ffffff;
-            border-right: 1px solid #e2e8f0;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--sidebar-border);
             display: flex;
             flex-direction: column;
             position: fixed;
             left: 0;
             top: 0;
             z-index: 1000;
-            transition: var(--transition-smooth);
+            transition: width 0.2s ease, background 0.3s ease, border-color 0.3s ease;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
         .glass-sidebar.collapsed {
-            width: 80px;
+            width: 72px;
         }
 
         .glass-sidebar.collapsed .nav-item,
         .glass-sidebar.collapsed .sub-item {
             justify-content: center;
-            padding: 0.8rem 0;
+            padding: 0.6rem 0;
         }
 
-        .glass-sidebar.collapsed .nav-text {
+        .glass-sidebar.collapsed .nav-text,
+        .glass-sidebar.collapsed .chevron-icon,
+        .glass-sidebar.collapsed .user-details {
             display: none;
         }
         
-        .glass-sidebar.collapsed .nav-item span.chevron {
-            display: none;
+        .glass-sidebar.collapsed .sidebar-footer .logout-btn {
+            justify-content: center;
+            padding: 0.5rem;
         }
-
 
         @media (max-width: 1024px) {
           .glass-sidebar {
             transform: translateX(${isOpen ? '0' : '-100%'});
-            box-shadow: ${isOpen ? '20px 0 50px rgba(0,0,0,0.1)' : 'none'};
+            box-shadow: ${isOpen ? '4px 0 24px rgba(0,0,0,0.08)' : 'none'};
           }
         }
 
-        .sidebar-header { padding: 2rem 2rem 1.5rem 2rem; border-bottom: 1px solid #e2e8f0; margin-bottom: 1rem; }
+        .sidebar-header { 
+          padding: 1.25rem 1.25rem 1rem; 
+          border-bottom: 1px solid var(--sidebar-border); 
+        }
         .logo { display: flex; align-items: center; justify-content: center; }
 
         .sidebar-nav { 
           flex: 1; 
-          padding: 0 1rem; 
+          padding: 0.75rem 0.75rem; 
           display: flex; 
           flex-direction: column; 
-          gap: 0.25rem; 
+          gap: 2px; 
           overflow-y: auto;
           scrollbar-width: thin;
-          scrollbar-color: rgba(0,0,0,0.1) transparent;
+          scrollbar-color: rgba(0,0,0,0.08) transparent;
         }
         
-        .sidebar-nav::-webkit-scrollbar { width: 4px; }
+        .sidebar-nav::-webkit-scrollbar { width: 3px; }
         .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
-        .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+        .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.08); border-radius: 10px; }
 
         .nav-item {
-            padding: 0.625rem 1rem;
-            border-radius: 6px;
+            padding: 0.55rem 0.75rem;
+            border-radius: var(--radius-sm);
             cursor: pointer;
             display: flex;
-            align-items: center; gap: 10px;
-            color: #475569;
-            font-weight: 600;
+            align-items: center; 
+            gap: 10px;
+            color: var(--sidebar-text);
+            font-weight: 500;
             font-size: 0.875rem;
-            transition: background 0.2s, color 0.2s;
+            transition: background 0.15s ease, color 0.15s ease;
+            position: relative;
         }
 
         .nav-item:hover { 
-            background: #f1f5f9; 
-            color: #0f172a;
+            background: var(--sidebar-item-hover); 
+            color: var(--text-main);
         }
 
         .nav-item.active { 
-            background: #0f172a; 
-            color: white; 
+            background: var(--sidebar-item-active-bg); 
+            color: var(--sidebar-item-active-text); 
+            font-weight: 600;
         }
 
-        .chevron { margin-left: auto; transition: transform 0.2s; font-size: 1rem; opacity: 0.5; }
-        .chevron.open { transform: rotate(90deg); opacity: 1; }
+        .chevron-icon { 
+          margin-left: auto; 
+          transition: transform 0.2s ease; 
+          opacity: 0.5; 
+          flex-shrink: 0;
+        }
+        .chevron-icon.open { transform: rotate(180deg); opacity: 1; }
 
         .sub-nav { 
-            padding-left: 1rem; 
+            padding-left: 0.75rem; 
             display: flex; 
             flex-direction: column; 
-            gap: 2px; 
-            margin: 0.25rem 0 0.5rem 1rem;
-            border-left: 1px solid #e2e8f0;
+            gap: 1px; 
+            margin: 2px 0 4px 1.25rem;
+            border-left: 1px solid var(--sidebar-border);
         }
 
         .sub-item {
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
+            padding: 0.45rem 0.75rem;
+            border-radius: var(--radius-sm);
             cursor: pointer;
-            color: #475569;
-            font-size: 0.875rem;
-            font-weight: 600;
-            transition: background 0.2s, color 0.2s;
+            color: var(--sidebar-text);
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: background 0.15s ease, color 0.15s ease;
         }
 
-        .sub-item:hover { color: #0f172a; background: #f8fafc; }
+        .sub-item:hover { color: var(--text-main); background: var(--sidebar-item-hover); }
         .sub-item.active { 
-            color: #0f172a; 
+            color: var(--sidebar-item-active-text); 
             font-weight: 600; 
-            background: #f1f5f9;
+            background: var(--sidebar-item-active-bg);
         }
 
-        .sidebar-footer { padding: 1.5rem; border-top: 1px solid #e2e8f0; margin-top: auto; }
-        .user-info { display: flex; align-items: center; gap: 12px; margin-bottom: 1rem; padding: 0.5rem; border-radius: 6px; transition: background 0.2s; }
-        .user-info:hover { background: #f8fafc; }
+        .sidebar-footer { 
+          padding: 0.75rem; 
+          border-top: 1px solid var(--sidebar-border); 
+          margin-top: auto; 
+        }
+        .user-info { 
+          display: flex; 
+          align-items: center; 
+          gap: 10px; 
+          margin-bottom: 0.5rem; 
+          padding: 0.5rem; 
+          border-radius: var(--radius-sm); 
+          transition: background 0.15s ease; 
+          cursor: pointer;
+        }
+        .user-info:hover { background: var(--sidebar-item-hover); }
         
         .user-avatar { 
-            width: 36px; height: 36px; border-radius: 6px; 
-            background: #0f172a;
+            width: 32px; height: 32px; border-radius: var(--radius-sm); 
+            background: var(--accent-indigo);
             display: flex; align-items: center; justify-content: center;
-            font-weight: 600; color: white; font-size: 0.875rem;
+            font-weight: 600; color: white; font-size: 0.8rem;
             flex-shrink: 0;
         }
         
         .user-details { overflow: hidden; }
-        .user-name { font-weight: 600; font-size: 0.875rem; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
-        .user-email { font-size: 0.75rem; color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; font-weight: 600; }
+        .user-name { font-weight: 600; font-size: 0.85rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
+        .user-email { font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
 
         .logout-btn {
-            width: 100%; padding: 0.625rem; border-radius: 6px; border: 1px solid #e2e8f0;
-            background: white; color: #0f172a; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; gap: 10px;
-            font-weight: 500; font-size: 0.875rem; transition: background 0.2s;
+            width: 100%; padding: 0.5rem; border-radius: var(--radius-sm); border: 1px solid var(--glass-border);
+            background: transparent; color: var(--text-dim); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            font-weight: 500; font-size: 0.85rem; transition: var(--transition-smooth);
+            font-family: inherit;
         }
-        .logout-btn:hover { background: #f8fafc; }
+        .logout-btn:hover { background: var(--danger-light); color: var(--danger); border-color: transparent; }
 
         .clickable-profile { cursor: pointer; }
 
         @media print {
             .glass-sidebar { display: none !important; }
         }
-
-        body[data-theme='dark'] .glass-sidebar { background: #0f172a; border-right: 1px solid #1e293b; }
-        body[data-theme='dark'] .sidebar-header, body[data-theme='dark'] .sidebar-footer { border-color: #1e293b; }
-        body[data-theme='dark'] .nav-item { color: #94a3b8; }
-        body[data-theme='dark'] .nav-item:hover { background: #1e293b; color: white; }
-        body[data-theme='dark'] .nav-item.active { background: white; color: #0f172a; }
-        body[data-theme='dark'] .sub-nav { border-color: #1e293b; }
-        body[data-theme='dark'] .sub-item { color: #94a3b8; }
-        body[data-theme='dark'] .sub-item:hover { background: #1e293b; color: white; }
-        body[data-theme='dark'] .sub-item.active { background: #1e293b; color: white; }
-        body[data-theme='dark'] .user-info:hover { background: #1e293b; }
-        body[data-theme='dark'] .user-name { color: white; }
-        body[data-theme='dark'] .user-avatar { background: white; color: #0f172a; }
-        body[data-theme='dark'] .logout-btn { background: #0f172a; color: white; border-color: #1e293b; }
-        body[data-theme='dark'] .logout-btn:hover { background: #1e293b; }
       `}</style>
     </aside>
   );

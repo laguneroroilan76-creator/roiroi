@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { PlusCircle } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import api from '../../services/api';
 import './TripTicketForm.css';
@@ -113,7 +114,8 @@ export default function TripTicketForm() {
           setGuards(guardsRes.data || []);
           setVehicles(vehiclesRes.data);
         } else {
-          const [usersRes, vehiclesRes] = await Promise.all([api.get('/users'), api.get('/vehicles')]);
+          const [usersRes, vehiclesRes] = await Promise.all([api.get(`/users?_t=${Date.now()}`), api.get('/vehicles')]);
+          console.log("USERS FETCHED:", usersRes.data.filter(u => u.role === 'Driver'));
           setDrivers(usersRes.data.filter(u => u.role === 'Driver'));
           setVehicles(vehiclesRes.data);
         }
@@ -253,11 +255,14 @@ export default function TripTicketForm() {
           <button className="tool-btn back" onClick={() => navigate(-1)}>Back</button>
         </div>
         <div className="tool-group">
-          {!isGuard && ['Approved', 'DEPARTED', 'ARRIVED', 'Completed'].includes(status) && (
+          {!isGuard && ['ARRIVED', 'Completed'].includes(status) && (
             <button className="tool-btn print-btn" onClick={() => window.print()} style={{ background: '#334155', color: 'white' }}>Print</button>
           )}
           {!isReviewMode && status === 'Pending' && (
-            <button className="tool-btn save" onClick={handleSave} style={{ background: 'var(--primary)', color: 'white' }}>Submit Request</button>
+            <button className="action-btn-premium primary" onClick={handleSave} style={{ borderRadius: '16px', padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <PlusCircle size={20} />
+              <span>Submit Request</span>
+            </button>
           )}
 
           {/* Endorsement Stage */}
@@ -281,7 +286,7 @@ export default function TripTicketForm() {
           )}
 
           {isGuard && (status === 'Approved' || status === 'DEPARTED') && (
-            <button className="tool-btn save" onClick={handleSave} style={{ background: 'var(--primary)', color: '#ffffff' }}>
+            <button className="tool-btn save" onClick={handleSave} style={{ background: '#2563eb', color: '#ffffff' }}>
               {!formData.dateTimeDeparture ? 'DEPARTURE' : 'ARRIVED'}
             </button>
           )}

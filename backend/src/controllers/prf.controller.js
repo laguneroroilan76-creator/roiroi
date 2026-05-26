@@ -13,7 +13,7 @@ const createPRF = async (req, res) => {
       'CREATE', 
       'PRF', 
       prf.id, 
-      `${req.user.name || 'Unknown User'} created PRF #${prf.prfNo || prf.id}`
+      `${req.user.name || 'Unknown User'} created a PRF (Form #${prf.prfNo || prf.id})`
     );
 
     await createNotification({
@@ -87,14 +87,33 @@ const updatePRF = async (req, res) => {
     const prf = await prfService.updatePRF(id, validatedBody);
     
     let actionType = 'UPDATE';
-    let message = `${req.user.name || 'Unknown User'} updated PRF status to ${prf.status}`;
+    let message = `${req.user.name || 'Unknown User'} updated PRF #${prf.prfNo || prf.id} status to ${prf.status}`;
 
     if (prf.status === 'Approved') {
       actionType = 'APPROVE';
-      message = `${req.user.name || 'Unknown User'} approved PRF`;
+      message = `${req.user.name || 'Unknown User'} approved PRF #${prf.prfNo || prf.id}`;
+      await createNotification({
+        message: `Your PRF #${prf.prfNo || prf.id} has been Approved`,
+        type: 'APPROVED',
+        targetUserId: prf.authorId,
+        link: '/history'
+      });
     } else if (prf.status === 'Archived') {
       actionType = 'ARCHIVE';
-      message = `${req.user.name || 'Unknown User'} archived PRF`;
+      message = `${req.user.name || 'Unknown User'} archived PRF #${prf.prfNo || prf.id}`;
+      await createNotification({
+        message: `Your PRF #${prf.prfNo || prf.id} was Rejected`,
+        type: 'REJECTED',
+        targetUserId: prf.authorId,
+        link: '/history'
+      });
+    } else if (prf.status === 'Pending Approval') {
+      await createNotification({
+        message: `PRF #${prf.prfNo || prf.id} verified and pending your approval`,
+        type: 'INFO',
+        targetRole: 'PRF_Approver',
+        link: '/pending'
+      });
     }
 
     await activityService.logActivity(req.user.id, actionType, 'PRF', prf.id, message);
@@ -127,7 +146,7 @@ const deletePRF = async (req, res) => {
       'DELETE', 
       'PRF', 
       id, 
-      `${req.user.name || 'Unknown User'} permanently deleted PRF`
+      `${req.user.name || 'Unknown User'} permanently deleted PRF #${id}`
     );
     res.json({ message: 'PRF deleted successfully' });
   } catch (err) {

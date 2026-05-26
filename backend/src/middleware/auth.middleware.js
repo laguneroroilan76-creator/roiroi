@@ -21,7 +21,7 @@ const authenticateToken = async (req, res, next) => {
     if (!user) return res.status(401).json({ error: 'User not found' });
 
     // Normalize user role and permissions for runtime checks.
-    const normalizedRole = ['Admin', 'Driver', 'Guard', 'User', 'Accounting'].includes(user.role)
+    const normalizedRole = ['Admin', 'Driver', 'Guard', 'User', 'Accounting', 'IT'].includes(user.role)
       ? user.role
       : 'User';
     

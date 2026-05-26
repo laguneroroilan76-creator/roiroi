@@ -10,10 +10,10 @@
 }
 
 .sticky-toolbar {
-  position: fixed; top: 0; left: 280px; right: 0;
+  position: fixed; top: 64px; left: 260px; right: 0;
   padding: 1rem 3rem; display: flex; justify-content: space-between; align-items: center;
-  z-index: 900; border-bottom: 1px solid var(--glass-border);
-  background: white;
+  z-index: 890; border-bottom: 1px solid var(--glass-border);
+  background: var(--glass);
   box-shadow: 0 2px 10px rgba(0,0,0,0.05);
   transition: var(--transition-smooth);
 }
@@ -68,8 +68,8 @@
   transform: translateY(2px);
 }
 .tool-btn.back { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
-.tool-btn.save { background: var(--primary); color: white; }
-.tool-btn.approve { background: var(--primary); color: white; }
+.tool-btn.save { background: #2563eb; color: white; }
+.tool-btn.approve { background: #2563eb; color: white; }
 .tool-btn.disapprove-btn { background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; }
 .tool-btn.archive-btn { background: #334155; color: white; }
 .tool-btn.print-btn { background: #334155; color: white; }
@@ -104,7 +104,7 @@
 }
 
 .form-title-right p {
-  color: #000 !important;
+  color: #0f172a;
   font-size: 1.2rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -277,17 +277,4 @@
 .dark-mode .sticky-toolbar { background: #1e293b; border-color: rgba(255,255,255,0.1); }
 .dark-mode .custom-form-page { background: var(--bg-gradient); }
 
-/* Keep the form itself white for a "paper" feel */
-.dark-mode .form-container { background: #ffffff; border-color: rgba(0,0,0,0.1); box-shadow: 0 10px 40px rgba(0,0,0,0.4); }
-.dark-mode .form-container * { color: #1e293b !important; }
-.dark-mode .section-title { color: var(--primary) !important; border-bottom-color: #e2e8f0; }
-.dark-mode .form-group input, .dark-mode .dark-mode .form-group select, .dark-mode .dark-mode .form-group textarea { background: #f8fafc; border-color: #e2e8f0; color: #1e293b !important; }
-.dark-mode .form-group label { color: #64748b !important; }
-.dark-mode .schedule-box { background: #f1f5f9; border-color: #e2e8f0; }
-.dark-mode .schedule-box h4 { color: var(--primary) !important; }
-.dark-mode .sig-line { border-bottom-color: #1e293b; }
-.dark-mode .sig-block label { color: #64748b !important; }
-
-.dark-mode .reason-modal { background: #1e293b; border-color: rgba(255,255,255,0.1); color: white; }
-.dark-mode .reason-modal h3 { color: white !important; }
-.dark-mode .reason-modal textarea { background: rgba(0,0,0,0.3); color: white !important; border-color: rgba(255,255,255,0.1); }
+/* True dark mode for the form container removed to keep forms white */

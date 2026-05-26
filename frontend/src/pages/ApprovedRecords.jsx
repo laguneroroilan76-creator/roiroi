@@ -69,7 +69,7 @@ export default function ApprovedRecords() {
       };
 
       const allApproved = [
-        ...ticketsRes.data.filter(t => ['Approved', 'Completed', 'Ongoing', 'DEPARTED', 'ARRIVED'].includes(t.status)).map(t => ({ 
+        ...ticketsRes.data.filter(t => ['Approved', 'Completed', 'ARRIVED'].includes(t.status)).map(t => ({ 
             ...parseRecord(t), 
             docType: 'TRIP_TICKET',
             displayType: 'TT'
@@ -186,9 +186,9 @@ export default function ApprovedRecords() {
             <Filter size={16} />
             <select value={filterType} onChange={(e) => setFilterType(e.target.value)}>
               <option value="All">All Document Types</option>
-              <option value="TRIP_TICKET">Trip Tickets</option>
-              <option value="PRF">Purchase Requests</option>
-              <option value="RFP">Payment Requests</option>
+              <option value="TRIP_TICKET">Trip Ticket</option>
+              <option value="PRF">Purchase Requisition (PRF)</option>
+              <option value="RFP">Request For Payment (RFP)</option>
             </select>
           </div>
         </div>
@@ -198,6 +198,7 @@ export default function ApprovedRecords() {
         <table className="corporate-table">
           <thead>
             <tr>
+              <th style={{ width: '40px', textAlign: 'center' }}>#</th>
               <th>Document Details</th>
               <th>Originator</th>
               <th>Live Status</th>
@@ -206,8 +207,11 @@ export default function ApprovedRecords() {
             </tr>
           </thead>
           <tbody>
-            {filteredRecords.map(record => (
+            {filteredRecords.map((record, index) => (
               <tr key={`${record.docType}-${record.id}`} onClick={() => handleView(record)} style={{ cursor: 'pointer' }}>
+                <td style={{ textAlign: 'center', fontWeight: '600', color: 'var(--text-muted)' }}>
+                  {index + 1}
+                </td>
                 <td>
                   <div className="cell-document">
                     <div className="cell-icon-box" style={{ color: record.status === 'Completed' || record.status === 'ARRIVED' ? '#10b981' : 'var(--primary)' }}>

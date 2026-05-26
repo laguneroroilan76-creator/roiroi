@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { PlusCircle } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import api from '../../services/api';
 import './PRFForm.css';
@@ -190,13 +191,18 @@ export default function PRFForm() {
           {!isGuard && status === 'Approved' && (
             <button className="tool-btn print-btn" onClick={() => window.print()} style={{ background: '#334155', color: 'white' }}>Print</button>
           )}
-          {!isReviewMode && !isReadOnly && <button className="tool-btn save" onClick={handleSave}>Submit Request</button>}
+          {!isReviewMode && !isReadOnly && (
+            <button className="action-btn-premium primary" onClick={handleSave} style={{ borderRadius: '16px', padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <PlusCircle size={20} />
+              <span>Submit Request</span>
+            </button>
+          )}
           
           {isReviewMode && (
             <>
               {status === 'Pending Verification' && (user?.role === 'Admin' || user?.canApprove || user?.canVerify) && (
                 <>
-                  <button className="tool-btn approve" onClick={handleVerify} style={{ background: 'var(--primary)', color: '#ffffff' }}>Verify</button>
+                  <button className="tool-btn approve" onClick={handleVerify} style={{ background: '#2563eb', color: '#ffffff' }}>Verify</button>
                   <button className="tool-btn disapprove" onClick={() => setShowReasonModal(true)}>Disapprove</button>
                 </>
               )}
@@ -275,7 +281,7 @@ export default function PRFForm() {
 
       <style>{`
         .custom-form-page { background: #ffffff; min-height: 100vh; padding: 100px 20px 60px; display: flex; flex-direction: column; align-items: center; font-family: 'Outfit', sans-serif; color: #1e293b; }
-        .sticky-toolbar { position: fixed; top: 0; left: 280px; right: 0; padding: 1rem 3rem; display: flex; justify-content: space-between; align-items: center; z-index: 900; border-bottom: 1px solid #e2e8f0; background: #ffffff; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .sticky-toolbar { position: fixed; top: 64px; left: 260px; right: 0; padding: 1rem 3rem; display: flex; justify-content: space-between; align-items: center; z-index: 890; border-bottom: 1px solid #e2e8f0; background: #ffffff; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
         .tool-group { display: flex; gap: 12px; align-items: center; }
         .tool-btn {
           align-items: center;
@@ -326,10 +332,10 @@ export default function PRFForm() {
           transform: translateY(2px);
         }
         .tool-btn.back { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
-        .tool-btn.save { background: var(--primary); color: white; }
-        .tool-btn.approve { background: var(--primary); color: white; }
+        .tool-btn.save { background: #2563eb; color: white; }
+        .tool-btn.approve { background: #2563eb; color: white; }
         .tool-btn.disapprove { background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; }
-        .tool-btn.archive-btn { background: var(--primary); color: white; filter: brightness(1.1); }
+        .tool-btn.archive-btn { background: #2563eb; color: white; filter: brightness(1.1); }
         .tool-btn.print-btn { background: #334155; color: white; }
         .form-container { width: 100%; max-width: 1000px; background: #ffffff; border-radius: 12px; padding: 3rem; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 10000; padding: 1rem; }

@@ -8,7 +8,8 @@ const getAllUsers = async () => {
       canApproveTripTicket: true, canApproveRFP: true,
       canApproveDeptHead: true, canEndorse: true, canVerify: true,
       role: true, avatarUrl: true, 
-      themeColor: true, isDarkMode: true, permissions: true
+      themeColor: true, isDarkMode: true, permissions: true,
+      status: true, inactiveReason: true
     }
   });
 };

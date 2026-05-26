@@ -7,8 +7,10 @@ const { uploadSignature, uploadAvatar } = require('../middleware/upload.middlewa
 router.use(authenticateToken);
 
 router.get('/', userController.getUsers);
+router.get('/me', userController.getMe);
 router.get('/guards', userController.getGuardUsers);
 router.post('/profile/avatar', uploadAvatar.single('avatar'), userController.updateAvatar);
+router.post('/profile/signature', uploadSignature.single('signature'), userController.updateSignature);
 router.post('/profile/theme', userController.updateTheme);
 router.post('/profile/darkmode', userController.updateDarkMode);
 

@@ -196,15 +196,5 @@
 
 /* DARK MODE OVERRIDES */
 .dark-mode .custom-form-page { background: var(--bg-gradient); }
-.dark-mode .form-container { background: #ffffff !important; border-color: rgba(0,0,0,0.1); }
-.dark-mode .form-container * { color: #334155 !important; }
-.dark-mode .company-info h1 { color: var(--primary) !important; }
-.dark-mode .meta-row label { color: #64748b !important; }
-.dark-mode .meta-row input { background: #f1f5f9; border-color: #e2e8f0; color: #1e293b !important; }
-.dark-mode .items-table-container { background: #f8fafc; border-color: #e2e8f0; }
-.dark-mode .prf-items-table th { background: #f1f5f9; color: var(--primary) !important; border-color: #e2e8f0; }
-.dark-mode .prf-items-table td { border-color: #e2e8f0; }
-.dark-mode .prf-items-table input { color: #1e293b !important; }
-.dark-mode .remarks-area { background: #f8fafc; border-color: #e2e8f0; color: #1e293b !important; }
-.dark-mode .sig-box { border-bottom-color: #334155 !important; }
-.dark-mode .sig-label { color: #64748b !important; }
+
+/* True dark mode for the form container removed to keep forms white */

@@ -39,7 +39,7 @@ const getTickets = async (userId, canApprove, isGuard = false) => {
   const where = (canApprove || isGuard) ? {} : { authorId: userId };
   return await prisma.tripTicket.findMany({
     where,
-    include: { author: { select: { name: true } } },
+    include: { author: { select: { name: true, avatarUrl: true } } },
     orderBy: { createdAt: 'desc' }
   });
 };
@@ -51,7 +51,7 @@ const getDriverSchedule = async (driverName, isAdmin) => {
       ...where,
       status: { in: ['Approved', 'Completed', 'Ongoing'] } // Added 'Ongoing'
     },
-    include: { author: { select: { name: true } } },
+    include: { author: { select: { name: true, avatarUrl: true } } },
     orderBy: { createdAt: 'desc' }
   });
 };

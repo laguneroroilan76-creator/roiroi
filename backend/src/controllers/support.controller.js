@@ -26,8 +26,7 @@ const createTicket = async (req, res) => {
 
 const getTickets = async (req, res) => {
   try {
-    const permissions = typeof req.user.permissions === 'string' ? JSON.parse(req.user.permissions) : (req.user.permissions || {});
-    const hasSupportAccess = req.user.role === 'IT' || req.user.role === 'Admin' || permissions?.support?.view || permissions?.support?.edit;
+    const hasSupportAccess = req.user.role === 'IT' || req.user.role === 'Admin'; 
     const tickets = await supportService.getTickets(req.user.id, req.user.role, hasSupportAccess);
     res.json(tickets);
   } catch (err) {
@@ -43,8 +42,7 @@ const getTicketById = async (req, res) => {
     const ticket = await supportService.getTicketById(paramValidation.data.id);
     if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
     
-    const permissions = typeof req.user.permissions === 'string' ? JSON.parse(req.user.permissions) : (req.user.permissions || {});
-    const hasSupportAccess = req.user.role === 'IT' || req.user.role === 'Admin' || permissions?.support?.view || permissions?.support?.edit;
+    const hasSupportAccess = req.user.role === 'IT' || req.user.role === 'Admin';
     
     // Authorization check: Only IT/Admin/Support-permitted or the author can view
     if (!hasSupportAccess && ticket.authorId !== req.user.id) {
@@ -71,8 +69,7 @@ const updateTicket = async (req, res) => {
     if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
 
     // Authorization: Only IT/Admin/Support-permitted can update status/assignment. Author can update content if Pending.
-    const permissions = typeof req.user.permissions === 'string' ? JSON.parse(req.user.permissions) : (req.user.permissions || {});
-    const hasSupportEdit = req.user.role === 'IT' || req.user.role === 'Admin' || permissions?.support?.edit;
+    const hasSupportEdit = req.user.role === 'IT' || req.user.role === 'Admin';
     const isAuthor = ticket.authorId === req.user.id;
 
     if (!hasSupportEdit && !isAuthor) return res.status(403).json({ error: 'Access denied' });
@@ -122,8 +119,7 @@ const getMessages = async (req, res) => {
     const ticket = await supportService.getTicketById(ticketId);
     if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
 
-    const permissions = typeof req.user.permissions === 'string' ? JSON.parse(req.user.permissions) : (req.user.permissions || {});
-    const hasSupportAccess = req.user.role === 'IT' || req.user.role === 'Admin' || permissions?.support?.view || permissions?.support?.edit;
+    const hasSupportAccess = req.user.role === 'IT' || req.user.role === 'Admin';
     
     if (!hasSupportAccess && ticket.authorId !== req.user.id) {
       return res.status(403).json({ error: 'Access denied' });
@@ -151,8 +147,7 @@ const addMessage = async (req, res) => {
     const ticket = await supportService.getTicketById(ticketId);
     if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
 
-    const permissions = typeof req.user.permissions === 'string' ? JSON.parse(req.user.permissions) : (req.user.permissions || {});
-    const hasSupportAccess = req.user.role === 'IT' || req.user.role === 'Admin' || permissions?.support?.view || permissions?.support?.edit;
+    const hasSupportAccess = req.user.role === 'IT' || req.user.role === 'Admin';
     
     if (!hasSupportAccess && ticket.authorId !== req.user.id) {
       return res.status(403).json({ error: 'Access denied' });

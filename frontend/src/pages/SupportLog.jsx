@@ -28,8 +28,8 @@ export default function SupportLog() {
   const { isDarkMode } = useTheme();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const permissions = typeof user.permissions === 'string' ? JSON.parse(user.permissions) : (user.permissions || {});
-  const isIT = user.role === 'IT' || user.role === 'Admin' || permissions?.support?.view || permissions?.support?.edit;
-  const canManageSupport = user.role === 'IT' || user.role === 'Admin' || permissions?.support?.edit;
+  const isIT = user.role === 'IT' || user.role === 'Admin';
+  const canManageSupport = user.role === 'IT' || user.role === 'Admin';
 
   useEffect(() => {
     fetchTickets();
@@ -76,9 +76,9 @@ export default function SupportLog() {
 
 
 
-  const handleAcceptRequest = async () => {
+  const handleAcceptRequest = async (ticket) => {
     try {
-      await api.put(`/support/${editingTicket.id}`, { status: 'In Progress' });
+      await api.put(`/support/${ticket.id}`, { status: 'In Progress' });
       showToast('Request accepted. You can now chat with the requestor.', 'success');
       setIsModalOpen(false);
       fetchTickets();
@@ -218,6 +218,7 @@ export default function SupportLog() {
           <table className="corporate-table">
             <thead>
               <tr>
+                <th style={{ width: '40px', textAlign: 'center' }}>#</th>
                 <th><Hash size={14} style={{ marginRight: 8 }} />Subject</th>
                 <th><Tag size={14} style={{ marginRight: 8 }} />Category</th>
                 <th>Priority</th>
@@ -228,8 +229,11 @@ export default function SupportLog() {
               </tr>
             </thead>
             <tbody>
-              {filteredTickets.length > 0 ? filteredTickets.map(ticket => (
+              {filteredTickets.length > 0 ? filteredTickets.map((ticket, index) => (
                 <tr key={ticket.id} style={{ opacity: ticket.status === 'Resolved' ? 0.7 : 1 }}>
+                  <td style={{ textAlign: 'center', fontWeight: '600', color: 'var(--text-muted)' }}>
+                    {index + 1}
+                  </td>
                   <td style={{ maxWidth: '300px' }}>
                     <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-main)', marginBottom: '4px' }}>{ticket.subject}</div>
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -271,7 +275,7 @@ export default function SupportLog() {
                   <td>
                     <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'flex-end' }}>
                       {canManageSupport && ticket.status === 'Pending' && (
-                        <button className="action-btn-premium" onClick={(e) => { e.stopPropagation(); setEditingTicket(ticket); handleAcceptRequest(); }} style={{ background: '#3b82f6', color: '#ffffff' }}>
+                        <button className="action-btn-premium" onClick={(e) => { e.stopPropagation(); setEditingTicket(ticket); handleAcceptRequest(ticket); }} style={{ background: '#3b82f6', color: '#ffffff' }}>
                           <CheckSquare size={16} />
                           <span>Accept</span>
                         </button>
