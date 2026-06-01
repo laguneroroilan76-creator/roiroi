@@ -266,8 +266,8 @@ export default function Dashboard() {
                 </header>
 
                 {/* Quick Actions */}
-                <div className="quick-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', gap: '0.8rem', overflowX: 'auto', flex: 1 }}>
+                <div className="quick-actions">
+                    <div className="quick-actions-left">
                         <button className="quick-action-btn" onClick={() => navigate('/trip-ticket', { state: null })}>
                             <Car size={16} /> New Trip Ticket
                         </button>
@@ -283,7 +283,7 @@ export default function Dashboard() {
                             </button>
                         )}
                     </div>
-                    <button className="quick-action-btn" onClick={() => setShowCustomizeModal(true)} style={{ marginLeft: '1rem', flexShrink: 0 }}>
+                    <button className="quick-action-btn customize-btn" onClick={() => setShowCustomizeModal(true)}>
                         <Settings size={16} /> Customize
                     </button>
                 </div>
@@ -302,7 +302,7 @@ export default function Dashboard() {
 
                 {/* Charts + Activity */}
                 {(kpiPrefs.analytics || kpiPrefs.recentActivity) && (
-                    <div className="dashboard-grid-2" style={{ gridTemplateColumns: (!kpiPrefs.analytics || !kpiPrefs.recentActivity) ? '1fr' : '2.5fr 1fr' }}>
+                    <div className={`dashboard-grid-2 ${(!kpiPrefs.analytics || !kpiPrefs.recentActivity) ? 'single-col' : ''}`}>
                         {kpiPrefs.analytics && (
                             <div className="dashboard-charts">
                                 <AnalyticsCharts />
@@ -376,18 +376,19 @@ export default function Dashboard() {
           letter-spacing: -0.5px; 
         }
         .dashboard-subtitle { font-size: 0.9rem; color: var(--text-dim); font-weight: 400; }
-        .dashboard-user { color: var(--text-main); font-weight: 600; }
+        .dashboard-user { color: var(--primary); font-weight: 700; }
+        
+        .quick-actions { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; }
+        .quick-actions-left { display: flex; gap: 0.8rem; flex-wrap: wrap; flex: 1; }
+        .customize-btn { margin-left: auto; }
         
         .loader-line { height: 3px; width: 100%; background: var(--primary-light); overflow: hidden; border-radius: 10px; margin-top: 1rem; }
         .loader-line::after { content: ''; display: block; height: 100%; width: 40%; background: var(--text-main); animation: slide 1.2s infinite ease-in-out; border-radius: 10px; }
         @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
 
         /* Quick Actions */
-        .quick-actions {
-          display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;
-        }
         .quick-action-btn {
-          display: flex; align-items: center; gap: 6px;
+          display: flex; align-items: center; gap: 6px; white-space: nowrap;
           padding: 0.5rem 1rem; border-radius: var(--radius-sm);
           border: 1px solid var(--glass-border); background: var(--card-bg);
           color: var(--text-dim); font-size: 0.8rem; font-weight: 500;
@@ -470,7 +471,9 @@ export default function Dashboard() {
         .dashboard-grid-2 { 
           display: grid; grid-template-columns: 2.5fr 1fr; gap: 1.5rem; 
         }
-        @media (max-width: 1024px) { .dashboard-grid-2 { grid-template-columns: 1fr; } }
+        .dashboard-grid-2.single-col { grid-template-columns: 1fr; }
+        @media (max-width: 1400px) { .dashboard-grid-2 { grid-template-columns: 2fr 1fr; } }
+        @media (max-width: 1200px) { .dashboard-grid-2 { grid-template-columns: 1fr; } }
 
         .section-heading { 
           font-size: 1rem; font-weight: 600; color: var(--text-main); 

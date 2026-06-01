@@ -201,6 +201,14 @@
 .rfp-footer-row label { font-size: 0.8rem; font-weight: 700; color: #64748b; min-width: 100px; }
 .rfp-footer-row input { flex: 1; border: none; background: transparent; padding: 8px 0; font-weight: 600; outline: none; }
 
+@media (max-width: 1200px) {
+  .grid-3 { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 1024px) {
+  .rfp-footer-meta { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 768px) {
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
   .signature-section { flex-direction: column; gap: 3rem; }

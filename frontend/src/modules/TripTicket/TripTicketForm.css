@@ -215,6 +215,10 @@
 }
 .sig-block label { font-size: 0.85rem; color: var(--text-dim); font-weight: 600; text-transform: uppercase; }
 
+@media (max-width: 1200px) {
+  .grid-3 { grid-template-columns: 1fr 1fr; }
+}
+
 @media (max-width: 1024px) {
   .sticky-toolbar { left: 0; padding: 1rem; flex-wrap: wrap; gap: 1rem; }
 }

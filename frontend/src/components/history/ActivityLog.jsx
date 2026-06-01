@@ -161,6 +161,14 @@ const ActivityLog = ({ onViewResource }) => {
         .page-num-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
         @keyframes spin { 100% { transform: rotate(360deg); } }
         .spin { animation: spin 1s linear infinite; color: var(--primary); }
+        
+        @media (max-width: 768px) {
+          .activity-card-compact { padding: 0.75rem 1rem; }
+          .log-details-compact { font-size: 0.85rem; }
+          .pagination-bar { flex-direction: column; gap: 1rem; padding: 1rem; }
+          .card-top-compact { flex-direction: column; align-items: flex-start; gap: 0.25rem; }
+          .card-bottom-compact { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+        }
       `}</style>
     </div>
   );
