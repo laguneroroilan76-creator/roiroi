@@ -9,7 +9,7 @@ import {
   Eye, Settings2, MessageCircle
 } from 'lucide-react';
 
-import FloatingChat from '../components/FloatingChat';
+import FloatingChat from '../components/shared/FloatingChat';
 
 export default function SupportLog() {
   const [tickets, setTickets] = useState([]);

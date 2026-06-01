@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
-import api, { BASE_URL } from '../services/api';
-import { useToast } from '../context/ToastContext';
-import { useTheme } from '../context/ThemeContext';
+import api, { BASE_URL } from '../../services/api';
+import { useToast } from '../../context/ToastContext';
+import { useTheme } from '../../context/ThemeContext';
 import { X, Send, Minus } from 'lucide-react';
 
 export default function FloatingChat({ ticket, onClose }) {

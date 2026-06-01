@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Bell, Check, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
-import api, { BASE_URL } from '../services/api';
+import api, { BASE_URL } from '../../services/api';
 import './NotificationBell.css';
 
 export default function NotificationBell({ user }) {

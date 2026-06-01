@@ -1,7 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
-import ErrorBoundary from './components/ErrorBoundary.jsx'
+import ErrorBoundary from './components/shared/ErrorBoundary.jsx'
 import './index.css'
 
 // Safe LocalStorage Polyfill for Incognito/Private modes where storage is blocked

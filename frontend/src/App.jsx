@@ -17,7 +17,7 @@ import Vehicles from './pages/Vehicles';
 import DriverSchedule from './pages/DriverSchedule';
 import ActiveDrivers from './pages/ActiveDrivers';
 import SupportLog from './pages/SupportLog';
-import Layout from './components/Layout';
+import Layout from './components/layout/Layout';
 import { ToastProvider } from './context/ToastContext';
 import { ThemeProvider } from './context/ThemeContext';
 import './index.css';

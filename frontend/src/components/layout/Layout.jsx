@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
-import api from '../services/api';
+import api from '../../services/api';
 
 export default function Layout({ children }) {
   const location = useLocation();

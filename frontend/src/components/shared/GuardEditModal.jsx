@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import api from '../services/api';
-import { useToast } from '../context/ToastContext';
+import api from '../../services/api';
+import { useToast } from '../../context/ToastContext';
 
 export default function GuardEditModal({ isOpen, ticket, onClose, onSaved }) {
   const { showToast } = useToast();
