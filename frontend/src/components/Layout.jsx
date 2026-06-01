@@ -40,16 +40,8 @@ export default function Layout({ children }) {
       {/* Overlay for mobile sidebar */}
       {sidebarOpen && (
         <div 
-          className="sidebar-overlay no-print"
+          className="mobile-overlay active no-print"
           onClick={() => setSidebarOpen(false)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.3)',
-            backdropFilter: 'blur(4px)',
-            zIndex: 999,
-            display: 'none' // Managed by CSS
-          }}
         />
       )}
 
@@ -57,9 +49,13 @@ export default function Layout({ children }) {
         <Topbar 
           user={user} 
           toggleSidebar={() => {
-            const newState = !isSidebarCollapsed;
-            setIsSidebarCollapsed(newState);
-            localStorage.setItem('sidebarCollapsed', newState);
+            if (window.innerWidth <= 1024) {
+              setSidebarOpen(true);
+            } else {
+              const newState = !isSidebarCollapsed;
+              setIsSidebarCollapsed(newState);
+              localStorage.setItem('sidebarCollapsed', newState);
+            }
           }} 
           isSidebarCollapsed={isSidebarCollapsed}
         />

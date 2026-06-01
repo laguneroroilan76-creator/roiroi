@@ -158,7 +158,7 @@ export default function ApprovedRecords() {
   if (loading) return <div className="approved-records-page" style={{ padding: '3rem' }}>Loading authorized records...</div>;
 
   return (
-    <div className={`approved-records-page ${isDarkMode ? 'dark-mode' : ''}`} style={{ padding: '2rem 3rem' }}>
+    <div className={`approved-records-page ${isDarkMode ? 'dark-mode' : ''}`}>
       <header className="page-header" style={{ marginBottom: '3rem' }}>
         <div className="header-left">
           <div className="title-area" style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
@@ -227,9 +227,17 @@ export default function ApprovedRecords() {
                 </td>
                 <td>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800 }}>
-                      {record.author?.name?.[0] || 'U'}
-                    </div>
+                    {record.author?.avatarUrl ? (
+                      <img 
+                        src={record.author.avatarUrl.startsWith('http') ? record.author.avatarUrl : `${window.location.protocol}//${window.location.hostname}:5000${record.author.avatarUrl}`} 
+                        alt="Avatar" 
+                        style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} 
+                      />
+                    ) : (
+                      <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800 }}>
+                        {record.author?.name?.[0] || 'U'}
+                      </div>
+                    )}
                     <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)' }}>{record.author?.name || 'User'}</span>
                   </div>
                 </td>

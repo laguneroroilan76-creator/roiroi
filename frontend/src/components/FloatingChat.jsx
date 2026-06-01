@@ -19,7 +19,7 @@ export default function FloatingChat({ ticket, onClose }) {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   useEffect(() => {
-    socketRef.current = io('http://localhost:5000');
+    socketRef.current = io('/');
 
     socketRef.current.on('new_message', (msg) => {
       if (ticket && msg.ticketId === ticket.id) {

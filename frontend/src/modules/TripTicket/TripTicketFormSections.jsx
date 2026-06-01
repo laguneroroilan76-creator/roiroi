@@ -12,16 +12,20 @@ const formatDateTime = (dateStr) => {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
-export const FormHeader = ({ status, formData }) => {
+export const FormHeader = ({ status, formData, user }) => {
   const isOngoing = status === 'Approved' && !!formData?.dateTimeDeparture && (!formData?.dateTimeReturn || formData.dateTimeReturn === "");
   const isCompleted = status === 'Approved' && !!formData?.dateTimeDeparture && !!formData?.dateTimeReturn && formData.dateTimeReturn !== "";
   
+  // Determine company to use for logo
+  const company = formData?.company || formData?.author?.company || user?.company;
+  const logoSrc = company === 'Adventures' ? "/Adventures_Logo.png" : company === 'Capital Growth' ? "/CGI_Logo.png" : "/HDI Primary Logo .png";
+
   return (
     <div className="form-header">
       <div className="company-info">
         <img 
-          src="/HDI Primary Logo .png" 
-          alt="HDI Logo" 
+          src={logoSrc}
+          alt={`${company} Logo`}
           className="company-logo"
         />
       </div>

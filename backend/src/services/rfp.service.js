@@ -45,7 +45,7 @@ const getRRFs = async (userId, canApprove, role) => {
   }
   return await prisma.rrf.findMany({
     where,
-    include: { items: true, author: { select: { name: true, avatarUrl: true } } },
+    include: { items: true, author: { select: { name: true, avatarUrl: true, company: true } } },
     orderBy: { createdAt: 'desc' },
   });
 };
@@ -53,7 +53,7 @@ const getRRFs = async (userId, canApprove, role) => {
 const getRRFById = async (id) => {
   return await prisma.rrf.findUnique({
     where: { id: parseInt(id) },
-    include: { items: true }
+    include: { items: true, author: { select: { name: true, avatarUrl: true, company: true } } }
   });
 };
 

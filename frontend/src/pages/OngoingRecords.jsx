@@ -139,7 +139,7 @@ export default function OngoingRecords() {
   if (loading) return <PageSkeleton type="table" />;
 
   return (
-    <div className={`pending-records-page ${isDarkMode ? 'dark-mode' : ''}`} style={{ padding: '2rem 3rem' }}>
+    <div className={`pending-records-page ${isDarkMode ? 'dark-mode' : ''}`}>
       <header className="page-header" style={{ marginBottom: '3rem' }}>
         <div className="header-left">
           <div className="title-area" style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>

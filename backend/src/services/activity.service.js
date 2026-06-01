@@ -22,12 +22,17 @@ const logActivity = async (userId, action, resource, resourceId, details) => {
   }
 };
 
-const getActivityLogs = async (includeUser = true, limit = 50) => {
+const getActivityLogs = async (includeUser = true, skip = 0, take = 10) => {
   return await prisma.activityLog.findMany({
     include: includeUser ? { user: { select: { name: true, email: true, avatarUrl: true } } } : false,
     orderBy: { createdAt: 'desc' },
-    take: limit
+    skip: skip,
+    take: take
   });
+};
+
+const getActivityLogsCount = async () => {
+  return await prisma.activityLog.count();
 };
 
 const getUserActivityFeed = async (userId, canApprove) => {
@@ -40,4 +45,4 @@ const getUserActivityFeed = async (userId, canApprove) => {
   });
 };
 
-module.exports = { logActivity, getActivityLogs, getUserActivityFeed };
+module.exports = { logActivity, getActivityLogs, getActivityLogsCount, getUserActivityFeed };

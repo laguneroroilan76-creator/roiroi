@@ -113,7 +113,7 @@ export default function Dashboard() {
         };
         fetchNotifications();
 
-        const socket = io('http://localhost:5000');
+        const socket = io('/');
         socket.on('new_notification', (notif) => {
             let hasAccess = false;
             if (!notif.targetRole) hasAccess = true;
@@ -312,7 +312,9 @@ export default function Dashboard() {
                             <div className="dashboard-activity">
                                 <h2 className="section-heading">Recent Activity</h2>
                                 <div className="activity-card">
-                                    <ActivityTimeline />
+                                    <div style={{ flex: 1, overflowY: 'auto', paddingRight: '0.5rem' }}>
+                                        <ActivityTimeline />
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -478,7 +480,7 @@ export default function Dashboard() {
         .activity-card { 
           background: var(--card-bg); border-radius: var(--radius-lg); 
           border: 1px solid var(--glass-border); padding: 1rem; 
-          height: 380px; overflow-y: auto; box-shadow: var(--card-shadow);
+          height: 380px; overflow: hidden; display: flex; flex-direction: column; box-shadow: var(--card-shadow);
         }
 
         .section-title { 

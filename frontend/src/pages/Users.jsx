@@ -16,7 +16,7 @@ export default function Users() {
   const [isSaving, setIsSaving] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [formData, setFormData] = useState({
-    name: '', email: '', password: '',
+    name: '', email: '', password: '', company: '',
     canApprove: false, canApprovePRF: false,
     canApproveTripTicket: false, canApproveRFP: false,
     canApproveDeptHead: false, canEndorse: false, canVerify: false,
@@ -50,6 +50,7 @@ export default function Users() {
         name: user.name || '',
         email: user.email,
         password: '',
+        company: user.company || '',
         canApprove: user.canApprove || false,
         canApprovePRF: user.canApprovePRF || false,
         canApproveTripTicket: user.canApproveTripTicket || false,
@@ -65,7 +66,7 @@ export default function Users() {
     } else {
       setEditingUser(null);
       setFormData({
-        name: '', email: '', password: '',
+        name: '', email: '', password: '', company: '',
         canApprove: false, canApprovePRF: false,
         canApproveTripTicket: false, canApproveRFP: false,
         canApproveDeptHead: false, canEndorse: false, canVerify: false,
@@ -132,7 +133,7 @@ export default function Users() {
   if (loading) return <div className="users-page">Loading Users...</div>;
 
   return (
-    <div className="users-page" style={{ padding: '2rem 3rem' }}>
+    <div className="users-page">
       <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
         <div className="header-left">
           <div className="title-area" style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
@@ -185,12 +186,19 @@ export default function Users() {
                   <div className="cell-document">
                     <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'linear-gradient(135deg, var(--primary), #60a5fa)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '1.1rem', fontWeight: 800, boxShadow: '0 8px 15px rgba(15, 23, 42, 0.15)', overflow: 'hidden' }}>
                       {user.avatarUrl ? (
-                        <img src={user.avatarUrl.startsWith('http') ? user.avatarUrl : `${BASE_URL}${user.avatarUrl}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img src={user.avatarUrl.startsWith('http') ? user.avatarUrl : `${window.location.protocol}//${window.location.hostname}:5000${user.avatarUrl}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
                         user.name?.[0] || 'U'
                       )}
                     </div>
-                    <span style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-main)' }}>{user.name || 'N/A'}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-main)' }}>{user.name || 'N/A'}</span>
+                      {user.company && (
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--primary)', marginTop: '2px' }}>
+                          {user.company}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </td>
                 <td>
@@ -305,6 +313,7 @@ export default function Users() {
                           setFormData({
                             ...formData,
                             role: selectedRole,
+                            company: selectedRole === 'Guard' ? '' : formData.company,
                             canApprove: ['Admin', 'Driver', 'Guard', 'Accounting'].includes(selectedRole) ? false : formData.canApprove
                           });
                         }}
@@ -323,6 +332,26 @@ export default function Users() {
                     )}
                   </div>
                 </div>
+
+                {formData.role !== 'Guard' && (
+                  <div className="um-grid-2">
+                    <div className="um-field">
+                      <label className="um-label">Company</label>
+                      <div className="um-select-wrap">
+                        <select
+                          className="um-select"
+                          value={formData.company}
+                          onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                        >
+                          <option value="">Select Company (Optional)</option>
+                          <option value="Capital Growth">Capital Growth</option>
+                          <option value="Adventures">Adventures</option>
+                        </select>
+                        <ChevronDown size={15} className="um-select-arrow" />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* SECTION 2 — Approvals */}
                 {(formData.role === 'User' || formData.role === 'Admin') && (

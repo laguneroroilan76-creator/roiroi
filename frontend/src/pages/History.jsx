@@ -63,8 +63,7 @@ export default function History() {
       setRfps(rfpsRes.map(parseRecord).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
 
       if (user?.canApprove) {
-        const logsData = await historyService.getActivityLogs();
-        setLogs(logsData);
+        // Logs are fetched dynamically inside ActivityLog component
       }
     } catch (err) {
       console.error('Failed to load history data:', err);
@@ -177,6 +176,7 @@ export default function History() {
         }
         
         .premium-card { animation: pageEnter 0.5s ease-out; }
+        .premium-card:hover { transform: none !important; box-shadow: var(--card-shadow) !important; }
         @keyframes pageEnter { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
     </div>

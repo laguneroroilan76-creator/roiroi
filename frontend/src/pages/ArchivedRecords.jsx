@@ -132,7 +132,7 @@ export default function ArchivedRecords() {
   if (loading) return <div className="archived-records-page" style={{ padding: '3rem' }}>Loading archived registry...</div>;
 
   return (
-    <div className={`archived-records-page ${isDarkMode ? 'dark-mode' : ''}`} style={{ padding: '2rem 3rem' }}>
+    <div className={`archived-records-page ${isDarkMode ? 'dark-mode' : ''}`}>
       <header className="page-header" style={{ marginBottom: '3rem' }}>
         <div className="header-left">
           <div className="title-area" style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
@@ -215,8 +215,9 @@ export default function ArchivedRecords() {
                       <Clock size={12} /> {record.status?.toUpperCase()}
                     </span>
                     {record.disapprovalReason && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444', fontSize: '0.7rem', fontWeight: 700 }}>
-                        <AlertTriangle size={12} /> {record.disapprovalReason}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444', fontSize: '0.75rem', fontWeight: 700, maxWidth: '200px' }}>
+                        <AlertTriangle size={14} style={{ flexShrink: 0 }} />
+                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{record.disapprovalReason}</span>
                       </div>
                     )}
                   </div>

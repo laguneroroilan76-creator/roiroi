@@ -9,7 +9,7 @@ const getAllUsers = async () => {
       canApproveDeptHead: true, canEndorse: true, canVerify: true,
       role: true, avatarUrl: true, 
       themeColor: true, isDarkMode: true, permissions: true,
-      status: true, inactiveReason: true
+      status: true, inactiveReason: true, company: true
     }
   });
 };

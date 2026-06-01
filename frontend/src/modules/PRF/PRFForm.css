@@ -10,7 +10,7 @@
 }
 
 .form-logo {
-  height: 50px;
+  height: 75px;
   width: auto;
   object-fit: contain;
 }
@@ -181,6 +181,13 @@
   text-transform: uppercase;
   color: #64748b;
   margin-top: 8px;
+}
+
+@media (max-width: 768px) {
+  .header-main { flex-direction: column; align-items: center; text-align: center; gap: 1rem; }
+  .company-info { align-items: center; }
+  .header-meta { align-items: center; margin-top: 1.5rem; }
+  .meta-row { justify-content: center; }
 }
 
 @media print {

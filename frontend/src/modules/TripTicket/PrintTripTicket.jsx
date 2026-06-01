@@ -1,6 +1,7 @@
 import React from 'react';
 
 const PrintTripTicket = ({ ticket }) => {
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
   if (!ticket) return null;
 
   // Utility to handle long text in single-line fields
@@ -47,7 +48,11 @@ const PrintTripTicket = ({ ticket }) => {
     }}>
       {/* HEADER SECTION */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #000', paddingBottom: '15px', marginBottom: '22px' }}>
-        <img src="/HDI Primary Logo .png" alt="HDI Logo" style={{ height: '55px' }} />
+        <img 
+          src={(ticket?.company || ticket?.author?.company || user?.company) === 'Adventures' ? "/Adventures_Logo.png" : (ticket?.company || ticket?.author?.company || user?.company) === 'Capital Growth' ? "/CGI_Logo.png" : "/HDI Primary Logo .png"} 
+          alt="Company Logo" 
+          style={{ height: '75px' }} 
+        />
         <div style={{ textAlign: 'right' }}>
           <h1 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>Trip Ticket Form</h1>
         </div>

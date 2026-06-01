@@ -200,6 +200,7 @@ model User {
   role         UserRole      @default(User)
   status       String        @default("Active")
   inactiveReason String?     @db.Text
+  company      String?
   permissions  Json?
   activitylog  ActivityLog[]
   prf          Prf[]

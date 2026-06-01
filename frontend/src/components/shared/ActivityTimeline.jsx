@@ -6,32 +6,48 @@ import { Clock, CheckCircle, XCircle, FileText, User, Car, Activity, Zap } from 
 export default function ActivityTimeline() {
     const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
     const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-    useEffect(() => {
-        const fetchActivities = async () => {
-            try {
-                const res = await api.get('/activity/logs');
+    const fetchActivities = async (currentPage) => {
+        setLoading(true);
+        try {
+            const res = await api.get(`/activity/logs?page=${currentPage}&limit=10`);
+            if (res.data.logs) {
+                setActivities(res.data.logs);
+                setTotalPages(res.data.totalPages);
+            } else {
                 setActivities(res.data);
-            } catch (error) {
-                console.error("Failed to fetch activities:", error);
-            } finally {
-                setLoading(false);
             }
-        };
+        } catch (error) {
+            console.error("Failed to fetch activities:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-        fetchActivities();
+    useEffect(() => {
+        fetchActivities(page);
+    }, [page]);
 
-        const socket = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000');
+    useEffect(() => {
+        const socket = io('/');
         
         socket.on('new_activity', (activity) => {
-            setActivities(prev => [activity, ...prev].slice(0, 50));
+            setActivities(prev => {
+                // Only prepend if we are on page 1
+                if (page === 1) {
+                    return [activity, ...prev].slice(0, 10);
+                }
+                return prev;
+            });
         });
 
         return () => {
             socket.disconnect();
         };
-    }, []);
+    }, [page]);
 
     const getIconInfo = (action, resource) => {
         if (action === 'APPROVE') return { icon: CheckCircle, color: '#22C55E', bg: 'var(--success-light)' };
@@ -109,6 +125,37 @@ export default function ActivityTimeline() {
                             </div>
                         );
                     })}
+
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--glass-border)' }}>
+                            <button 
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                disabled={page === 1}
+                                style={{ 
+                                    padding: '0.4rem 0.8rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600,
+                                    border: '1px solid var(--glass-border)', background: 'var(--card-bg)', color: page === 1 ? 'var(--text-muted)' : 'var(--text-main)',
+                                    cursor: page === 1 ? 'not-allowed' : 'pointer'
+                                }}
+                            >
+                                Previous
+                            </button>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
+                                Page {page} of {totalPages}
+                            </span>
+                            <button 
+                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                disabled={page === totalPages}
+                                style={{ 
+                                    padding: '0.4rem 0.8rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600,
+                                    border: '1px solid var(--glass-border)', background: 'var(--card-bg)', color: page === totalPages ? 'var(--text-muted)' : 'var(--text-main)',
+                                    cursor: page === totalPages ? 'not-allowed' : 'pointer'
+                                }}
+                            >
+                                Next
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

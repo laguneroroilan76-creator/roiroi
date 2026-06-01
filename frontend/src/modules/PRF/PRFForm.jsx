@@ -41,7 +41,7 @@ export default function PRFForm() {
       to: '',
       from: '',
       department: '',
-      company: '',
+      company: user?.company || '',
       remarks: '',
       preparedBy: user?.name || '',
       verifiedBy: '',
@@ -152,7 +152,6 @@ export default function PRFForm() {
 
 
   const confirmDisapprove = async () => {
-    if (!await confirm('Disapprove this PRF?')) return;
     try {
       const payload = { ...formData, status: 'Disapproved', disapprovalReason: disReason, items: formData.items.filter(it => it.particulars.trim() !== '') };
       await api.put(`/prfs/${initialData.id}`, payload);
@@ -224,7 +223,7 @@ export default function PRFForm() {
 
       <div className="form-container office-form-container">
         <div className="printable-form prf-form-theme">
-          <FormHeader formData={formData} handleChange={handleChange} isFieldDisabled={isFieldDisabled} />
+          <FormHeader formData={formData} handleChange={handleChange} isFieldDisabled={isFieldDisabled} user={user} />
           <BasicInfo formData={formData} handleChange={handleChange} isFieldDisabled={isFieldDisabled} />
           <ItemsTable formData={formData} handleItemChange={handleItemChange} isFieldDisabled={isFieldDisabled} />
           <RemarksSection formData={formData} handleChange={handleChange} isFieldDisabled={isFieldDisabled} />
@@ -281,7 +280,9 @@ export default function PRFForm() {
 
       <style>{`
         .custom-form-page { background: #ffffff; min-height: 100vh; padding: 100px 20px 60px; display: flex; flex-direction: column; align-items: center; font-family: 'Outfit', sans-serif; color: #1e293b; }
-        .sticky-toolbar { position: fixed; top: 64px; left: 260px; right: 0; padding: 1rem 3rem; display: flex; justify-content: space-between; align-items: center; z-index: 890; border-bottom: 1px solid #e2e8f0; background: #ffffff; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .sticky-toolbar { position: absolute; top: 64px; left: 0; right: 0; padding: 1rem 3rem; display: flex; justify-content: space-between; align-items: center; z-index: 890; border-bottom: 1px solid #e2e8f0; background: #ffffff; box-shadow: 0 2px 10px rgba(0,0,0,0.05); transition: left 0.2s ease; }
+        .sidebar-collapsed .sticky-toolbar { left: 0; }
+        @media (max-width: 1024px) { .sticky-toolbar { left: 0; padding: 1rem; flex-wrap: wrap; gap: 1rem; } }
         .tool-group { display: flex; gap: 12px; align-items: center; }
         .tool-btn {
           align-items: center;

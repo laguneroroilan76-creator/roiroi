@@ -161,11 +161,14 @@ body[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
 .main-content {
   margin-left: 260px;
   width: calc(100% - 260px);
+  max-width: calc(100% - 260px);
   padding: 0;
-  transition: margin-left 0.2s ease, width 0.2s ease;
+  transition: margin-left 0.2s ease, width 0.2s ease, max-width 0.2s ease;
   min-height: 100vh;
   animation: pageEnter 0.5s ease-out;
   position: relative;
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 /* Adjust top margin for all pages to not be too far down */
@@ -176,6 +179,7 @@ body[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
 .main-content.sidebar-collapsed {
   margin-left: 72px;
   width: calc(100% - 72px);
+  max-width: calc(100% - 72px);
 }
 
 @keyframes pageEnter {
@@ -625,8 +629,11 @@ body[data-theme='dark'] .input-group input:focus {
   border: 1px solid var(--glass-border);
   background: var(--card-bg);
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.03);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   animation: slideUp 0.6s ease-out;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .corporate-table {
@@ -637,17 +644,18 @@ body[data-theme='dark'] .input-group input:focus {
 
 .corporate-table th {
   background: rgba(37, 99, 235, 0.03);
-  padding: 1.5rem 2rem;
+  padding: 1rem 1rem;
   font-size: 0.75rem;
   color: var(--primary);
   text-transform: uppercase;
   letter-spacing: 2px;
   font-weight: 800;
   border-bottom: 2px solid var(--glass-border);
+  white-space: nowrap;
 }
 
 .corporate-table td {
-  padding: 1.5rem 2rem;
+  padding: 1rem 1rem;
   border-bottom: 1px solid var(--glass-border);
   vertical-align: middle;
   transition: var(--transition-smooth);
@@ -655,6 +663,34 @@ body[data-theme='dark'] .input-group input:focus {
 
 .corporate-table tr:hover td {
   background: rgba(37, 99, 235, 0.015);
+}
+
+.pending-records-page,
+.users-page,
+.support-log-page,
+.archived-records-page,
+.approved-records-page,
+.history-page,
+.vehicles-page,
+.dashboard-view {
+  padding: 2rem 3rem;
+  box-sizing: border-box;
+}
+
+@media (max-width: 1400px) {
+  .pending-records-page,
+  .users-page,
+  .support-log-page,
+  .archived-records-page,
+  .approved-records-page,
+  .history-page,
+  .vehicles-page,
+  .dashboard-view {
+    padding: 1rem 1rem;
+  }
+  .corporate-table th, .corporate-table td {
+    padding: 0.75rem 0.75rem;
+  }
 }
 
 .corporate-table tr:last-child td {
@@ -1514,3 +1550,135 @@ body[data-theme='dark'] .form-container .sig-line {
   border-color: #0f172a !important;
   background-color: #0f172a !important;
 }
+
+/* =========================================
+   RESPONSIVE MOBILE DESIGN
+========================================= */
+
+/* Tablet & Mobile Layouts */
+@media (max-width: 1024px) {
+  /* Forms & Grids */
+  .grid-2, .grid-3, .form-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem;
+  }
+  
+  .dashboard-grid-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  
+  .dashboard-grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .form-container {
+    padding: 1.5rem !important;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Layout Padding */
+  .main-content {
+    padding: 1rem;
+  }
+  
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 1rem;
+  }
+  
+  .dashboard-view,
+  .pending-records-page,
+  .history-page,
+  .vehicles-page,
+  .users-page,
+  .support-log-page {
+    padding: 1rem !important;
+  }
+
+  .title-area h1 {
+    font-size: 1.8rem !important;
+  }
+
+  /* Dashboard Cards */
+  .dashboard-grid-4 {
+    grid-template-columns: 1fr !important;
+  }
+  
+  /* Tables - Scrollable Containers */
+  .table-container,
+  .table-container-glass,
+  .premium-table-container,
+  .history-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 1rem;
+    border-radius: 12px;
+  }
+  
+  .corporate-table,
+  .premium-table,
+  .vehicles-table {
+    min-width: 800px; /* Force minimum width to enable scrolling */
+  }
+
+  /* Modals */
+  .premium-modal,
+  .modal-content {
+    width: 95% !important;
+    max-width: none !important;
+    padding: 1.5rem !important;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .modal-body {
+    padding: 1rem 0;
+  }
+
+  /* Signatures */
+  .signatures-grid {
+    grid-template-columns: 1fr !important;
+    gap: 2rem !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  /* Mobile Sidebar Toggle Overlay */
+  .mobile-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 40;
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+  }
+  
+  .mobile-overlay.active {
+    opacity: 1;
+    visibility: visible;
+  }
+  
+  /* Sidebar Mobile Drawer */
+  .glass-sidebar {
+    transform: translateX(-100%);
+    position: fixed;
+    z-index: 1000;
+    height: 100vh;
+    transition: transform 0.3s ease;
+  }
+  
+  .glass-sidebar.open {
+    transform: translateX(0);
+  }
+}
+

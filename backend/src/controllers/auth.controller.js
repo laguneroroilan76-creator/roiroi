@@ -18,12 +18,12 @@ const register = async (req, res, next) => {
       return res.status(403).json({ error: 'Only Admins can register new users.' });
     }
 
-    const { email, password, name, role, canApprove, permissions } = req.body;
+    const { email, password, name, role, company, canApprove, permissions } = req.body;
     
     const error = validatePassword(password);
     if (error) return res.status(400).json({ error });
 
-    const user = await authService.register({ email, password, name, role, canApprove, permissions });
+    const user = await authService.register({ email, password, name, role, company, canApprove, permissions });
     res.status(201).json({ message: 'User registered successfully', userId: user.id });
   } catch (err) {
     res.status(500).json({ error: err.message });

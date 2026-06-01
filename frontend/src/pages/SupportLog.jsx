@@ -160,7 +160,7 @@ export default function SupportLog() {
   });
 
   return (
-    <div className={`support-log-page ${isDarkMode ? 'dark-mode' : ''}`} style={{ padding: '2rem 3rem' }}>
+    <div className={`support-log-page ${isDarkMode ? 'dark-mode' : ''}`}>
       <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
         <div className="header-left">
           <div className="title-area" style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
@@ -263,7 +263,15 @@ export default function SupportLog() {
                   {isIT && (
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 700, fontSize: '0.95rem' }}>
-                        <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}>{ticket.author?.name?.charAt(0)}</div>
+                        {ticket.author?.avatarUrl ? (
+                          <img 
+                            src={ticket.author.avatarUrl.startsWith('http') ? ticket.author.avatarUrl : `${window.location.protocol}//${window.location.hostname}:5000${ticket.author.avatarUrl}`} 
+                            alt="Avatar" 
+                            style={{ width: '28px', height: '28px', borderRadius: '8px', objectFit: 'cover' }} 
+                          />
+                        ) : (
+                          <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}>{ticket.author?.name?.charAt(0)}</div>
+                        )}
                         <span>{ticket.author?.name}</span>
                       </div>
                     </td>

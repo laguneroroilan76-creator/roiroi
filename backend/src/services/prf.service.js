@@ -45,7 +45,7 @@ const getPRFs = async (userId, canApprove, isGuard = false) => {
   const where = (canApprove || isGuard) ? {} : { authorId: userId };
   return await prisma.prf.findMany({
     where,
-    include: { items: true, author: { select: { name: true, avatarUrl: true } } },
+    include: { items: true, author: { select: { name: true, avatarUrl: true, company: true } } },
     orderBy: { createdAt: 'desc' },
   });
 };
@@ -53,7 +53,7 @@ const getPRFs = async (userId, canApprove, isGuard = false) => {
 const getPRFById = async (id) => {
   return await prisma.prf.findUnique({
     where: { id: parseInt(id) },
-    include: { items: true }
+    include: { items: true, author: { select: { name: true, avatarUrl: true, company: true } } }
   });
 };
 

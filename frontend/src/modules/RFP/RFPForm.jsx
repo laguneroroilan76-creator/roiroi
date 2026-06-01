@@ -21,6 +21,7 @@ export default function RFPForm() {
       rfpNo: stateInitialData?.rfpNo || stateInitialData?.rrfNo || '',
       dateRequested: stateInitialData?.dateRequested || new Date().toISOString().split('T')[0],
       dateNeeded: stateInitialData?.dateNeeded || '',
+      company: stateInitialData?.company || user?.company || '',
       chargeTo: stateInitialData?.chargeTo || '',
       releaseFundsTo: stateInitialData?.releaseFundsTo || '',
       amount: stateInitialData?.amount || '',
@@ -270,7 +271,11 @@ export default function RFPForm() {
           <div className="rfp-paper">
             <div className="rfp-header">
               <div className="rfp-logo-section">
-                <img src="/HDI Primary Logo .png" alt="HDI Logo" className="rfp-logo" />
+                <img 
+                  src={(formData?.company || formData?.author?.company || user?.company) === 'Adventures' ? "/Adventures_Logo.png" : (formData?.company || formData?.author?.company || user?.company) === 'Capital Growth' ? "/CGI_Logo.png" : "/HDI Primary Logo .png"} 
+                  alt="Company Logo" 
+                  className="rfp-logo" 
+                />
               </div>
               <div className="rfp-meta">
                 <div className="rfp-meta-row">

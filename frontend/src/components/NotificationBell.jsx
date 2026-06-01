@@ -17,7 +17,7 @@ export default function NotificationBell({ user }) {
 
     fetchNotifications();
 
-    const socket = io('http://localhost:5000');
+    const socket = io('/');
     socket.on('new_notification', (notif) => {
       let hasAccess = false;
       if (!notif.targetRole) hasAccess = true;

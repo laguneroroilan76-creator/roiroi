@@ -24,7 +24,7 @@ export default function TripTicketCoreForm({
 }) {
   return (
     <div className="form-container">
-      <FormHeader status={status || formData?.status} formData={formData} />
+      <FormHeader status={status || formData?.status} formData={formData} user={user} />
       <div className="form-body">
         <GeneralInfo 
           formData={formData} 

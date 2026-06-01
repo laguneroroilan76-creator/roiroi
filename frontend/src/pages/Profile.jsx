@@ -229,9 +229,15 @@ export default function Profile() {
               <h2 className="user-display-name">{user.name}</h2>
               <p className="user-display-email">{user.email}</p>
 
-              <span className={`role-badge ${user.role?.toLowerCase() || 'user'}`}>
-                {user.role || 'Standard User'}
-              </span>
+              {user.role === 'Admin' ? (
+                <span className={`role-badge ${user.role?.toLowerCase() || 'user'}`}>
+                  {user.role || 'Standard User'}
+                </span>
+              ) : user.company ? (
+                <span className="role-badge" style={{ backgroundColor: 'rgba(37, 99, 235, 0.08)', color: '#2563eb' }}>
+                  {user.company}
+                </span>
+              ) : null}
             </div>
 
             {/* Profile Completion Progress */}
@@ -380,10 +386,18 @@ export default function Profile() {
                   <span className="label">Email Address</span>
                   <span className="value">{user.email || 'Not configured'}</span>
                 </div>
-                <div className="read-row">
-                  <span className="label">System Role</span>
-                  <span className="value role-highlight">{user.role}</span>
-                </div>
+                {user.role === 'Admin' && (
+                  <div className="read-row">
+                    <span className="label">System Role</span>
+                    <span className="value role-highlight">{user.role}</span>
+                  </div>
+                )}
+                {user.company && (
+                  <div className="read-row">
+                    <span className="label">Company</span>
+                    <span className="value">{user.company}</span>
+                  </div>
+                )}
 
                 {user.role === 'Driver' && (
                   <div className="read-row">
