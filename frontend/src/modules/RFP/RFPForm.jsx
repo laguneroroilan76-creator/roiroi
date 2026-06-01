@@ -105,7 +105,7 @@ export default function RFPForm() {
         await api.post('/rfps', payload);
       }
       showToast('Saved Successfully!', 'success');
-      navigate('/dashboard');
+      initialData ? navigate(-1) : navigate('/dashboard');
     } catch (err) {
       console.error(err);
       const msg = err.response?.data?.error || err.message || 'Error saving RFP';
@@ -197,7 +197,7 @@ export default function RFPForm() {
     try {
       await api.put(`/rfps/${initialData.id}`, { status: 'Cancelled' });
       showToast('Request Cancelled', 'info');
-      navigate('/dashboard');
+      initialData ? navigate(-1) : navigate('/dashboard');
     } catch (err) { showToast('Error cancelling request', 'error'); }
   };
 
@@ -227,7 +227,7 @@ export default function RFPForm() {
     <div className="custom-form-page">
       <div className="sticky-toolbar office-toolbar no-print">
         <div className="tool-group">
-          <button onClick={() => navigate('/dashboard')} className="tool-btn back">Back</button>
+          <button onClick={() => initialData ? navigate(-1) : navigate('/dashboard')} className="tool-btn back">Back</button>
         </div>
         <div className="tool-group">
           {!isGuard && formData.status === 'Approved' && formData.receivedBy && (

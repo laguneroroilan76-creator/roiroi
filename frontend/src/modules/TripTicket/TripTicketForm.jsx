@@ -240,7 +240,7 @@ export default function TripTicketForm() {
     try {
       await api.put(`/trip-tickets/${initialData.id}`, { status: 'Cancelled' });
       showToast('Request Cancelled', 'info');
-      navigate('/dashboard');
+      initialData ? navigate(-1) : navigate('/dashboard');
     } catch (err) {
       showToast('Error cancelling request', 'error');
     }
@@ -252,7 +252,7 @@ export default function TripTicketForm() {
     <div className="custom-form-page">
       <div className="no-print sticky-toolbar office-toolbar">
         <div className="tool-group">
-          <button className="tool-btn back" onClick={() => navigate('/dashboard')}>Back</button>
+          <button className="tool-btn back" onClick={() => initialData ? navigate(-1) : navigate('/dashboard')}>Back</button>
         </div>
         <div className="tool-group">
           {!isGuard && ['ARRIVED', 'Completed'].includes(status) && (

@@ -105,7 +105,7 @@ export default function PRFForm() {
         await api.post('/prfs', payload);
         showToast('Purchase Requisition Created!', 'success');
       }
-      navigate('/dashboard');
+      initialData ? navigate(-1) : navigate('/dashboard');
     } catch (err) { 
       const msg = err.response?.data?.error || err.message || 'Error saving Purchase Requisition';
       showToast(msg, 'error'); 
@@ -174,7 +174,7 @@ export default function PRFForm() {
     try {
       await api.put(`/prfs/${initialData.id}`, { status: 'Cancelled' });
       showToast('Request Cancelled', 'info');
-      navigate('/dashboard');
+      initialData ? navigate(-1) : navigate('/dashboard');
     } catch (err) { showToast('Error cancelling request', 'error'); }
   };
 
@@ -184,7 +184,7 @@ export default function PRFForm() {
     <div className="custom-form-page">
       <div className="sticky-toolbar office-toolbar no-print">
         <div className="tool-group">
-          <button className="tool-btn back" onClick={() => navigate('/dashboard')}>Back</button>
+          <button className="tool-btn back" onClick={() => initialData ? navigate(-1) : navigate('/dashboard')}>Back</button>
         </div>
         <div className="tool-group">
           {!isGuard && status === 'Approved' && (
