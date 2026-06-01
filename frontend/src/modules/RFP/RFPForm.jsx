@@ -227,7 +227,7 @@ export default function RFPForm() {
     <div className="custom-form-page">
       <div className="sticky-toolbar office-toolbar no-print">
         <div className="tool-group">
-          <button onClick={() => navigate(-1)} className="tool-btn back">Back</button>
+          <button onClick={() => navigate('/dashboard')} className="tool-btn back">Back</button>
         </div>
         <div className="tool-group">
           {!isGuard && formData.status === 'Approved' && formData.receivedBy && (

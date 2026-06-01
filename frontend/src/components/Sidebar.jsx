@@ -126,24 +126,27 @@ export default function Sidebar({ isOpen, onClose, isCollapsed }) {
                   <div
                     className={`sub-item ${location.pathname === '/trip-ticket' && !location.state?.readOnly && !location.state?.isReview ? 'active' : ''}`}
                     onClick={() => { navigate('/trip-ticket', { state: null }); onClose(); }}
+                    title="Trip Ticket"
                   >
-                    Trip Ticket
+                    {isCollapsed ? <Car size={16} /> : "Trip Ticket"}
                   </div>
                 )}
                 {canView('prf') && (
                   <div
                     className={`sub-item ${location.pathname === '/prf' && !location.state?.readOnly && !location.state?.isReview ? 'active' : ''}`}
                     onClick={() => { navigate('/prf', { state: null }); onClose(); }}
+                    title="Purchase Requisition (PRF)"
                   >
-                    Purchase Requisition (PRF)
+                    {isCollapsed ? <FileText size={16} /> : "Purchase Requisition (PRF)"}
                   </div>
                 )}
                 {canView('rfp') || canView('rrf') ? (
                   <div
                     className={`sub-item ${location.pathname === '/rfp' && !location.state?.readOnly && !location.state?.isReview ? 'active' : ''}`}
                     onClick={() => { navigate('/rfp', { state: null }); onClose(); }}
+                    title="Request For Payment (RFP)"
                   >
-                    Request For Payment (RFP)
+                    {isCollapsed ? <FileText size={16} /> : "Request For Payment (RFP)"}
                   </div>
                 ) : null}
               </div>
@@ -259,6 +262,12 @@ export default function Sidebar({ isOpen, onClose, isCollapsed }) {
         .glass-sidebar.collapsed .chevron-icon,
         .glass-sidebar.collapsed .user-details {
             display: none;
+        }
+        
+        .glass-sidebar.collapsed .sub-nav {
+            margin: 0;
+            padding: 0;
+            border: none;
         }
         
         .glass-sidebar.collapsed .sidebar-footer .logout-btn {

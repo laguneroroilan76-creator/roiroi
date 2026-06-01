@@ -252,7 +252,7 @@ export default function TripTicketForm() {
     <div className="custom-form-page">
       <div className="no-print sticky-toolbar office-toolbar">
         <div className="tool-group">
-          <button className="tool-btn back" onClick={() => navigate(-1)}>Back</button>
+          <button className="tool-btn back" onClick={() => navigate('/dashboard')}>Back</button>
         </div>
         <div className="tool-group">
           {!isGuard && ['ARRIVED', 'Completed'].includes(status) && (

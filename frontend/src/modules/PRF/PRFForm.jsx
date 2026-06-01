@@ -184,7 +184,7 @@ export default function PRFForm() {
     <div className="custom-form-page">
       <div className="sticky-toolbar office-toolbar no-print">
         <div className="tool-group">
-          <button className="tool-btn back" onClick={() => navigate(-1)}>Back</button>
+          <button className="tool-btn back" onClick={() => navigate('/dashboard')}>Back</button>
         </div>
         <div className="tool-group">
           {!isGuard && status === 'Approved' && (

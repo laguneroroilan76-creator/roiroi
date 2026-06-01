@@ -259,45 +259,10 @@ export default function Profile() {
               </ul>
             </div>
           </div>
-
-          {/* Activity Widget */}
-          <div className="saas-card activity-widget">
-            <div className="card-header">
-              <div className="header-title-group">
-                <Activity size={18} className="icon-title" />
-                <h3>Recent Activity Feed</h3>
-              </div>
-              <button className="btn-text" onClick={fetchActivityFeed}>Refresh</button>
-            </div>
-
-            <div className="activity-list">
-              {isLoadingActivity ? (
-                <div className="loading-small">Fetching events...</div>
-              ) : activityFeed.length > 0 ? (
-                activityFeed.slice(0, 5).map((log) => (
-                  <div className="activity-item" key={log.id}>
-                    <div className="activity-marker"></div>
-                    <div className="activity-content">
-                      <p className="activity-desc">
-                        <strong>{log.user?.name || 'You'}</strong> {log.action} {log.resource}
-                      </p>
-                      <span className="activity-time">
-                        {new Date(log.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="no-activity">
-                  <p>No recent activity detected on this account.</p>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
 
-        {/* RIGHT COLUMN */}
-        <div className="grid-column-right">
+        {/* CENTER COLUMN */}
+        <div className="grid-column-center">
           {/* Account Settings / Profile Editing */}
           <div className="saas-card settings-card">
             <div className="card-header">
@@ -446,6 +411,44 @@ export default function Profile() {
             </div>
           </div>
         </div>
+
+        {/* RIGHT COLUMN */}
+        <div className="grid-column-right">
+          {/* Activity Widget */}
+          <div className="saas-card activity-widget">
+            <div className="card-header">
+              <div className="header-title-group">
+                <Activity size={18} className="icon-title" />
+                <h3>Recent Activity Feed</h3>
+              </div>
+              <button className="btn-text" onClick={fetchActivityFeed}>Refresh</button>
+            </div>
+
+            <div className="activity-list">
+              {isLoadingActivity ? (
+                <div className="loading-small">Fetching events...</div>
+              ) : activityFeed.length > 0 ? (
+                activityFeed.slice(0, 5).map((log) => (
+                  <div className="activity-item" key={log.id}>
+                    <div className="activity-marker"></div>
+                    <div className="activity-content">
+                      <p className="activity-desc">
+                        <strong>{log.user?.name || 'You'}</strong> {log.action} {log.resource}
+                      </p>
+                      <span className="activity-time">
+                        {new Date(log.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="no-activity">
+                  <p>No recent activity detected on this account.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       <style>{`
@@ -503,9 +506,18 @@ export default function Profile() {
         /* GRID LAYOUT */
         .profile-grid {
           display: grid;
-          grid-template-columns: 360px 1fr;
+          grid-template-columns: 280px 1fr 340px;
           gap: 2rem;
           align-items: start;
+        }
+
+        @media (max-width: 1200px) {
+          .profile-grid {
+            grid-template-columns: 280px 1fr;
+          }
+          .grid-column-right {
+            grid-column: 1 / -1;
+          }
         }
 
         @media (max-width: 1024px) {
@@ -514,7 +526,7 @@ export default function Profile() {
           }
         }
 
-        .grid-column-left, .grid-column-right {
+        .grid-column-left, .grid-column-center, .grid-column-right {
           display: flex;
           flex-direction: column;
           gap: 2rem;
@@ -789,6 +801,41 @@ export default function Profile() {
         }
 
         /* FORM INPUTS & BUTTONS */
+        .details-read-only {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .read-row {
+          display: flex;
+          align-items: center;
+          padding: 1.2rem 0;
+          border-bottom: 1px solid var(--border-subtle, #e2e8f0);
+        }
+
+        .read-row:last-child {
+          border-bottom: none;
+        }
+
+        .dark-mode-active .read-row {
+          border-bottom-color: #334155;
+        }
+
+        .read-row .label {
+          width: 140px;
+          color: var(--text-dim, #64748b);
+          font-size: 0.85rem;
+          font-weight: 500;
+          text-transform: capitalize;
+        }
+
+        .read-row .value {
+          flex: 1;
+          color: var(--text-main, #1e293b);
+          font-size: 0.9rem;
+          font-weight: 600;
+        }
+
         .edit-profile-form {
           display: flex;
           flex-direction: column;
@@ -1059,26 +1106,46 @@ export default function Profile() {
         .activity-list {
           display: flex;
           flex-direction: column;
-          gap: 1.25rem;
+          gap: 1.5rem;
           position: relative;
           padding-left: 0.5rem;
+          margin-top: 1rem;
+        }
+
+        .activity-list::before {
+          content: '';
+          position: absolute;
+          top: 8px;
+          bottom: 8px;
+          left: calc(0.5rem + 5px);
+          width: 2px;
+          background-color: #e2e8f0;
+          z-index: 1;
+        }
+
+        .dark-mode-active .activity-list::before {
+          background-color: #334155;
         }
 
         .activity-item {
           display: flex;
-          gap: 1rem;
+          gap: 1.25rem;
           position: relative;
         }
 
         .activity-marker {
-          width: 8px;
-          height: 8px;
+          width: 12px;
+          height: 12px;
           border-radius: 50%;
-          background-color: var(--primary-accent, #2563eb);
-          margin-top: 0.35rem;
-          flex-shrink: 0;
+          border: 2px solid var(--primary-accent, #2563eb);
+          background-color: #ffffff;
+          margin-top: 4px;
           position: relative;
           z-index: 2;
+        }
+
+        .dark-mode-active .activity-marker {
+          background-color: #1e293b;
         }
 
         .activity-content {
@@ -1087,7 +1154,6 @@ export default function Profile() {
         }
 
         .activity-desc {
-          margin: 0;
           font-size: 0.85rem;
           line-height: 1.4;
         }
