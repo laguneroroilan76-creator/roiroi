@@ -313,7 +313,7 @@ export default function Dashboard() {
                                 <h2 className="section-heading">Recent Activity</h2>
                                 <div className="activity-card">
                                     <div style={{ flex: 1, overflowY: 'auto', paddingRight: '0.5rem' }}>
-                                        <ActivityTimeline />
+                                        <ActivityTimeline isDashboard={true} limit={50} />
                                     </div>
                                 </div>
                             </div>

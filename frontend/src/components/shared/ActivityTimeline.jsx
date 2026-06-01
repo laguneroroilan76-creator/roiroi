@@ -3,7 +3,7 @@ import { io } from 'socket.io-client';
 import api, { BASE_URL } from '../../services/api';
 import { Clock, CheckCircle, XCircle, FileText, User, Car, Activity, Zap } from 'lucide-react';
 
-export default function ActivityTimeline() {
+export default function ActivityTimeline({ isDashboard = false, limit = 10 }) {
     const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
@@ -13,7 +13,7 @@ export default function ActivityTimeline() {
     const fetchActivities = async (currentPage) => {
         setLoading(true);
         try {
-            const res = await api.get(`/activity/logs?page=${currentPage}&limit=10`);
+            const res = await api.get(`/activity/logs?page=${currentPage}&limit=${limit}`);
             if (res.data.logs) {
                 setActivities(res.data.logs);
                 setTotalPages(res.data.totalPages);
@@ -38,7 +38,7 @@ export default function ActivityTimeline() {
             setActivities(prev => {
                 // Only prepend if we are on page 1
                 if (page === 1) {
-                    return [activity, ...prev].slice(0, 10);
+                    return [activity, ...prev].slice(0, limit);
                 }
                 return prev;
             });
@@ -127,7 +127,7 @@ export default function ActivityTimeline() {
                     })}
 
                     {/* Pagination Controls */}
-                    {totalPages > 1 && (
+                    {!isDashboard && totalPages > 1 && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--glass-border)' }}>
                             <button 
                                 onClick={() => setPage(p => Math.max(1, p - 1))}
