@@ -1,6 +1,7 @@
 import React from 'react';
 import PremiumTable from '../shared/PremiumTable';
 import StatusPill from '../shared/StatusPill';
+import { BASE_URL } from '../../services/api';
 
 const TicketTable = ({ tickets, onView, typeLabel }) => {
   const headers = [
@@ -22,7 +23,7 @@ const TicketTable = ({ tickets, onView, typeLabel }) => {
           <td>
             <div className="user-info">
               {ticket.author?.avatarUrl ? (
-                <img src={ticket.author.avatarUrl.startsWith('http') ? ticket.author.avatarUrl : `${window.location.protocol}//${window.location.hostname}:5000${ticket.author.avatarUrl}`} alt="Avatar" className="avatar-small" style={{ objectFit: 'cover' }} />
+                <img src={ticket.author.avatarUrl.startsWith('http') ? ticket.author.avatarUrl : `${BASE_URL}${ticket.author.avatarUrl}`} alt="Avatar" className="avatar-small" style={{ objectFit: 'cover' }} />
               ) : (
                 <div className="avatar-small">
                   {ticket.requestorName?.[0] || 'T'}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import api, { BASE_URL } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { 
   FileCheck, 
@@ -229,7 +229,7 @@ export default function ApprovedRecords() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     {record.author?.avatarUrl ? (
                       <img 
-                        src={record.author.avatarUrl.startsWith('http') ? record.author.avatarUrl : `${window.location.protocol}//${window.location.hostname}:5000${record.author.avatarUrl}`} 
+                        src={record.author.avatarUrl.startsWith('http') ? record.author.avatarUrl : `${BASE_URL}${record.author.avatarUrl}`} 
                         alt="Avatar" 
                         style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} 
                       />

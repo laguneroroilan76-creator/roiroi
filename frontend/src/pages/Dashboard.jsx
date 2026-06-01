@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import { useTheme } from '../context/ThemeContext';
-import api from '../services/api';
+import api, { BASE_URL } from '../services/api';
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
 import { Clock, CheckCircle, XCircle, Activity, Calendar, Users, Car, FileText, ArrowUpRight, ArrowDownRight, ChevronRight, Zap, Settings, X } from 'lucide-react';
 
@@ -113,7 +113,7 @@ export default function Dashboard() {
         };
         fetchNotifications();
 
-        const socket = io('/');
+        const socket = io(BASE_URL);
         socket.on('new_notification', (notif) => {
             let hasAccess = false;
             if (!notif.targetRole) hasAccess = true;

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import NotificationBell from './NotificationBell';
 import './Topbar.css';
+import { BASE_URL } from '../services/api';
 
 export default function Topbar({ user, toggleSidebar, isSidebarCollapsed }) {
   const { isDarkMode, toggleDarkMode } = useTheme();
@@ -32,7 +33,7 @@ export default function Topbar({ user, toggleSidebar, isSidebarCollapsed }) {
 
   const avatarContent = user?.avatarUrl ? (
     <img 
-      src={user.avatarUrl.startsWith('http') ? user.avatarUrl : `${window.location.protocol}//${window.location.hostname}:5000${user.avatarUrl}`} 
+      src={user.avatarUrl.startsWith('http') ? user.avatarUrl : `${BASE_URL}${user.avatarUrl}`} 
       alt="Avatar" 
       style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }} 
     />

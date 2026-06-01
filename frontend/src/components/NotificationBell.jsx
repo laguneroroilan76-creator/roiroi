@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Bell, Check, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
-import api from '../services/api';
+import api, { BASE_URL } from '../services/api';
 import './NotificationBell.css';
 
 export default function NotificationBell({ user }) {
@@ -17,7 +17,7 @@ export default function NotificationBell({ user }) {
 
     fetchNotifications();
 
-    const socket = io('/');
+    const socket = io(BASE_URL);
     socket.on('new_notification', (notif) => {
       let hasAccess = false;
       if (!notif.targetRole) hasAccess = true;

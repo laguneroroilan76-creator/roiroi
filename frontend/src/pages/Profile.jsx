@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
-import api from '../services/api';
+import api, { BASE_URL } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import {
   Camera, User, Mail, Shield, Activity, Edit3, CheckCircle2
@@ -88,7 +88,7 @@ export default function Profile() {
     try {
       setIsUploading(true);
       const token = localStorage.getItem('token');
-      const response = await axios.post(`${window.location.protocol}//${window.location.hostname}:5000/api/users/profile/avatar`, formData, {
+      const response = await axios.post(`${BASE_URL}/api/users/profile/avatar`, formData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -203,7 +203,7 @@ export default function Profile() {
             <div className="avatar-wrapper">
               <div className="avatar-container" onClick={() => avatarInputRef.current?.click()} title="Change Profile Picture">
                 {user.avatarUrl ? (
-                  <img src={user.avatarUrl.startsWith('http') ? user.avatarUrl : `${window.location.protocol}//${window.location.hostname}:5000${user.avatarUrl}`} alt="Avatar" className="avatar-img" />
+                  <img src={user.avatarUrl.startsWith('http') ? user.avatarUrl : `${BASE_URL}${user.avatarUrl}`} alt="Avatar" className="avatar-img" />
                 ) : (
                   <div className="avatar-placeholder">{userInitials}</div>
                 )}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import api from '../services/api';
+import api, { BASE_URL } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { useTheme } from '../context/ThemeContext';
 import {
@@ -265,7 +265,7 @@ export default function SupportLog() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 700, fontSize: '0.95rem' }}>
                         {ticket.author?.avatarUrl ? (
                           <img 
-                            src={ticket.author.avatarUrl.startsWith('http') ? ticket.author.avatarUrl : `${window.location.protocol}//${window.location.hostname}:5000${ticket.author.avatarUrl}`} 
+                            src={ticket.author.avatarUrl.startsWith('http') ? ticket.author.avatarUrl : `${BASE_URL}${ticket.author.avatarUrl}`} 
                             alt="Avatar" 
                             style={{ width: '28px', height: '28px', borderRadius: '8px', objectFit: 'cover' }} 
                           />

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
-import api from '../../services/api';
+import api, { BASE_URL } from '../../services/api';
 import { Clock, CheckCircle, XCircle, FileText, User, Car, Activity, Zap } from 'lucide-react';
 
 export default function ActivityTimeline() {
@@ -32,7 +32,7 @@ export default function ActivityTimeline() {
     }, [page]);
 
     useEffect(() => {
-        const socket = io('/');
+        const socket = io(BASE_URL);
         
         socket.on('new_activity', (activity) => {
             setActivities(prev => {
@@ -101,7 +101,7 @@ export default function ActivityTimeline() {
                                 }}>
                                     {activity.user?.avatarUrl ? (
                                         <img 
-                                            src={activity.user.avatarUrl.startsWith('http') ? activity.user.avatarUrl : `${window.location.protocol}//${window.location.hostname}:5000${activity.user.avatarUrl}`}
+                                            src={activity.user.avatarUrl.startsWith('http') ? activity.user.avatarUrl : `${BASE_URL}${activity.user.avatarUrl}`}
                                             alt={activity.user?.name}
                                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                         />

@@ -186,7 +186,7 @@ export default function Users() {
                   <div className="cell-document">
                     <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'linear-gradient(135deg, var(--primary), #60a5fa)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '1.1rem', fontWeight: 800, boxShadow: '0 8px 15px rgba(15, 23, 42, 0.15)', overflow: 'hidden' }}>
                       {user.avatarUrl ? (
-                        <img src={user.avatarUrl.startsWith('http') ? user.avatarUrl : `${window.location.protocol}//${window.location.hostname}:5000${user.avatarUrl}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img src={user.avatarUrl.startsWith('http') ? user.avatarUrl : `${BASE_URL}${user.avatarUrl}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
                         user.name?.[0] || 'U'
                       )}

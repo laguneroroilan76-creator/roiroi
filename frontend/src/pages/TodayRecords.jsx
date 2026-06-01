@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import api, { BASE_URL } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { 
   FileText, 
@@ -209,7 +209,7 @@ export default function TodayRecords() {
                 <td>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     {record.author?.avatarUrl ? (
-                      <img src={record.author.avatarUrl.startsWith('http') ? record.author.avatarUrl : `${window.location.protocol}//${window.location.hostname}:5000${record.author.avatarUrl}`} alt="Avatar" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} />
+                      <img src={record.author.avatarUrl.startsWith('http') ? record.author.avatarUrl : `${BASE_URL}${record.author.avatarUrl}`} alt="Avatar" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} />
                     ) : (
                       <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800 }}>
                         {record.author?.name?.[0] || 'U'}
