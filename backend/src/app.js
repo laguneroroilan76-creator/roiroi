@@ -6,6 +6,9 @@ const { errorHandler } = require('./middleware/error.middleware');
 
 const app = express();
 
+// Trust reverse proxy for rate limiting (e.g. Render, Vercel, Heroku)
+app.set('trust proxy', 1);
+
 // CORS — restrict to known frontend origins only
 const allowedOrigins = [
   process.env.FRONTEND_URL,
