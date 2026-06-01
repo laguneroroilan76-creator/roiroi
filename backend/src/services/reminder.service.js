@@ -6,6 +6,12 @@ const getReminders = async (userId) => {
 
 const upsertReminder = async (userId, data) => {
   const { id, ...rest } = data;
+
+  // Convert date strings to Date objects for DateTime schema fields
+  if (rest.date) rest.date = new Date(rest.date);
+  if (rest.endDate) rest.endDate = new Date(rest.endDate);
+  else rest.endDate = null;
+
   return await prisma.reminder.upsert({
     where: { id: id || 0 },
     update: { ...rest },

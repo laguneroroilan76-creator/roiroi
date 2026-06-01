@@ -13,11 +13,7 @@ export default function RFPPreview({ record, onClose, onActionComplete }) {
   const handleApprove = async () => {
     if (!await confirm('Approve this RFP?')) return;
     try {
-      await api.put(`${record.apiEndpoint}/${record.id}`, { 
-        ...formData,
-        status: 'Approved', 
-        approvedBy: user.name 
-      });
+      await api.post(`/rfps/${record.id}/approve`);
       showToast('RFP Approved!', 'success');
       onActionComplete();
     } catch (err) { showToast('Error approving', 'error'); }
@@ -25,11 +21,7 @@ export default function RFPPreview({ record, onClose, onActionComplete }) {
 
   const confirmDisapprove = async () => {
     try {
-      await api.put(`${record.apiEndpoint}/${record.id}`, { 
-        ...formData,
-        status: 'Disapproved', 
-        disapprovalReason: disReason 
-      });
+      await api.post(`/rfps/${record.id}/reject`, { disapprovalReason: disReason });
       showToast('RFP Disapproved', 'info');
       onActionComplete();
     } catch (err) { showToast('Error disapproving', 'error'); }

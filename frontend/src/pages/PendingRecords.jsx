@@ -55,17 +55,20 @@ export default function PendingRecords() {
         } catch (e) { return record; }
       };
 
+      const parsedTickets = ticketsRes.data.map(t => parseRecord(t));
+      const parsedPrfs = prfsRes.data.map(p => parseRecord(p));
       const parsedRrfs = rrfsRes.data.map(r => parseRecord(r));
+
       const allPending = [
-        ...ticketsRes.data.filter(t => t.status === 'Pending' || t.status === 'Pending Endorsement' || t.status === 'Pending Approval' || !t.status).map(t => ({ 
-            ...parseRecord(t), 
+        ...parsedTickets.filter(t => t.status === 'Pending' || t.status === 'Pending Endorsement' || t.status === 'Pending Approval' || !t.status).map(t => ({ 
+            ...t, 
             docType: 'TRIP_TICKET',
             displayType: 'TT',
             apiEndpoint: '/trip-tickets',
             requestorName: t.requestorName || t.author?.name || 'Unnamed Request'
         })),
-        ...prfsRes.data.filter(p => p.status === 'Pending' || p.status === 'Pending Verification' || p.status === 'Pending Approval' || !p.status).map(p => ({
-            ...parseRecord(p),
+        ...parsedPrfs.filter(p => p.status === 'Pending' || p.status === 'Pending Verification' || p.status === 'Pending Approval' || !p.status).map(p => ({
+            ...p,
             docType: 'PRF',
             displayType: 'PRF',
             apiEndpoint: '/prfs',

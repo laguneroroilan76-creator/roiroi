@@ -33,9 +33,10 @@ export default function PRFForm() {
   const [disReason, setDisReason] = useState('');
 
   const getDefaultFormData = () => {
+    const today = new Date().toISOString().split('T')[0];
     const base = {
       prfNo: '',
-      dateRequested: new Date().toISOString().split('T')[0],
+      dateRequested: today,
       dateNeeded: '',
       requestor: user?.name || '',
       to: '',
@@ -56,7 +57,7 @@ export default function PRFForm() {
       if (stateInitialData.items) {
         stateInitialData.items.forEach((item, idx) => { if (idx < 15) mergedItems[idx] = { ...item }; });
       }
-      return { ...base, ...stateInitialData, items: mergedItems };
+      return { ...base, ...stateInitialData, dateRequested: stateInitialData.dateRequested || today, preparedBy: stateInitialData.preparedBy?.name || stateInitialData.preparedBy || stateInitialData.author?.name || base.preparedBy, verifiedBy: stateInitialData.verifiedBy?.name || stateInitialData.verifiedBy || base.verifiedBy, approvedBy: stateInitialData.approvedBy?.name || stateInitialData.approvedBy || base.approvedBy, items: mergedItems };
     }
     return base;
   };
@@ -69,6 +70,9 @@ export default function PRFForm() {
   }, [location.state]);
 
   const isFieldDisabled = (fieldName, baseDisabled = false) => {
+    // Date Requested is always read-only
+    if (fieldName === 'dateRequested') return true;
+    
     if (!initialData) return false;
     // Signature fields should always be locked for non-authorities
     if (fieldName === 'verifiedBy' || fieldName === 'approvedBy') {
@@ -118,11 +122,10 @@ export default function PRFForm() {
       const items = (formData?.items || []).filter(it => it?.particulars?.trim() !== '');
       const payload = { 
         ...formData, 
-        status: 'Pending Approval', 
-        verifiedBy: user.name || user.email || 'VERIFIER', 
         items 
       };
       await api.put(`/prfs/${initialData.id}`, payload);
+      await api.post(`/prfs/${initialData.id}/verify`);
       showToast('Purchase Requisition Verified!', 'success');
       navigate('/pending');
     } catch (err) {
@@ -136,11 +139,10 @@ export default function PRFForm() {
       const items = (formData?.items || []).filter(it => it?.particulars?.trim() !== '');
       const payload = { 
         ...formData, 
-        status: 'Approved', 
-        approvedBy: user.name || user.email || 'ADMIN', 
         items 
       };
       await api.put(`/prfs/${initialData.id}`, payload);
+      await api.post(`/prfs/${initialData.id}/approve`);
       showToast('Purchase Requisition Approved!', 'success');
       navigate('/pending');
     } catch (err) {
@@ -199,7 +201,7 @@ export default function PRFForm() {
           
           {isReviewMode && (
             <>
-              {status === 'Pending Verification' && (user?.role === 'Admin' || user?.canApprove || user?.canVerify) && (
+              {((status === 'Pending Verification' || status === 'Pending')) && (user?.role === 'Admin' || user?.canApprove || user?.canVerify) && (
                 <>
                   <button className="tool-btn approve" onClick={handleVerify} style={{ background: '#2563eb', color: '#ffffff' }}>Verify</button>
                   <button className="tool-btn disapprove" onClick={() => setShowReasonModal(true)}>Disapprove</button>

@@ -184,7 +184,8 @@ export default function Dashboard() {
 
                 if (user?.role !== 'Admin' && !user?.canApprove) {
                     allParsedDocs.forEach(d => {
-                        if (d.status && d.status.includes('Pending')) {
+                        const isAccountingPendingRFP = user?.role === 'Accounting' && d.docType === 'RFP' && d.status === 'Approved' && !d.receivedBy;
+                        if ((d.status && d.status.includes('Pending')) || isAccountingPendingRFP) {
                             const isAdminUser = user?.role === 'Admin' || user?.canApprove;
                             let canApproveThis = false;
                             const isMyDocObj = String(d.userId) === String(user?.id) || d.requestorName === user?.name || d.requestor === user?.name;
@@ -207,6 +208,8 @@ export default function Dashboard() {
                                 if (d.status === 'Pending Dept Head Approval') canApproveThis = isRFPDeptHead || isMyDocObj;
                                 else if (d.status === 'Pending Final Approval' || d.status === 'Pending Accounting') canApproveThis = isRFPApprover || isMyDocObj;
                                 else canApproveThis = isRFPApprover || isMyDocObj;
+                                
+                                if (isAccountingPendingRFP) canApproveThis = true;
                             }
                             
                             if (canApproveThis) pending++;

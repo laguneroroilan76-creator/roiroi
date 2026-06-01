@@ -1,36 +1,75 @@
 const ticketService = require('../services/ticket.service');
 const activityService = require('../services/activity.service');
 const { createNotification } = require('./notification.controller');
+const prisma = require('../config/database');
+const { ticketCreateBodySchema } = require('../utils/validation');
+
+const sanitizePayload = async (payload, reqUser) => {
+  const data = { ...payload };
+  
+  // Only set date fields if they were actually in the payload
+  if ('dateRequested' in data) {
+    data.dateRequested = data.dateRequested ? new Date(data.dateRequested) : null;
+  }
+  if ('dateTimeDeparture' in data) {
+    data.dateTimeDeparture = data.dateTimeDeparture ? new Date(data.dateTimeDeparture) : null;
+  }
+  if ('dateTimeReturn' in data) {
+    data.dateTimeReturn = data.dateTimeReturn ? new Date(data.dateTimeReturn) : null;
+  }
+
+  const lookupUser = async (name) => {
+    if (!name) return null;
+    const u = await prisma.user.findFirst({ where: { name } });
+    return u ? u.id : null;
+  };
+
+  if (data.requestorName) data.requestorId = await lookupUser(data.requestorName);
+  if (data.driver) data.driverId = await lookupUser(data.driver);
+  if (data.requestedBy) data.requestedById = await lookupUser(data.requestedBy);
+  if (data.endorsedBy) data.endorsedById = await lookupUser(data.endorsedBy);
+  if (data.approvedBy) data.approvedById = await lookupUser(data.approvedBy);
+  if (data.guardIn) data.guardInId = await lookupUser(data.guardIn);
+  if (data.guardOut) data.guardOutId = await lookupUser(data.guardOut);
+  
+  delete data.requestorName;
+  delete data.driver;
+  delete data.requestedBy;
+  delete data.endorsedBy;
+  delete data.approvedBy;
+  delete data.guardIn;
+  delete data.guardOut;
+  delete data.archivedBy;
+  delete data.status;
+  
+  return data;
+};
 
 const createTicket = async (req, res) => {
   try {
+    const validatedBody = ticketCreateBodySchema.parse(req.body);
+    const sanitizedData = await sanitizePayload(validatedBody, req.user);
+    sanitizedData.authorId = req.user.id;
+
     // Prevent non-Guard users from setting guard-only or actual travel log fields on create
-    const guardedFields = ['kmOut', 'kmIn', 'guardOut', 'guardIn', 'dateTimeDeparture', 'dateTimeReturn'];
-    const payload = { ...req.body };
+    const guardedFields = ['kmOut', 'kmIn', 'guardOutId', 'guardInId', 'dateTimeDeparture', 'dateTimeReturn'];
     if (req.user.role !== 'Guard') {
-      guardedFields.forEach((f) => delete payload[f]);
+      guardedFields.forEach((f) => delete sanitizedData[f]);
     }
 
-    const ticket = await ticketService.createTicket(req.user.id, payload);
-    
-    await activityService.logActivity(
-      req.user.id, 
-      'CREATE', 
-      'TRIP_TICKET', 
-      ticket.id, 
-      `${req.user.name || 'Unknown User'} created a Trip Ticket (Form #${ticket.id})`
-    );
-
-    await createNotification({
-      message: `${req.user.name || 'A user'} submitted a new Trip Ticket for ${ticket.requestorName || 'N/A'}`,
-      type: 'NEW_TRIPTICKET',
-      targetRole: 'TripTicket_Approver',
-      link: '/forms/tripticket'
+    const ticket = await prisma.$transaction(async (tx) => {
+      if (!sanitizedData.status) sanitizedData.status = 'Pending Endorsement';
+      const created = await tx.tripTicket.create({ data: sanitizedData });
+      await tx.auditTrail.create({
+        data: { userId: req.user.id, action: 'CREATE', tableName: 'TripTicket', recordId: created.id, newValues: created, ipAddress: req.ip }
+      });
+      return created;
     });
-    
+
+    await createNotification({ message: `${req.user.name || 'A user'} submitted a new Trip Ticket`, type: 'NEW_TRIPTICKET', targetRole: 'TripTicket_Approver', link: '/forms/tripticket' });
     res.status(201).json(ticket);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
@@ -40,136 +79,80 @@ const getTickets = async (req, res) => {
     const tickets = await ticketService.getTickets(req.user.id, hasAccess, req.user.role === 'Guard');
     res.json(tickets);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
 const getTicketById = async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) return res.status(400).json({ error: 'Invalid Ticket ID.' });
-
-    const ticket = await ticketService.getTicketById(id);
-    if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
-
-    // Access control: Author, Admin/Approver, Guard, or specific Trip Ticket roles
-    const isPrivileged = req.user.canApprove || 
-                        req.user.canApproveTripTicket || 
-                        req.user.canEndorse || 
-                        req.user.role === 'Guard' || 
-                        ticket.authorId === req.user.id;
-                        
-    if (!isPrivileged) {
-      return res.status(403).json({ error: 'Access denied.' });
-    }
-
+    const ticket = await ticketService.getTicketById(parseInt(req.params.id));
     res.json(ticket);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
 const updateTicket = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    if (isNaN(id)) return res.status(400).json({ error: 'Invalid Ticket ID.' });
+    const validatedBody = ticketCreateBodySchema.parse(req.body);
+    const sanitizedData = await sanitizePayload(validatedBody, req.user);
 
-    // Guard users can only update checkpoint, actual-travel fields, and status
-    const guardAllowed = ['kmOut', 'kmIn', 'guardOut', 'guardIn', 'dateTimeDeparture', 'dateTimeReturn', 'status'];
+    // Get the existing ticket to check status and permissions
+    const existingTicket = await prisma.tripTicket.findUnique({ where: { id } });
+    if (!existingTicket) return res.status(404).json({ error: 'Ticket not found' });
 
+    // If ticket is ARRIVED, no one can edit
+    if (existingTicket.status === 'ARRIVED') {
+      return res.status(403).json({ error: 'Cannot edit an arrived trip ticket.' });
+    }
+
+    // Guards can only edit during travel phases (Approved, DEPARTED) and only KM/guard fields
     if (req.user.role === 'Guard') {
-      const attemptedFields = Object.keys(req.body || {});
+      const guardAllowed = ['kmOut', 'kmIn', 'guardOutId', 'guardInId', 'dateTimeDeparture', 'dateTimeReturn', 'status'];
+      const attemptedFields = Object.keys(sanitizedData);
       const hasForbidden = attemptedFields.some((f) => !guardAllowed.includes(f));
-      if (hasForbidden) {
-        return res.status(403).json({ error: 'Guard users can only update checkpoint and actual travel log fields.' });
+      if (hasForbidden) return res.status(403).json({ error: 'Guard users can only update checkpoint fields.' });
+      
+      // Guards can only edit during Approved or DEPARTED status
+      if (!['Approved', 'DEPARTED'].includes(existingTicket.status)) {
+        return res.status(403).json({ error: 'Guards can only update during travel phases.' });
       }
     }
-
-    if (req.body.status === 'Archived') {
-      req.body.archivedBy = req.user.name || 'Unknown';
-    } else if (req.body.status === 'Approved') {
-      req.body.archivedBy = null;
+    // Non-guards (approvers/admins) can edit during Pending stages
+    else if (['Pending Endorsement', 'Pending Approval'].includes(existingTicket.status)) {
+      // Approvers can edit during endorsement/approval stages - allowed
+    }
+    // Non-guards cannot edit once ticket is Approved or in travel
+    else if (['Approved', 'DEPARTED'].includes(existingTicket.status)) {
+      return res.status(403).json({ error: 'Only guards can edit approved/in-transit tickets.' });
+    }
+    else {
+      return res.status(403).json({ error: 'Cannot edit this ticket at this stage.' });
     }
 
-    const existing = await ticketService.getTicketById(id);
-    if (!existing) return res.status(404).json({ error: 'Trip Ticket not found.' });
-
-    const canUpdate = req.user.role === 'Admin' || 
-                      req.user.canApprove || 
-                      req.user.canApproveTripTicket || 
-                      req.user.canEndorse || 
-                      req.user.role === 'Guard' || 
-                      existing.authorId === req.user.id;
-
-    if (!canUpdate) {
-      return res.status(403).json({ error: 'You are not authorized to update this Trip Ticket.' });
-    }
-
-    const ticket = await ticketService.updateTicket(id, req.body);
-    
-    let actionType = 'UPDATE';
-    let message = `${req.user.name || 'Unknown User'} updated Trip Ticket #${ticket.id} status to ${ticket.status}`;
-
-    if (req.user.role === 'Guard') {
-      message = `${req.user.name || 'Unknown User'} updated Trip Ticket #${ticket.id} guard log`;
-    }
-
-    if (req.user.role !== 'Guard' && ticket.status === 'Approved') {
-      actionType = 'APPROVE';
-      message = `${req.user.name || 'Unknown User'} approved Trip Ticket #${ticket.id}`;
-      await createNotification({
-        message: `Your Trip Ticket has been Approved by ${req.user.name || 'an Approver'}`,
-        type: 'APPROVED',
-        targetUserId: ticket.authorId,
-        link: '/history'
+    const ticket = await prisma.$transaction(async (tx) => {
+      const oldRecord = await tx.tripTicket.findUnique({ where: { id } });
+      const updated = await tx.tripTicket.update({ where: { id }, data: sanitizedData });
+      await tx.auditTrail.create({
+        data: { userId: req.user.id, action: 'UPDATE', tableName: 'TripTicket', recordId: id, oldValues: oldRecord, newValues: updated, ipAddress: req.ip }
       });
-    } else if (req.user.role !== 'Guard' && ticket.status === 'Archived') {
-      actionType = 'ARCHIVE';
-      message = `${req.user.name || 'Unknown User'} archived Trip Ticket #${ticket.id}`;
-      await createNotification({
-        message: `Your Trip Ticket was Rejected by ${req.user.name || 'an Approver'}`,
-        type: 'REJECTED',
-        targetUserId: ticket.authorId,
-        link: '/history'
-      });
-    } else if (req.user.role !== 'Guard' && ticket.status === 'Pending Approval') {
-      await createNotification({
-        message: `Trip Ticket endorsed and pending your approval`,
-        type: 'INFO',
-        targetRole: 'TripTicket_Approver',
-        link: '/pending'
-      });
-    }
-
-    await activityService.logActivity(req.user.id, actionType, 'TRIP_TICKET', ticket.id, message);
+      return updated;
+    });
 
     res.json(ticket);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
 const deleteTicket = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    if (isNaN(id)) return res.status(400).json({ error: 'Invalid Ticket ID.' });
-
-    // Only Admin can permanently delete tickets
-    if (req.user.role !== 'Admin') {
-      return res.status(403).json({ error: 'Only Admins can delete Trip Tickets.' });
-    }
-
     await ticketService.deleteTicket(id);
-    await activityService.logActivity(
-      req.user.id, 
-      'DELETE', 
-      'TRIP_TICKET', 
-      id, 
-      `${req.user.name || 'Unknown User'} permanently deleted Trip Ticket #${id}`
-    );
     res.json({ message: 'Ticket deleted successfully' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
@@ -180,8 +163,7 @@ const getDriverSchedule = async (req, res) => {
     const tickets = await ticketService.getDriverSchedule(driverName, isAdmin);
     res.json(tickets);
   } catch (err) {
-    console.error('ERROR in getDriverSchedule:', err);
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
@@ -191,8 +173,90 @@ const checkOccupancy = async (req, res) => {
     const occupied = await ticketService.getOccupiedResources(start, end);
     res.json(occupied);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
-module.exports = { createTicket, getTickets, getTicketById, updateTicket, deleteTicket, getDriverSchedule, checkOccupancy };
+
+const endorseTicket = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    // Check if user has endorsement permission
+    if (!req.user.canEndorse && req.user.role !== 'Admin') {
+      return res.status(403).json({ error: 'You do not have permission to endorse tickets.' });
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const oldRecord = await tx.tripTicket.findUnique({ where: { id } });
+      if (!oldRecord) throw new Error('Record not found');
+      
+      const updatedRecord = await tx.tripTicket.update({
+        where: { id },
+        data: { status: 'Pending Approval', endorsedById: req.user.id }
+      });
+      await tx.auditTrail.create({
+        data: { userId: req.user.id, action: 'ENDORSE', tableName: 'TripTicket', recordId: id, oldValues: oldRecord, newValues: updatedRecord, ipAddress: req.ip }
+      });
+      return updatedRecord;
+    });
+    res.json(updated);
+  } catch (err) {
+    console.error(err); res.status(500).json({ error: err.message });
+  }
+};
+
+const approveTicket = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    // Check if user has approval permission
+    if (!req.user.canApproveTripTicket && !req.user.canApprove && req.user.role !== 'Admin') {
+      return res.status(403).json({ error: 'You do not have permission to approve tickets.' });
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const oldRecord = await tx.tripTicket.findUnique({ where: { id } });
+      if (!oldRecord) throw new Error('Record not found');
+      
+      const updatedRecord = await tx.tripTicket.update({
+        where: { id },
+        data: { status: 'Approved', approvedById: req.user.id }
+      });
+      await tx.auditTrail.create({
+        data: { userId: req.user.id, action: 'APPROVE', tableName: 'TripTicket', recordId: id, oldValues: oldRecord, newValues: updatedRecord, ipAddress: req.ip }
+      });
+      return updatedRecord;
+    });
+    res.json(updated);
+  } catch (err) {
+    console.error(err); res.status(500).json({ error: err.message });
+  }
+};
+
+const rejectTicket = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { disapprovalReason } = req.body;
+    // Check if user has approval permission to reject
+    if (!req.user.canEndorse && !req.user.canApproveTripTicket && !req.user.canApprove && req.user.role !== 'Admin') {
+      return res.status(403).json({ error: 'You do not have permission to reject tickets.' });
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const oldRecord = await tx.tripTicket.findUnique({ where: { id } });
+      if (!oldRecord) throw new Error('Record not found');
+      
+      const updatedRecord = await tx.tripTicket.update({
+        where: { id },
+        data: { status: 'Disapproved', disapprovalReason }
+      });
+      await tx.auditTrail.create({
+        data: { userId: req.user.id, action: 'REJECT', tableName: 'TripTicket', recordId: id, oldValues: oldRecord, newValues: updatedRecord, ipAddress: req.ip }
+      });
+      return updatedRecord;
+    });
+    res.json(updated);
+  } catch (err) {
+    console.error(err); res.status(500).json({ error: err.message });
+  }
+};
+module.exports = { createTicket, getTickets, getTicketById, updateTicket, deleteTicket, getDriverSchedule, checkOccupancy, endorseTicket, approveTicket, rejectTicket };

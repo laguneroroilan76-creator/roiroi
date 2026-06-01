@@ -9,7 +9,7 @@ const getUsers = async (req, res) => {
     const users = await userService.getAllUsers();
     res.json(users);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
@@ -20,7 +20,7 @@ const getMe = async (req, res) => {
     const { password, ...safeUser } = user;
     res.json(safeUser);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
@@ -29,7 +29,7 @@ const getGuardUsers = async (req, res) => {
     const guards = await userService.getGuardUsers();
     res.json(guards);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
@@ -48,7 +48,7 @@ const updateSignature = async (req, res) => {
 
     res.json({ message: 'Signature updated!', signatureUrl });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
@@ -59,7 +59,7 @@ const updateAvatar = async (req, res) => {
     await userService.updateUserProfile(req.user.id, { avatarUrl });
     res.json({ message: 'Avatar updated!', avatarUrl });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
@@ -69,7 +69,7 @@ const updateTheme = async (req, res) => {
     await userService.updateUserProfile(req.user.id, { themeColor });
     res.json({ message: 'Theme updated!', themeColor });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
@@ -79,7 +79,7 @@ const updateDarkMode = async (req, res) => {
     const user = await userService.updateUserProfile(req.user.id, { isDarkMode: !!isDarkMode });
     res.json({ message: 'Display updated!', isDarkMode: user.isDarkMode });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
@@ -89,7 +89,7 @@ const getActivityLogs = async (req, res) => {
     const logs = await activityService.getActivityLogs();
     res.json(logs);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
@@ -98,7 +98,7 @@ const getActivityFeed = async (req, res) => {
     const logs = await activityService.getUserActivityFeed(req.user.id, req.user.canApprove);
     res.json(logs);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
@@ -124,7 +124,7 @@ const updateUserData = async (req, res) => {
     const user = await userService.updateUser(id, data);
     res.json(user);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
@@ -142,7 +142,7 @@ const deleteUser = async (req, res) => {
     await userService.deleteUser(id);
     res.json({ message: 'User deleted' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 

@@ -21,6 +21,22 @@ model ActivityLog {
   @@map("activitylog")
 }
 
+model AuditTrail {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action     String   // CREATE, UPDATE, APPROVE, REJECT, DELETE
+  tableName  String   // Prf, Rrf, TripTicket
+  recordId   Int
+  oldValues  Json?    // Snapshot of record BEFORE mutation
+  newValues  Json?    // Snapshot of record AFTER mutation
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@map("audittrail")
+}
+
 model Driver {
   id        Int      @id @default(autoincrement())
   name      String
@@ -32,28 +48,34 @@ model Driver {
 model Prf {
   id               Int       @id @default(autoincrement())
   prfNo            String?
-  dateRequested    String?
-  dateNeeded       String?
+  dateRequested    DateTime? @default(now())
+  dateNeeded       DateTime?
   to               String?
   from             String?
   remarks          String?
   quotationSummary String?
-  preparedBy       String?
-  verifiedBy       String?
-  notedBy          String?
-  approvedBy       String?
+  preparedById     Int?
+  preparedBy       User?     @relation("PrfPreparedBy", fields: [preparedById], references: [id])
+  verifiedById     Int?
+  verifiedBy       User?     @relation("PrfVerifiedBy", fields: [verifiedById], references: [id])
+  notedById        Int?
+  notedBy          User?     @relation("PrfNotedBy", fields: [notedById], references: [id])
+  approvedById     Int?
+  approvedBy       User?     @relation("PrfApprovedBy", fields: [approvedById], references: [id])
   createdAt        DateTime  @default(now())
   layout           String?   @db.LongText
   status           String    @default("Pending")
   authorId         Int?
-  requestor        String?
+  requestorId      Int?
+  requestor        User?     @relation("PrfRequestor", fields: [requestorId], references: [id])
   department       String?
   company          String?
-  archivedBy       String?
+  archivedById     Int?
+  archivedBy       User?     @relation("PrfArchivedBy", fields: [archivedById], references: [id])
   disapprovalReason String?
-  author           User?     @relation(fields: [authorId], references: [id], onDelete: Cascade, map: "Prf_authorId_fkey")
+  author           User?     @relation("PrfAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   items            PrfItem[]
-  @@index([authorId], map: "Prf_authorId_fkey")
+  @@index([authorId])
   @@map("prf")
 }
 
@@ -74,10 +96,10 @@ model PrfItem {
 model Reminder {
   id        Int      @id @default(autoincrement())
   userId    Int
-  date      String
+  date      DateTime
   text      String   @db.Text
   createdAt DateTime @default(now())
-  endDate   String?
+  endDate   DateTime?
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Reminder_userId_fkey")
 
   @@index([userId], map: "Reminder_userId_fkey")
@@ -87,29 +109,34 @@ model Reminder {
 model Rrf {
   id            Int       @id @default(autoincrement())
   rrfNo         String?
-  requestor     String?
-  dateRequested String?
-  dateNeeded    String?
+  requestorId   Int?
+  requestor     User?     @relation("RrfRequestor", fields: [requestorId], references: [id])
+  dateRequested DateTime? @default(now())
+  dateNeeded    DateTime?
   to            String?
   from          String?
   department    String?
   company       String?
   remarks       String?
-  preparedBy    String?
-  verifiedBy    String?
-  approvedBy    String?
+  preparedById  Int?
+  preparedBy    User?     @relation("RrfPreparedBy", fields: [preparedById], references: [id])
+  verifiedById  Int?
+  verifiedBy    User?     @relation("RrfVerifiedBy", fields: [verifiedById], references: [id])
+  approvedById  Int?
+  approvedBy    User?     @relation("RrfApprovedBy", fields: [approvedById], references: [id])
   layout        String?   @db.LongText
   status        String    @default("Pending")
   authorId      Int?
   createdAt     DateTime  @default(now())
-  archivedBy    String?
+  archivedById  Int?
+  archivedBy    User?     @relation("RrfArchivedBy", fields: [archivedById], references: [id])
   receivedBy    String?
-  receivedDate  String?
+  receivedDate  DateTime?
   disapprovalReason String?
-  author           User?     @relation(fields: [authorId], references: [id], onDelete: Cascade, map: "Rrf_authorId_fkey")
+  author           User?     @relation("RrfAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   items         RrfItem[]
 
-  @@index([authorId], map: "Rrf_authorId_fkey")
+  @@index([authorId])
   @@map("rrf")
 }
 
@@ -143,39 +170,47 @@ model Task {
 
 model TripTicket {
   id                Int      @id @default(autoincrement())
-  dateRequested     String?
-  requestorName     String?
+  dateRequested     DateTime? @default(now())
+  requestorId       Int?
+  requestor         User?    @relation("TripTicketRequestor", fields: [requestorId], references: [id])
   subsidiary        String?
-  driver            String?
+  driverId          Int?
+  driverUser        User?    @relation("TripTicketDriver", fields: [driverId], references: [id])
   vehicle           String?
   plateNumber       String?
   etdOffice         String?
   etaDestination    String?
-  dateTimeDeparture String?
-  dateTimeReturn    String?
+  dateTimeDeparture DateTime?
+  dateTimeReturn    DateTime?
   passengersDetail  String?
   destination       String?
   purpose           String?
   medium            String?
-  requestedBy       String?
-  endorsedBy        String?
-  approvedBy        String?
+  requestedById     Int?
+  requestedBy       User?    @relation("TripTicketRequestedBy", fields: [requestedById], references: [id])
+  endorsedById      Int?
+  endorsedBy        User?    @relation("TripTicketEndorsedBy", fields: [endorsedById], references: [id])
+  approvedById      Int?
+  approvedBy        User?    @relation("TripTicketApprovedBy", fields: [approvedById], references: [id])
   createdAt         DateTime @default(now())
   layout            String?  @db.LongText
   status            String   @default("Pending")
   authorId          Int?
-  guardIn           String?
-  guardOut          String?
+  guardInId         Int?
+  guardInUser       User?    @relation("TripTicketGuardIn", fields: [guardInId], references: [id])
+  guardOutId        Int?
+  guardOutUser      User?    @relation("TripTicketGuardOut", fields: [guardOutId], references: [id])
   kmIn              String?
   kmOut             String?
   hdiPassengers     String?
   outsidePassengers String?
   passengerCount    String?
-  archivedBy        String?
+  archivedById      Int?
+  archivedBy        User?    @relation("TripTicketArchivedBy", fields: [archivedById], references: [id])
   disapprovalReason String?
-  author            User?    @relation(fields: [authorId], references: [id], onDelete: Cascade, map: "TripTicket_authorId_fkey")
+  author            User?    @relation("TripTicketAuthor", fields: [authorId], references: [id], onDelete: Cascade)
 
-  @@index([authorId], map: "TripTicket_authorId_fkey")
+  @@index([authorId])
   @@map("tripticket")
 }
 
@@ -202,17 +237,46 @@ model User {
   inactiveReason String?     @db.Text
   company      String?
   permissions  Json?
+  
+  // Backwards relations
   activitylog  ActivityLog[]
-  prf          Prf[]
+  auditTrails  AuditTrail[]
   reminder     Reminder[]
-  rrf          Rrf[]
   task         Task[]
-  tripticket   TripTicket[]
+  notifications Notification[]
   supportTickets SupportTicket[] @relation("SupportAuthor")
   assignedSupportTickets SupportTicket[] @relation("SupportAssigned")
   resolvedSupportTickets SupportTicket[] @relation("SupportResolvedBy")
   supportMessages SupportMessage[]
-  notifications Notification[]
+
+  // Prf
+  prfAuthors          Prf[] @relation("PrfAuthor")
+  prfPrepared         Prf[] @relation("PrfPreparedBy")
+  prfVerified         Prf[] @relation("PrfVerifiedBy")
+  prfNoted            Prf[] @relation("PrfNotedBy")
+  prfApproved         Prf[] @relation("PrfApprovedBy")
+  prfArchived         Prf[] @relation("PrfArchivedBy")
+  prfRequested        Prf[] @relation("PrfRequestor")
+
+  // Rrf
+  rrfAuthors          Rrf[] @relation("RrfAuthor")
+  rrfPrepared         Rrf[] @relation("RrfPreparedBy")
+  rrfVerified         Rrf[] @relation("RrfVerifiedBy")
+  rrfApproved         Rrf[] @relation("RrfApprovedBy")
+  rrfArchived         Rrf[] @relation("RrfArchivedBy")
+  rrfRequested        Rrf[] @relation("RrfRequestor")
+
+  // TripTicket
+  ticketAuthors       TripTicket[] @relation("TripTicketAuthor")
+  ticketRequested     TripTicket[] @relation("TripTicketRequestedBy")
+  ticketEndorsed      TripTicket[] @relation("TripTicketEndorsedBy")
+  ticketApproved      TripTicket[] @relation("TripTicketApprovedBy")
+  ticketArchived      TripTicket[] @relation("TripTicketArchivedBy")
+  ticketGuardIn       TripTicket[] @relation("TripTicketGuardIn")
+  ticketGuardOut      TripTicket[] @relation("TripTicketGuardOut")
+  ticketDrivers       TripTicket[] @relation("TripTicketDriver")
+  ticketRequestors    TripTicket[] @relation("TripTicketRequestor")
+
   @@map("user")
 }
 

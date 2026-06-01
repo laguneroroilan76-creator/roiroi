@@ -20,7 +20,7 @@ const createTicket = async (req, res) => {
 
     res.status(201).json(ticket);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
@@ -30,7 +30,7 @@ const getTickets = async (req, res) => {
     const tickets = await supportService.getTickets(req.user.id, req.user.role, hasSupportAccess);
     res.json(tickets);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
@@ -51,7 +51,7 @@ const getTicketById = async (req, res) => {
 
     res.json(ticket);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
@@ -87,7 +87,7 @@ const updateTicket = async (req, res) => {
     const updated = await supportService.updateTicket(paramValidation.data.id, updateData);
     res.json(updated);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
@@ -106,7 +106,7 @@ const deleteTicket = async (req, res) => {
     await supportService.deleteTicket(paramValidation.data.id);
     res.json({ message: 'Ticket deleted successfully' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
@@ -128,7 +128,7 @@ const getMessages = async (req, res) => {
     const messages = await supportService.getMessages(ticketId);
     res.json(messages);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
@@ -164,7 +164,7 @@ const addMessage = async (req, res) => {
 
     res.status(201).json(newMessage);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 

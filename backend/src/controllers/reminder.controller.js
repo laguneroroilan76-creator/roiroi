@@ -5,7 +5,7 @@ const getReminders = async (req, res) => {
     const reminders = await reminderService.getReminders(req.user.id);
     res.json(reminders);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
@@ -14,7 +14,7 @@ const upsertReminder = async (req, res) => {
     const reminder = await reminderService.upsertReminder(req.user.id, req.body);
     res.json(reminder);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
@@ -23,7 +23,7 @@ const deleteReminder = async (req, res) => {
     await reminderService.deleteReminder(req.params.id);
     res.json({ message: 'Reminder deleted' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 

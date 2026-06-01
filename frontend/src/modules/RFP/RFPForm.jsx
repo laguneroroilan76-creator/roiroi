@@ -15,6 +15,8 @@ export default function RFPForm() {
   const isReviewMode = !!initialData;
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
+  const getName = (val) => val && typeof val === 'object' ? val.name : val;
+
   const getDefaultFormData = () => {
     const stateInitialData = location.state?.initialData;
     return {
@@ -28,13 +30,13 @@ export default function RFPForm() {
       purpose: stateInitialData?.purpose || '',
       poNumber: stateInitialData?.poNumber || '',
       siNumber: stateInitialData?.siNumber || '',
-      receivedBy: stateInitialData?.receivedBy || '',
+      receivedBy: getName(stateInitialData?.receivedBy) || '',
       receivedDate: stateInitialData?.receivedDate || '',
       prfNo: stateInitialData?.prfNo || '',
       status: stateInitialData?.status || 'Pending',
-      requestor: stateInitialData?.requestor || (user?.role === 'Admin' ? user.name : user.name || ''),
-      approvedBy: stateInitialData?.approvedBy || '',
-      deptHead: stateInitialData?.deptHead || '',
+      requestor: getName(stateInitialData?.requestor) || (user?.role === 'Admin' ? user.name : user.name || ''),
+      approvedBy: getName(stateInitialData?.approvedBy) || '',
+      deptHead: getName(stateInitialData?.deptHead) || '',
       disapprovalReason: stateInitialData?.disapprovalReason || ''
     };
   };
@@ -47,18 +49,24 @@ export default function RFPForm() {
 
   const parseRecord = (record) => {
     if (!record) return null;
-    if (!record.layout) return record;
-    try {
-      const parsed = JSON.parse(record.layout);
-      return { 
-        ...parsed,
-        ...record,
-        status: record.status || parsed.status || 'Pending',
-        approvedBy: record.approvedBy || parsed.approvedBy,
-        verifiedBy: record.verifiedBy || parsed.verifiedBy,
-        preparedBy: record.preparedBy || parsed.preparedBy
-      };
-    } catch (e) { return record; }
+    let parsed = {};
+    if (record.layout) {
+      try {
+        parsed = JSON.parse(record.layout);
+      } catch (e) { }
+    }
+    
+    return { 
+      ...parsed,
+      ...record,
+      status: record.status || parsed.status || 'Pending',
+      approvedBy: getName(record.approvedBy) || getName(parsed.approvedBy),
+      verifiedBy: getName(record.verifiedBy) || getName(parsed.verifiedBy),
+      preparedBy: getName(record.preparedBy) || getName(parsed.preparedBy),
+      deptHead: getName(record.deptHead) || getName(parsed.deptHead),
+      requestor: getName(record.requestor) || getName(parsed.requestor),
+      receivedBy: getName(record.receivedBy) || getName(parsed.receivedBy)
+    };
   };
 
   useEffect(() => {
@@ -117,13 +125,12 @@ export default function RFPForm() {
     if (!await confirm('Approve as Dept Head?')) return;
     try {
       const payload = { 
-        ...formData, 
-        status: 'Pending Final Approval',
-        deptHead: user.name || user.email || 'DEPT HEAD',
-        verifiedBy: user.name || user.email || 'DEPT HEAD' 
+        ...formData,
+        deptHead: formData.deptHead || user.name || 'Dept Head'
       };
       delete payload.layout;
       await api.put(`/rfps/${initialData.id}`, payload);
+      await api.post(`/rfps/${initialData.id}/approve`);
       showToast('Dept Head Approved!', 'success');
       navigate('/pending');
     } catch (err) {
@@ -135,12 +142,12 @@ export default function RFPForm() {
     if (!await confirm('Approve this RFP?')) return;
     try {
       const payload = { 
-        ...formData, 
-        status: 'Approved',
-        approvedBy: user.name || user.email || 'ADMIN' 
+        ...formData,
+        approvedBy: formData.approvedBy || user.name || 'System Admin'
       };
       delete payload.layout;
       await api.put(`/rfps/${initialData.id}`, payload);
+      await api.post(`/rfps/${initialData.id}/approve`);
       showToast('Approved!', 'success');
       navigate('/pending');
     } catch (err) {
@@ -154,10 +161,7 @@ export default function RFPForm() {
 
   const confirmDisapprove = async () => {
     try {
-      await api.put(`/rfps/${initialData.id}`, { 
-        status: 'Disapproved', 
-        disapprovalReason: disReason 
-      });
+      await api.post(`/rfps/${initialData.id}/reject`, { disapprovalReason: disReason });
       showToast('Disapproved', 'info');
       navigate('/pending');
     } catch (err) {
@@ -203,6 +207,7 @@ export default function RFPForm() {
 
   const isOwner = initialData?.authorId === user?.id || initialData?.requestor === user?.name;
 
+  console.log("RFP Render state:", { isReviewMode, status: formData.status, role: user?.role, initialData });
   const isFieldDisabled = (fieldName, readOnly) => {
     if (!initialData) return false;
     // Signature fields should always be locked for non-authorities
@@ -235,7 +240,7 @@ export default function RFPForm() {
           )}
           {isReviewMode && (
             <>
-              {formData.status === 'Pending Dept Head Approval' && (user?.role === 'Admin' || user?.canApprove || user?.canApproveDeptHead) && (
+              {((formData.status === 'Pending Dept Head Approval' || formData.status === 'Pending')) && (user?.role === 'Admin' || user?.canApprove || user?.canApproveDeptHead) && (
                 <>
                   <button onClick={handleDeptHeadApprove} className="tool-btn approve" style={{ background: '#2563eb', color: '#ffffff' }}>Approve Dept Head</button>
                   <button onClick={handleDisapprove} className="tool-btn disapprove" style={{ background: '#ffffff', color: '#0f172a', border: '1px solid #cbd5e1' }}>Disapprove</button>
@@ -355,7 +360,7 @@ export default function RFPForm() {
                 <div className="sig-label">DEPT HEAD</div>
               </div>
               <div className="rfp-sig-box">
-                <div className="sig-name">{formData.status !== 'Pending' ? (formData.approvedBy || '') : ''}</div>
+                <div className="sig-name">{formData.status === 'Approved' ? (formData.approvedBy || '') : ''}</div>
                 <div className="rfp-sig-line"></div>
                 <div className="sig-label">APPROVED BY</div>
               </div>

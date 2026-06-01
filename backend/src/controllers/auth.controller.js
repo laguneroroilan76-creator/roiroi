@@ -26,7 +26,7 @@ const register = async (req, res, next) => {
     const user = await authService.register({ email, password, name, role, company, canApprove, permissions });
     res.status(201).json({ message: 'User registered successfully', userId: user.id });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
@@ -40,7 +40,7 @@ const getMe = async (req, res) => {
     const { password, ...safeUser } = user;
     res.json(safeUser);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 

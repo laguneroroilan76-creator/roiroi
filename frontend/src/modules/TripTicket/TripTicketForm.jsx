@@ -51,7 +51,12 @@ export default function TripTicketForm() {
     kmIn: '',
     guardOut: '',
     guardIn: '',
-    ...location.state?.initialData
+    ...location.state?.initialData,
+    requestedBy: location.state?.initialData?.requestedBy?.name || location.state?.initialData?.requestedBy || user?.name || "",
+    endorsedBy: location.state?.initialData?.endorsedBy?.name || location.state?.initialData?.endorsedBy || "",
+    approvedBy: location.state?.initialData?.approvedBy?.name || location.state?.initialData?.approvedBy || "",
+    guardOut: location.state?.initialData?.guardOutUser?.name || location.state?.initialData?.guardOut || "",
+    guardIn: location.state?.initialData?.guardInUser?.name || location.state?.initialData?.guardIn || ""
   });
 
   const [formData, setFormData] = useState(getDefaultFormData());
@@ -75,18 +80,26 @@ export default function TripTicketForm() {
       return true;
     }
 
-    const isDeparted = !!formData.dateTimeDeparture;
+    // Timestamp fields should NEVER be editable by guards - they auto-populate
+    if ((fieldName === 'dateTimeDeparture' || fieldName === 'dateTimeReturn') && isGuard) {
+      return true;
+    }
 
+    const isDeparted = !!formData.dateTimeDeparture;
     const isArrived = !!(formData.dateTimeDeparture && formData.dateTimeReturn);
 
     if (isArrived || status === 'ARRIVED') return true;
 
     if (status === 'Approved' || status === 'DEPARTED') {
-      const departureFields = ['kmOut', 'guardOut', 'dateTimeDeparture'];
-      const returnFields = ['kmIn', 'guardIn', 'dateTimeReturn'];
+      const departureFields = ['kmOut', 'guardOut'];
+      const returnFields = ['kmIn', 'guardIn'];
 
       if (isGuard) {
+        // Disable return fields until departure is recorded
+        if (!isDeparted && returnFields.includes(fieldName)) return true;
+        // Can't edit departure fields once departed
         if (isDeparted && departureFields.includes(fieldName)) return true;
+        // Can edit relevant fields based on phase
         if ([...departureFields, ...returnFields].includes(fieldName)) return false;
       }
       return true;
@@ -96,9 +109,9 @@ export default function TripTicketForm() {
       return true;
     }
 
-    const guardOnlyFields = ['kmOut', 'kmIn', 'guardOut', 'guardIn', 'dateTimeDeparture', 'dateTimeReturn'];
+    const guardOnlyFields = ['kmOut', 'kmIn', 'guardOut', 'guardIn'];
     if (isGuard && !guardOnlyFields.includes(fieldName)) return true;
-    if (!isGuard && guardOnlyFields.includes(fieldName)) return true;
+    if (!isGuard && [...guardOnlyFields, 'dateTimeDeparture', 'dateTimeReturn'].includes(fieldName)) return true;
     return isReadOnly;
   };
 
@@ -202,7 +215,9 @@ export default function TripTicketForm() {
   const handleEndorse = async () => {
     if (!await confirm('Endorse this Trip Ticket?')) return;
     try {
-      await api.put(`/trip-tickets/${initialData.id}`, { ...formData, status: 'Pending Approval', endorsedBy: user.name });
+      const payload = { ...formData, endorsedBy: formData.endorsedBy || user.name };
+      await api.put(`/trip-tickets/${initialData.id}`, payload);
+      await api.post(`/trip-tickets/${initialData.id}/endorse`);
       showToast('Trip Ticket Endorsed!', 'success');
       navigate('/pending');
     } catch (err) {
@@ -213,7 +228,9 @@ export default function TripTicketForm() {
   const handleApprove = async () => {
     if (!await confirm('Approve this Trip Ticket?')) return;
     try {
-      await api.put(`/trip-tickets/${initialData.id}`, { ...formData, status: 'Approved', approvedBy: user.name });
+      const payload = { ...formData, approvedBy: formData.approvedBy || user.name };
+      await api.put(`/trip-tickets/${initialData.id}`, payload);
+      await api.post(`/trip-tickets/${initialData.id}/approve`);
       showToast('Trip Ticket Approved!', 'success');
       navigate('/pending');
     } catch (err) {
@@ -227,7 +244,8 @@ export default function TripTicketForm() {
 
   const confirmDisapprove = async () => {
     try {
-      await api.put(`/trip-tickets/${initialData.id}`, { status: 'Disapproved', disapprovalReason: disReason });
+      await api.put(`/trip-tickets/${initialData.id}`, formData);
+      await api.post(`/trip-tickets/${initialData.id}/reject`, { disapprovalReason: disReason });
       showToast('Trip Ticket Disapproved', 'info');
       navigate('/pending');
     } catch (err) {

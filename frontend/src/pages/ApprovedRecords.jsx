@@ -29,6 +29,8 @@ export default function ApprovedRecords() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState(currentFilter || 'All');
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordsPerPage = 10;
   const { showToast, confirm } = useToast();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isGuard = user.role === 'Guard';
@@ -155,6 +157,17 @@ export default function ApprovedRecords() {
     return matchesSearch && matchesType && (hasDocAccess || isOwn || isGuard);
   });
 
+  // Pagination logic
+  const totalPages = Math.ceil(filteredRecords.length / recordsPerPage);
+  const startIndex = (currentPage - 1) * recordsPerPage;
+  const endIndex = startIndex + recordsPerPage;
+  const paginatedRecords = filteredRecords.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search or filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterType]);
+
   if (loading) return <div className="approved-records-page" style={{ padding: '3rem' }}>Loading authorized records...</div>;
 
   return (
@@ -207,10 +220,10 @@ export default function ApprovedRecords() {
             </tr>
           </thead>
           <tbody>
-            {filteredRecords.map((record, index) => (
+            {paginatedRecords.map((record, index) => (
               <tr key={`${record.docType}-${record.id}`} onClick={() => handleView(record)} style={{ cursor: 'pointer' }}>
                 <td style={{ textAlign: 'center', fontWeight: '600', color: 'var(--text-muted)' }}>
-                  {index + 1}
+                  {startIndex + index + 1}
                 </td>
                 <td>
                   <div className="cell-document">
@@ -274,7 +287,7 @@ export default function ApprovedRecords() {
                 </td>
               </tr>
             ))}
-            {filteredRecords.length === 0 && (
+            {paginatedRecords.length === 0 && (
               <tr>
                 <td colSpan="5" style={{ textAlign: 'center', padding: '6rem' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem', color: 'var(--text-dim)' }}>
@@ -290,6 +303,50 @@ export default function ApprovedRecords() {
         </table>
       </div>
 
+      {filteredRecords.length > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2rem', padding: '1.5rem', background: 'var(--glass-bg)', borderRadius: '16px', border: '1px solid var(--glass-border)' }}>
+          <div style={{ color: 'var(--text-dim)', fontWeight: 600, fontSize: '0.95rem' }}>
+            Showing {startIndex + 1} to {Math.min(endIndex, filteredRecords.length)} of {filteredRecords.length} records
+          </div>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <button 
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              style={{ 
+                padding: '0.6rem 1.2rem', 
+                borderRadius: '8px', 
+                border: '1px solid var(--glass-border)', 
+                background: currentPage === 1 ? 'var(--glass-bg-disabled)' : 'var(--primary-light)',
+                color: currentPage === 1 ? 'var(--text-dim)' : 'var(--primary)',
+                fontWeight: 700,
+                cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              ← Previous
+            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)', fontWeight: 600 }}>
+              <span>Page {currentPage} of {totalPages || 1}</span>
+            </div>
+            <button 
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages || totalPages === 0}
+              style={{ 
+                padding: '0.6rem 1.2rem', 
+                borderRadius: '8px', 
+                border: '1px solid var(--glass-border)', 
+                background: currentPage === totalPages || totalPages === 0 ? 'var(--glass-bg-disabled)' : 'var(--primary)',
+                color: currentPage === totalPages || totalPages === 0 ? 'var(--text-dim)' : 'white',
+                fontWeight: 700,
+                cursor: currentPage === totalPages || totalPages === 0 ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              Next →
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

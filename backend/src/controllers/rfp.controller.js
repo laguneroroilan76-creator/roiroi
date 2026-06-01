@@ -1,154 +1,190 @@
 const rfpService = require('../services/rfp.service');
 const activityService = require('../services/activity.service');
+const { rrfCreateBodySchema, formatZodErrors, idParamSchema } = require('../utils/validation');
 const { createNotification } = require('./notification.controller');
+const prisma = require('../config/database');
+
+const sanitizePayload = async (payload, reqUser) => {
+  const data = { ...payload };
+  if (data.dateRequested) data.dateRequested = new Date(data.dateRequested); else data.dateRequested = null;
+  if (data.dateNeeded) data.dateNeeded = new Date(data.dateNeeded); else data.dateNeeded = null;
+  if (data.receivedDate) data.receivedDate = new Date(data.receivedDate); else data.receivedDate = null;
+
+  data.preparedById = reqUser.id;
+  
+  const lookupUser = async (name) => {
+    if (!name) return null;
+    const u = await prisma.user.findFirst({ where: { name } });
+    return u ? u.id : null;
+  };
+
+  if (data.verifiedBy) data.verifiedById = await lookupUser(data.verifiedBy);
+  if (data.approvedBy) data.approvedById = await lookupUser(data.approvedBy);
+  if (data.requestor) data.requestorId = await lookupUser(data.requestor);
+  
+  // Map legacy RRF/RFP fields
+  data.rrfNo = data.rfpNo || data.rrfNo || null;
+  data.department = data.department || data.chargeTo || null;
+  data.remarks = data.remarks || data.purpose || null;
+  data.layout = JSON.stringify(payload);
+  
+  delete data.rfpNo;
+  delete data.chargeTo;
+  delete data.releaseFundsTo;
+  delete data.amount;
+  delete data.purpose;
+  delete data.poNumber;
+  delete data.siNumber;
+  delete data.prfNo;
+  
+  // Removed strict stripping of status to restore frontend compatibility
+  delete data.preparedBy;
+  delete data.verifiedBy;
+  delete data.approvedBy;
+  delete data.requestor;
+  delete data.archivedBy;
+  delete data.status;
+  delete data.deptHead;
+  
+  return data;
+};
 
 const createRFP = async (req, res) => {
   try {
-    const rfp = await rfpService.createRRF(req.user.id, req.body);
-    
-    await activityService.logActivity(
-      req.user.id, 
-      'CREATE', 
-      'RFP', 
-      rfp.id, 
-      `${req.user.name || 'Unknown User'} created an RFP (Form #${rfp.rrfNo || rfp.id})`
-    );
+    const validatedBody = rrfCreateBodySchema.parse(req.body);
+    const sanitizedData = await sanitizePayload(validatedBody, req.user);
+    sanitizedData.authorId = req.user.id;
 
-    await createNotification({
-      message: `${req.user.name || 'A user'} submitted a new RFP #${rfp.rrfNo || rfp.id}`,
-      type: 'NEW_RFP',
-      targetRole: 'RFP_Approver',
-      link: '/forms/rfp'
+    const rfp = await prisma.$transaction(async (tx) => {
+      if (!sanitizedData.status) sanitizedData.status = 'Pending Dept Head Approval';
+      const created = await tx.rrf.create({ 
+        data: {
+          ...sanitizedData,
+          items: sanitizedData.items ? { create: sanitizedData.items } : undefined
+        } 
+      });
+      await tx.auditTrail.create({
+        data: { userId: req.user.id, action: 'CREATE', tableName: 'Rrf', recordId: created.id, newValues: created, ipAddress: req.ip }
+      });
+      return created;
     });
-    
+
+    await createNotification({ message: `${req.user.name || 'A user'} submitted a new RFP`, type: 'NEW_RFP', targetRole: 'RFP_Approver', link: '/forms/rfp' });
     res.status(201).json(rfp);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    if (err.name === 'ZodError') { console.error("ZodError:", formatZodErrors(err)); return res.status(400).json({ error: formatZodErrors(err) }); }
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
 const getRFPs = async (req, res) => {
   try {
-    const hasAccess = req.user.canApprove || req.user.canApproveRFP || req.user.canApproveDeptHead || req.user.role === 'Accounting';
-    const rfps = await rfpService.getRRFs(req.user.id, hasAccess, req.user.role);
+    const hasAccess = req.user.role === 'Admin' || req.user.canApprove || req.user.canApproveRFP || req.user.canApproveDeptHead || req.user.canVerify || req.user.role === 'Accounting';
+    const rfps = await rfpService.getRFPs(req.user.id, hasAccess, req.user.role);
     res.json(rfps);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
 const getRFPById = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    if (isNaN(id)) return res.status(400).json({ error: 'Invalid RFP ID.' });
-
-    const rfp = await rfpService.getRRFById(id);
-    if (!rfp) return res.status(404).json({ error: 'RFP not found' });
-
-    // Access control: Author, Admin/Approver, specific RFP role, or Accounting
-    const hasAccess = req.user.canApprove || req.user.canApproveRFP || req.user.canApproveDeptHead || rfp.authorId === req.user.id || req.user.role === 'Accounting';
-    if (!hasAccess) {
-      return res.status(403).json({ error: 'Access denied.' });
-    }
-
+    const rfp = await rfpService.getRFPById(id);
     res.json(rfp);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
 const updateRFP = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    if (isNaN(id)) return res.status(400).json({ error: 'Invalid RFP ID.' });
+    const validatedBody = rrfCreateBodySchema.parse(req.body);
+    const sanitizedData = await sanitizePayload(validatedBody, req.user);
 
-    const existing = await rfpService.getRRFById(id);
-    if (!existing) return res.status(404).json({ error: 'RFP not found.' });
-
-    // Only the author, an authorized approver, or Accounting can update
-    const canUpdate = req.user.canApprove || req.user.canApproveRFP || req.user.canApproveDeptHead || existing.authorId === req.user.id || req.user.role === 'Accounting';
-    if (!canUpdate) {
-      return res.status(403).json({ error: 'You are not authorized to update this RFP.' });
-    }
-
-    if (req.body.status === 'Archived') {
-      req.body.archivedBy = req.user.name || 'Unknown';
-    } else if (req.body.status === 'Approved') {
-      req.body.archivedBy = null; // Clear stale archive data
-    }
-
-    const rfp = await rfpService.updateRRF(id, req.body);
-    
-    let actionType = 'UPDATE';
-    let message = `${req.user.name || 'Unknown User'} updated RFP #${rfp.rrfNo || rfp.id} status to ${rfp.status}`;
-
-    if (rfp.status === 'Approved') {
-      actionType = 'APPROVE';
-      message = `${req.user.name || 'Unknown User'} approved RFP #${rfp.rrfNo || rfp.id}`;
-      await createNotification({
-        message: `Your RFP #${rfp.rrfNo || rfp.id} has been Approved`,
-        type: 'APPROVED',
-        targetUserId: rfp.authorId,
-        link: '/history'
+    const rfp = await prisma.$transaction(async (tx) => {
+      const oldRecord = await tx.rrf.findUnique({ where: { id } });
+      const updated = await tx.rrf.update({
+        where: { id },
+        data: {
+          ...sanitizedData,
+          items: sanitizedData.items ? { deleteMany: {}, create: sanitizedData.items } : undefined
+        }
       });
-    } else if (rfp.status === 'Archived') {
-      actionType = 'ARCHIVE';
-      message = `${req.user.name || 'Unknown User'} archived RFP #${rfp.rrfNo || rfp.id}`;
-      await createNotification({
-        message: `Your RFP #${rfp.rrfNo || rfp.id} was Rejected`,
-        type: 'REJECTED',
-        targetUserId: rfp.authorId,
-        link: '/history'
-      });
-    } else if (rfp.status === 'Pending Dept Head Approval') {
-      await createNotification({
-        message: `RFP #${rfp.rrfNo || rfp.id} verified and pending Dept Head approval`,
-        type: 'INFO',
-        targetRole: 'DeptHead',
-        link: '/pending'
-      });
-    } else if (rfp.status === 'Pending Final Approval') {
-      await createNotification({
-        message: `RFP #${rfp.rrfNo || rfp.id} pending Final Approval`,
-        type: 'INFO',
-        targetRole: 'RFP_Approver',
-        link: '/pending'
-      });
-    }
 
-    await activityService.logActivity(req.user.id, actionType, 'RFP', rfp.id, message);
+      await tx.auditTrail.create({
+        data: { userId: req.user.id, action: 'UPDATE', tableName: 'Rrf', recordId: id, oldValues: oldRecord, newValues: updated, ipAddress: req.ip }
+      });
+      return updated;
+    });
 
     res.json(rfp);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    if (err.name === 'ZodError') { console.error("ZodError:", formatZodErrors(err)); return res.status(400).json({ error: formatZodErrors(err) }); }
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
 const deleteRFP = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    if (isNaN(id)) return res.status(400).json({ error: 'Invalid RFP ID.' });
-
-    const existing = await rfpService.getRRFById(id);
-    if (!existing) return res.status(404).json({ error: 'RFP not found.' });
-
-    // Only author or Admin can delete
-    if (req.user.role !== 'Admin' && existing.authorId !== req.user.id) {
-      return res.status(403).json({ error: 'You are not authorized to delete this RFP.' });
-    }
-
-    await rfpService.deleteRRF(id);
-    await activityService.logActivity(
-      req.user.id, 
-      'DELETE', 
-      'RFP', 
-      id, 
-      `${req.user.name || 'Unknown User'} permanently deleted RFP #${id}`
-    );
+    await rfpService.deleteRFP(id);
     res.json({ message: 'RFP deleted successfully' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
-module.exports = { createRFP, getRFPs, getRFPById, updateRFP, deleteRFP };
+
+const approveRFP = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const updated = await prisma.$transaction(async (tx) => {
+      const oldRecord = await tx.rrf.findUnique({ where: { id } });
+      if (!oldRecord) throw new Error('Record not found');
+      
+      const newStatus = oldRecord.status === 'Pending Dept Head Approval' ? 'Pending Final Approval' : 'Approved';
+      const updateData = { status: newStatus };
+      if (newStatus === 'Approved') {
+        updateData.approvedById = req.user.id;
+      }
+      
+      const updatedRecord = await tx.rrf.update({
+        where: { id },
+        data: updateData
+      });
+      await tx.auditTrail.create({
+        data: { userId: req.user.id, action: 'APPROVE', tableName: 'Rrf', recordId: id, oldValues: oldRecord, newValues: updatedRecord, ipAddress: req.ip }
+      });
+      return updatedRecord;
+    });
+    res.json(updated);
+  } catch (err) {
+    console.error(err); res.status(500).json({ error: err.message });
+  }
+};
+
+const rejectRFP = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { disapprovalReason } = req.body;
+    const updated = await prisma.$transaction(async (tx) => {
+      const oldRecord = await tx.rrf.findUnique({ where: { id } });
+      if (!oldRecord) throw new Error('Record not found');
+      
+      const updatedRecord = await tx.rrf.update({
+        where: { id },
+        data: { status: 'Disapproved', disapprovalReason }
+      });
+      await tx.auditTrail.create({
+        data: { userId: req.user.id, action: 'REJECT', tableName: 'Rrf', recordId: id, oldValues: oldRecord, newValues: updatedRecord, ipAddress: req.ip }
+      });
+      return updatedRecord;
+    });
+    res.json(updated);
+  } catch (err) {
+    console.error(err); res.status(500).json({ error: err.message });
+  }
+};
+module.exports = { createRFP, getRFPs, getRFPById, updateRFP, deleteRFP, approveRFP, rejectRFP };

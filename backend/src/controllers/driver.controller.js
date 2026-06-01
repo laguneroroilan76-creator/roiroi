@@ -23,7 +23,7 @@ const createDriver = async (req, res) => {
 
     res.status(201).json(driver);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
@@ -32,7 +32,7 @@ const getDrivers = async (req, res) => {
     const drivers = await driverService.getDrivers();
     res.json(drivers);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
@@ -51,7 +51,7 @@ const updateDriverStatus = async (req, res) => {
     );
     res.json(driver);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 
@@ -67,7 +67,7 @@ const deleteDriver = async (req, res) => {
     );
     res.json({ message: 'Driver deleted successfully' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
   }
 };
 

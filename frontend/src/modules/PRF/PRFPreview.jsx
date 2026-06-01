@@ -19,7 +19,7 @@ export default function PRFPreview({ record, onClose, onActionComplete }) {
   const handleApprove = async () => {
     if (!await confirm('Approve this PRF?')) return;
     try {
-      await api.put(`${record.apiEndpoint}/${record.id}`, { status: 'Approved', approvedBy: user.name });
+      await api.post(`/prfs/${record.id}/approve`);
       showToast('PRF Approved!', 'success');
       onActionComplete();
     } catch (err) { showToast('Error approving', 'error'); }
@@ -27,7 +27,7 @@ export default function PRFPreview({ record, onClose, onActionComplete }) {
 
   const confirmDisapprove = async () => {
     try {
-      await api.put(`${record.apiEndpoint}/${record.id}`, { status: 'Disapproved', disapprovalReason: disReason });
+      await api.post(`/prfs/${record.id}/reject`, { reason: disReason });
       showToast('PRF Disapproved', 'info');
       onActionComplete();
     } catch (err) { showToast('Error disapproving', 'error'); }

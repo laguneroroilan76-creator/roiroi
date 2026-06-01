@@ -12,8 +12,19 @@ exports.getDashboardStats = async (req, res) => {
       prisma.tripTicket.findMany()
     ]);
 
-    const allForms = [...prfs, ...rrfs, ...triptickets];
+    const parseRecord = (record) => {
+        if (!record.layout) return record;
+        try {
+            const parsed = JSON.parse(record.layout);
+            return { ...parsed, ...record, status: record.status || parsed.status || 'Pending' };
+        } catch(e) { return record; }
+    };
 
+    const parsedPrfs = prfs.map(parseRecord);
+    const parsedRrfs = rrfs.map(parseRecord);
+    const parsedTriptickets = triptickets.map(parseRecord);
+
+    const allForms = [...parsedPrfs, ...parsedRrfs, ...parsedTriptickets];
     let pending = 0;
     let approved = 0;
     let rejected = 0;
@@ -45,6 +56,7 @@ exports.getDashboardStats = async (req, res) => {
       let category = '';
 
       const isTripTicket = form.driver !== undefined || form.plateNumber !== undefined || form.etdOffice !== undefined;
+      const isRFP = form.releaseFundsTo !== undefined || form.chargeTo !== undefined || 'rrfNo' in form;
 
       // Pending
       if (s === 'Pending' || 
@@ -53,7 +65,7 @@ exports.getDashboardStats = async (req, res) => {
           s === 'Pending Endorsement' || 
           s === 'Pending Dept Head Approval' || 
           s === 'Pending Final Approval' ||
-          (s === 'Approved' && !form.receivedBy && form.to)) { // RRF specific pending condition
+          (isRFP && s === 'Approved' && !form.receivedBy)) { // RRF specific pending condition for Accounting
         pending++;
         category = 'pending';
       }
