@@ -1,4 +1,5 @@
 const prisma = require('../config/database');
+const { sanitizeUser } = require('../utils/userUtils');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -15,19 +16,12 @@ const login = async (email, password) => {
   if (!isValid) throw new Error('Invalid credentials');
 
   const token = jwt.sign(
-    { 
-      id: user.id, 
-      email: user.email, 
-      name: user.name, 
-      role: user.role, 
-      canApprove: user.canApprove,
-      permissions: user.permissions
-    },
+    { id: user.id },
     JWT_SECRET,
     { expiresIn: '24h' }
   );
 
-  return { user, token };
+  return { user: sanitizeUser(user), token };
 };
 
 const register = async (userData) => {
@@ -38,7 +32,7 @@ const register = async (userData) => {
   // Default permissions if none provided
   const permissions = userData.permissions || {};
 
-  return await prisma.user.create({
+  const newUser = await prisma.user.create({
     data: {
       ...userData,
       role: normalizedRole,
@@ -47,6 +41,8 @@ const register = async (userData) => {
       password: hashedPassword
     }
   });
+
+  return sanitizeUser(newUser);
 };
 
 module.exports = { login, register };

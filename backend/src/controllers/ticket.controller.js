@@ -3,6 +3,8 @@ const activityService = require('../services/activity.service');
 const { createNotification } = require('./notification.controller');
 const prisma = require('../config/database');
 const { ticketCreateBodySchema } = require('../utils/validation');
+const auditService = require('../services/audit.service');
+const { transition } = require('../workflow/workflow.engine');
 
 const sanitizePayload = async (payload, reqUser) => {
   const data = { ...payload };
@@ -60,8 +62,8 @@ const createTicket = async (req, res) => {
     const ticket = await prisma.$transaction(async (tx) => {
       if (!sanitizedData.status) sanitizedData.status = 'Pending Endorsement';
       const created = await tx.tripTicket.create({ data: sanitizedData });
-      await tx.auditTrail.create({
-        data: { userId: req.user.id, action: 'CREATE', tableName: 'TripTicket', recordId: created.id, newValues: created, ipAddress: req.ip }
+      await auditService.log(tx, {
+        userId: req.user.id, action: 'CREATE', tableName: 'TripTicket', recordId: created.id, newValues: created, ipAddress: req.ip
       });
       return created;
     });
@@ -85,9 +87,11 @@ const getTickets = async (req, res) => {
 
 const getTicketById = async (req, res) => {
   try {
-    const ticket = await ticketService.getTicketById(parseInt(req.params.id));
+    const ticket = await ticketService.getTicketById(parseInt(req.params.id), req.user);
+    if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
     res.json(ticket);
   } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
     console.error(err); res.status(500).json({ error: err.message });
   }
 };
@@ -131,11 +135,19 @@ const updateTicket = async (req, res) => {
       return res.status(403).json({ error: 'Cannot edit this ticket at this stage.' });
     }
 
+    if (req.user.role === 'Guard') {
+      if (sanitizedData.dateTimeDeparture && !sanitizedData.dateTimeReturn && existingTicket.status === 'Approved') {
+        sanitizedData.status = 'DEPARTED';
+      } else if (sanitizedData.dateTimeReturn && existingTicket.status === 'DEPARTED') {
+        sanitizedData.status = 'ARRIVED';
+      }
+    }
+
     const ticket = await prisma.$transaction(async (tx) => {
       const oldRecord = await tx.tripTicket.findUnique({ where: { id } });
       const updated = await tx.tripTicket.update({ where: { id }, data: sanitizedData });
-      await tx.auditTrail.create({
-        data: { userId: req.user.id, action: 'UPDATE', tableName: 'TripTicket', recordId: id, oldValues: oldRecord, newValues: updated, ipAddress: req.ip }
+      await auditService.log(tx, {
+        userId: req.user.id, action: 'UPDATE', tableName: 'TripTicket', recordId: id, oldValues: oldRecord, newValues: updated, ipAddress: req.ip
       });
       return updated;
     });
@@ -151,6 +163,37 @@ const deleteTicket = async (req, res) => {
     const id = parseInt(req.params.id);
     await ticketService.deleteTicket(id);
     res.json({ message: 'Ticket deleted successfully' });
+  } catch (err) {
+    console.error(err); res.status(500).json({ error: err.message });
+  }
+};
+
+const cancelTicket = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const ticket = await prisma.tripTicket.findUnique({ where: { id } });
+    if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
+    
+    if (ticket.authorId !== req.user.id && req.user.role !== 'Admin') {
+      return res.status(403).json({ error: 'Only the author can cancel this request' });
+    }
+
+    if (ticket.status === 'Approved' || ticket.status === 'DEPARTED' || ticket.status === 'ARRIVED' || ticket.status === 'Completed') {
+      return res.status(400).json({ error: 'Cannot cancel an already processed request' });
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const result = await tx.tripTicket.update({
+        where: { id },
+        data: { status: 'Cancelled' }
+      });
+      await auditService.log(tx, {
+        userId: req.user.id, action: 'CANCEL', tableName: 'TripTicket', recordId: id, oldValues: ticket, newValues: result, ipAddress: req.ip
+      });
+      return result;
+    });
+
+    res.json(updated);
   } catch (err) {
     console.error(err); res.status(500).json({ error: err.message });
   }
@@ -181,26 +224,44 @@ const checkOccupancy = async (req, res) => {
 const endorseTicket = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    // Check if user has endorsement permission
-    if (!req.user.canEndorse && req.user.role !== 'Admin') {
-      return res.status(403).json({ error: 'You do not have permission to endorse tickets.' });
+    const validatedBody = Object.keys(req.body).length > 0 ? ticketCreateBodySchema.parse(req.body) : {};
+    const sanitizedData = await sanitizePayload(validatedBody, req.user);
+
+    const guardedFields = ['kmOut', 'kmIn', 'guardOutId', 'guardInId', 'dateTimeDeparture', 'dateTimeReturn'];
+    if (req.user.role !== 'Guard') {
+      guardedFields.forEach((f) => delete sanitizedData[f]);
     }
 
     const updated = await prisma.$transaction(async (tx) => {
       const oldRecord = await tx.tripTicket.findUnique({ where: { id } });
       if (!oldRecord) throw new Error('Record not found');
+
+      const tResult = transition({ entity: 'tripTicket', currentStatus: oldRecord.status, action: 'endorse', user: req.user });
+      if (!tResult.allowed) throw new Error(tResult.error);
       
-      const updatedRecord = await tx.tripTicket.update({
-        where: { id },
-        data: { status: 'Pending Approval', endorsedById: req.user.id }
+      const updateResult = await tx.tripTicket.updateMany({
+        where: { id, status: oldRecord.status },
+        data: {
+          ...sanitizedData,
+          status: tResult.nextStatus,
+          ...tResult.sideEffects
+        }
       });
-      await tx.auditTrail.create({
-        data: { userId: req.user.id, action: 'ENDORSE', tableName: 'TripTicket', recordId: id, oldValues: oldRecord, newValues: updatedRecord, ipAddress: req.ip }
+
+      if (updateResult.count === 0) {
+        throw Object.assign(new Error("Invalid or stale workflow state"), { statusCode: 409 });
+      }
+
+      const updatedRecord = await tx.tripTicket.findUnique({ where: { id } });
+
+      await auditService.log(tx, {
+        userId: req.user.id, action: 'ENDORSE', tableName: 'TripTicket', recordId: id, oldValues: oldRecord, newValues: updatedRecord, ipAddress: req.ip
       });
       return updatedRecord;
     });
     res.json(updated);
   } catch (err) {
+    if (err.name === 'ZodError') return res.status(400).json({ error: formatZodErrors(err) });
     console.error(err); res.status(500).json({ error: err.message });
   }
 };
@@ -208,26 +269,44 @@ const endorseTicket = async (req, res) => {
 const approveTicket = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    // Check if user has approval permission
-    if (!req.user.canApproveTripTicket && !req.user.canApprove && req.user.role !== 'Admin') {
-      return res.status(403).json({ error: 'You do not have permission to approve tickets.' });
+    const validatedBody = Object.keys(req.body).length > 0 ? ticketCreateBodySchema.parse(req.body) : {};
+    const sanitizedData = await sanitizePayload(validatedBody, req.user);
+
+    const guardedFields = ['kmOut', 'kmIn', 'guardOutId', 'guardInId', 'dateTimeDeparture', 'dateTimeReturn'];
+    if (req.user.role !== 'Guard') {
+      guardedFields.forEach((f) => delete sanitizedData[f]);
     }
 
     const updated = await prisma.$transaction(async (tx) => {
       const oldRecord = await tx.tripTicket.findUnique({ where: { id } });
       if (!oldRecord) throw new Error('Record not found');
+
+      const tResult = transition({ entity: 'tripTicket', currentStatus: oldRecord.status, action: 'approve', user: req.user });
+      if (!tResult.allowed) throw new Error(tResult.error);
       
-      const updatedRecord = await tx.tripTicket.update({
-        where: { id },
-        data: { status: 'Approved', approvedById: req.user.id }
+      const updateResult = await tx.tripTicket.updateMany({
+        where: { id, status: oldRecord.status },
+        data: {
+          ...sanitizedData,
+          status: tResult.nextStatus,
+          ...tResult.sideEffects
+        }
       });
-      await tx.auditTrail.create({
-        data: { userId: req.user.id, action: 'APPROVE', tableName: 'TripTicket', recordId: id, oldValues: oldRecord, newValues: updatedRecord, ipAddress: req.ip }
+
+      if (updateResult.count === 0) {
+        throw Object.assign(new Error("Invalid or stale workflow state"), { statusCode: 409 });
+      }
+
+      const updatedRecord = await tx.tripTicket.findUnique({ where: { id } });
+
+      await auditService.log(tx, {
+        userId: req.user.id, action: 'APPROVE', tableName: 'TripTicket', recordId: id, oldValues: oldRecord, newValues: updatedRecord, ipAddress: req.ip
       });
       return updatedRecord;
     });
     res.json(updated);
   } catch (err) {
+    if (err.name === 'ZodError') return res.status(400).json({ error: formatZodErrors(err) });
     console.error(err); res.status(500).json({ error: err.message });
   }
 };
@@ -235,28 +314,58 @@ const approveTicket = async (req, res) => {
 const rejectTicket = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { disapprovalReason } = req.body;
-    // Check if user has approval permission to reject
-    if (!req.user.canEndorse && !req.user.canApproveTripTicket && !req.user.canApprove && req.user.role !== 'Admin') {
-      return res.status(403).json({ error: 'You do not have permission to reject tickets.' });
+    const validatedBody = Object.keys(req.body).length > 0 ? ticketCreateBodySchema.parse(req.body) : {};
+    const sanitizedData = await sanitizePayload(validatedBody, req.user);
+
+    const guardedFields = ['kmOut', 'kmIn', 'guardOutId', 'guardInId', 'dateTimeDeparture', 'dateTimeReturn'];
+    if (req.user.role !== 'Guard') {
+      guardedFields.forEach((f) => delete sanitizedData[f]);
     }
 
     const updated = await prisma.$transaction(async (tx) => {
       const oldRecord = await tx.tripTicket.findUnique({ where: { id } });
       if (!oldRecord) throw new Error('Record not found');
+
+      const tResult = transition({ entity: 'tripTicket', currentStatus: oldRecord.status, action: 'reject', user: req.user });
+      if (!tResult.allowed) throw new Error(tResult.error);
       
-      const updatedRecord = await tx.tripTicket.update({
-        where: { id },
-        data: { status: 'Disapproved', disapprovalReason }
+      const updateResult = await tx.tripTicket.updateMany({
+        where: { id, status: oldRecord.status },
+        data: {
+          ...sanitizedData,
+          status: tResult.nextStatus,
+          ...tResult.sideEffects,
+          disapprovalReason: req.body.disapprovalReason || req.body.reason || 'Rejected'
+        }
       });
-      await tx.auditTrail.create({
-        data: { userId: req.user.id, action: 'REJECT', tableName: 'TripTicket', recordId: id, oldValues: oldRecord, newValues: updatedRecord, ipAddress: req.ip }
+
+      if (updateResult.count === 0) {
+        throw Object.assign(new Error("Invalid or stale workflow state"), { statusCode: 409 });
+      }
+
+      const updatedRecord = await tx.tripTicket.findUnique({ where: { id } });
+
+      await auditService.log(tx, {
+        userId: req.user.id, action: 'REJECT', tableName: 'TripTicket', recordId: id, oldValues: oldRecord, newValues: updatedRecord, ipAddress: req.ip
       });
       return updatedRecord;
     });
     res.json(updated);
   } catch (err) {
+    if (err.name === 'ZodError') return res.status(400).json({ error: formatZodErrors(err) });
     console.error(err); res.status(500).json({ error: err.message });
   }
 };
-module.exports = { createTicket, getTickets, getTicketById, updateTicket, deleteTicket, getDriverSchedule, checkOccupancy, endorseTicket, approveTicket, rejectTicket };
+module.exports = {
+  createTicket,
+  getTickets,
+  getTicketById,
+  updateTicket,
+  deleteTicket,
+  cancelTicket,
+  getDriverSchedule,
+  checkOccupancy,
+  endorseTicket,
+  approveTicket,
+  rejectTicket
+};

@@ -3,8 +3,10 @@ const router = express.Router();
 const userController = require('../controllers/user.controller');
 const { authenticateToken } = require('../middleware/auth.middleware');
 const { uploadSignature, uploadAvatar } = require('../middleware/upload.middleware');
+const { generalApiLimiter } = require('../middleware/rateLimit.middleware');
 
 router.use(authenticateToken);
+router.use(generalApiLimiter);
 
 router.get('/', userController.getUsers);
 router.get('/me', userController.getMe);

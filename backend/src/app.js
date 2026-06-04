@@ -1,5 +1,8 @@
+/* jshint esversion: 8 */
+/* eslint-env node, es6 */
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const path = require('path');
 const routes = require('./routes');
 const { errorHandler } = require('./middleware/error.middleware');
@@ -34,6 +37,7 @@ app.use(cors({
 }));
 
 
+app.use(cookieParser());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 

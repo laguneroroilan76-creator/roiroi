@@ -69,7 +69,7 @@ export default function RFPPreview({ record, onClose, onActionComplete }) {
             <div className="rfp-meta">
               <div className="rfp-meta-row">
                 <label>RFP No.</label>
-                <input value={formData.rrfNo || formData.rfpNo || 'AUTO'} disabled />
+                <input value={formData.rfpNo || formData.rfpNo || 'AUTO'} disabled />
               </div>
               <div className="rfp-meta-row">
                 <label>Date Requested</label>

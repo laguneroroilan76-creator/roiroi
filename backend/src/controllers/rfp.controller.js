@@ -1,8 +1,10 @@
 const rfpService = require('../services/rfp.service');
 const activityService = require('../services/activity.service');
-const { rrfCreateBodySchema, formatZodErrors, idParamSchema } = require('../utils/validation');
+const { rfpCreateBodySchema, formatZodErrors, idParamSchema } = require('../utils/validation');
 const { createNotification } = require('./notification.controller');
 const prisma = require('../config/database');
+const auditService = require('../services/audit.service');
+const { transition } = require('../workflow/workflow.engine');
 
 const sanitizePayload = async (payload, reqUser) => {
   const data = { ...payload };
@@ -22,8 +24,8 @@ const sanitizePayload = async (payload, reqUser) => {
   if (data.approvedBy) data.approvedById = await lookupUser(data.approvedBy);
   if (data.requestor) data.requestorId = await lookupUser(data.requestor);
   
-  // Map legacy RRF/RFP fields
-  data.rrfNo = data.rfpNo || data.rrfNo || null;
+  // Map legacy RFP/RFP fields
+  data.rfpNo = data.rfpNo || data.rfpNo || null;
   data.department = data.department || data.chargeTo || null;
   data.remarks = data.remarks || data.purpose || null;
   data.layout = JSON.stringify(payload);
@@ -51,20 +53,20 @@ const sanitizePayload = async (payload, reqUser) => {
 
 const createRFP = async (req, res) => {
   try {
-    const validatedBody = rrfCreateBodySchema.parse(req.body);
+    const validatedBody = rfpCreateBodySchema.parse(req.body);
     const sanitizedData = await sanitizePayload(validatedBody, req.user);
     sanitizedData.authorId = req.user.id;
 
     const rfp = await prisma.$transaction(async (tx) => {
       if (!sanitizedData.status) sanitizedData.status = 'Pending Dept Head Approval';
-      const created = await tx.rrf.create({ 
+      const created = await tx.rfp.create({ 
         data: {
           ...sanitizedData,
           items: sanitizedData.items ? { create: sanitizedData.items } : undefined
         } 
       });
-      await tx.auditTrail.create({
-        data: { userId: req.user.id, action: 'CREATE', tableName: 'Rrf', recordId: created.id, newValues: created, ipAddress: req.ip }
+      await auditService.log(tx, {
+        userId: req.user.id, action: 'CREATE', tableName: 'Rfp', recordId: created.id, newValues: created, ipAddress: req.ip
       });
       return created;
     });
@@ -90,9 +92,11 @@ const getRFPs = async (req, res) => {
 const getRFPById = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const rfp = await rfpService.getRFPById(id);
+    const rfp = await rfpService.getRFPById(id, req.user);
+    if (!rfp) return res.status(404).json({ error: 'RFP not found' });
     res.json(rfp);
   } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
     console.error(err); res.status(500).json({ error: err.message });
   }
 };
@@ -100,12 +104,12 @@ const getRFPById = async (req, res) => {
 const updateRFP = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const validatedBody = rrfCreateBodySchema.parse(req.body);
+    const validatedBody = rfpCreateBodySchema.parse(req.body);
     const sanitizedData = await sanitizePayload(validatedBody, req.user);
 
     const rfp = await prisma.$transaction(async (tx) => {
-      const oldRecord = await tx.rrf.findUnique({ where: { id } });
-      const updated = await tx.rrf.update({
+      const oldRecord = await tx.rfp.findUnique({ where: { id } });
+      const updated = await tx.rfp.update({
         where: { id },
         data: {
           ...sanitizedData,
@@ -113,8 +117,8 @@ const updateRFP = async (req, res) => {
         }
       });
 
-      await tx.auditTrail.create({
-        data: { userId: req.user.id, action: 'UPDATE', tableName: 'Rrf', recordId: id, oldValues: oldRecord, newValues: updated, ipAddress: req.ip }
+      await auditService.log(tx, {
+        userId: req.user.id, action: 'UPDATE', tableName: 'Rfp', recordId: id, oldValues: oldRecord, newValues: updated, ipAddress: req.ip
       });
       return updated;
     });
@@ -136,31 +140,138 @@ const deleteRFP = async (req, res) => {
   }
 };
 
+const cancelRFP = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const rfp = await prisma.rfp.findUnique({ where: { id } });
+    if (!rfp) return res.status(404).json({ error: 'RFP not found' });
+    
+    const isAuthor = rfp.authorId === req.user.id;
+    const isAdmin = req.user.role === 'Admin';
+    const isAccounting = req.user.role === 'Accounting';
+
+    if (!isAuthor && !isAdmin && !isAccounting) {
+      return res.status(403).json({ error: 'Only the author, Admin, or Accounting can cancel this request' });
+    }
+
+    if (rfp.status === 'Received' || rfp.status === 'Completed' || (rfp.status === 'Approved' && !isAccounting && !isAdmin)) {
+      return res.status(400).json({ error: 'Cannot cancel an already processed request' });
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const result = await tx.rfp.update({
+        where: { id },
+        data: { status: 'Cancelled', archivedById: req.user.id }
+      });
+      await auditService.log(tx, {
+        userId: req.user.id, action: 'CANCEL', tableName: 'Rfp', recordId: id, oldValues: rfp, newValues: result, ipAddress: req.ip
+      });
+      return result;
+    });
+
+    res.json(updated);
+  } catch (err) {
+    console.error(err); res.status(500).json({ error: err.message });
+  }
+};
+
 
 const approveRFP = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    const validatedBody = Object.keys(req.body).length > 0 ? rfpCreateBodySchema.parse(req.body) : {};
+    const sanitizedData = await sanitizePayload(validatedBody, req.user);
+
     const updated = await prisma.$transaction(async (tx) => {
-      const oldRecord = await tx.rrf.findUnique({ where: { id } });
+      const oldRecord = await tx.rfp.findUnique({ where: { id } });
       if (!oldRecord) throw new Error('Record not found');
       
-      const newStatus = oldRecord.status === 'Pending Dept Head Approval' ? 'Pending Final Approval' : 'Approved';
-      const updateData = { status: newStatus };
-      if (newStatus === 'Approved') {
-        updateData.approvedById = req.user.id;
-      }
+      const tResult = transition({ entity: 'rfp', currentStatus: oldRecord.status, action: 'approve', user: req.user });
+      if (!tResult.allowed) throw new Error(tResult.error);
+
+      const updateData = {
+        ...sanitizedData,
+        status: tResult.nextStatus,
+        ...tResult.sideEffects,
+      };
+      delete updateData.items;
       
-      const updatedRecord = await tx.rrf.update({
-        where: { id },
+      const updateResult = await tx.rfp.updateMany({
+        where: { id, status: oldRecord.status },
         data: updateData
       });
-      await tx.auditTrail.create({
-        data: { userId: req.user.id, action: 'APPROVE', tableName: 'Rrf', recordId: id, oldValues: oldRecord, newValues: updatedRecord, ipAddress: req.ip }
+
+      if (updateResult.count === 0) {
+        throw Object.assign(new Error("Invalid or stale workflow state"), { statusCode: 409 });
+      }
+
+      if (sanitizedData.items) {
+        await tx.rfp.update({
+          where: { id },
+          data: { items: { deleteMany: {}, create: sanitizedData.items } }
+        });
+      }
+
+      const updatedRecord = await tx.rfp.findUnique({ where: { id } });
+
+      await auditService.log(tx, {
+        userId: req.user.id, action: 'APPROVE', tableName: 'Rfp', recordId: id, oldValues: oldRecord, newValues: updatedRecord, ipAddress: req.ip
       });
       return updatedRecord;
     });
     res.json(updated);
   } catch (err) {
+    if (err.name === 'ZodError') { console.error("ZodError:", formatZodErrors(err)); return res.status(400).json({ error: formatZodErrors(err) }); }
+    console.error(err); res.status(500).json({ error: err.message });
+  }
+};
+
+const approveDeptRFP = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const validatedBody = Object.keys(req.body).length > 0 ? rfpCreateBodySchema.parse(req.body) : {};
+    const sanitizedData = await sanitizePayload(validatedBody, req.user);
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const oldRecord = await tx.rfp.findUnique({ where: { id } });
+      if (!oldRecord) throw new Error('Record not found');
+      
+      const tResult = transition({ entity: 'rfp', currentStatus: oldRecord.status, action: 'approve_dept', user: req.user });
+      if (!tResult.allowed) throw new Error(tResult.error);
+
+      const updateData = {
+        ...sanitizedData,
+        status: tResult.nextStatus,
+        ...tResult.sideEffects,
+      };
+      delete updateData.items;
+      
+      const updateResult = await tx.rfp.updateMany({
+        where: { id, status: oldRecord.status },
+        data: updateData
+      });
+
+      if (updateResult.count === 0) {
+        throw Object.assign(new Error("Invalid or stale workflow state"), { statusCode: 409 });
+      }
+
+      if (sanitizedData.items) {
+        await tx.rfp.update({
+          where: { id },
+          data: { items: { deleteMany: {}, create: sanitizedData.items } }
+        });
+      }
+
+      const updatedRecord = await tx.rfp.findUnique({ where: { id } });
+
+      await auditService.log(tx, {
+        userId: req.user.id, action: 'APPROVE_DEPT', tableName: 'Rfp', recordId: id, oldValues: oldRecord, newValues: updatedRecord, ipAddress: req.ip
+      });
+      return updatedRecord;
+    });
+    res.json(updated);
+  } catch (err) {
+    if (err.name === 'ZodError') { console.error("ZodError:", formatZodErrors(err)); return res.status(400).json({ error: formatZodErrors(err) }); }
     console.error(err); res.status(500).json({ error: err.message });
   }
 };
@@ -168,23 +279,106 @@ const approveRFP = async (req, res) => {
 const rejectRFP = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { disapprovalReason } = req.body;
+    const validatedBody = Object.keys(req.body).length > 0 ? rfpCreateBodySchema.parse(req.body) : {};
+    const sanitizedData = await sanitizePayload(validatedBody, req.user);
+
     const updated = await prisma.$transaction(async (tx) => {
-      const oldRecord = await tx.rrf.findUnique({ where: { id } });
+      const oldRecord = await tx.rfp.findUnique({ where: { id } });
       if (!oldRecord) throw new Error('Record not found');
       
-      const updatedRecord = await tx.rrf.update({
-        where: { id },
-        data: { status: 'Disapproved', disapprovalReason }
+      const tResult = transition({ entity: 'rfp', currentStatus: oldRecord.status, action: 'reject', user: req.user });
+      if (!tResult.allowed) throw new Error(tResult.error);
+
+      const rejectData = {
+        ...sanitizedData,
+        status: tResult.nextStatus,
+        ...tResult.sideEffects,
+        disapprovalReason: req.body.disapprovalReason || req.body.reason || 'Rejected',
+        archivedById: req.user.id
+      };
+      delete rejectData.items;
+
+      const updateResult = await tx.rfp.updateMany({
+        where: { id, status: oldRecord.status },
+        data: rejectData
       });
-      await tx.auditTrail.create({
-        data: { userId: req.user.id, action: 'REJECT', tableName: 'Rrf', recordId: id, oldValues: oldRecord, newValues: updatedRecord, ipAddress: req.ip }
+
+      if (updateResult.count === 0) {
+        throw Object.assign(new Error("Invalid or stale workflow state"), { statusCode: 409 });
+      }
+
+      if (sanitizedData.items) {
+        await tx.rfp.update({
+          where: { id },
+          data: { items: { deleteMany: {}, create: sanitizedData.items } }
+        });
+      }
+
+      const updatedRecord = await tx.rfp.findUnique({ where: { id } });
+
+      await auditService.log(tx, {
+        userId: req.user.id, action: 'REJECT', tableName: 'Rfp', recordId: id, oldValues: oldRecord, newValues: updatedRecord, ipAddress: req.ip
       });
       return updatedRecord;
     });
     res.json(updated);
   } catch (err) {
+    if (err.name === 'ZodError') { console.error("ZodError:", formatZodErrors(err)); return res.status(400).json({ error: formatZodErrors(err) }); }
     console.error(err); res.status(500).json({ error: err.message });
   }
 };
-module.exports = { createRFP, getRFPs, getRFPById, updateRFP, deleteRFP, approveRFP, rejectRFP };
+
+
+const receiveRFP = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const oldRecord = await tx.rfp.findUnique({ where: { id } });
+      if (!oldRecord) throw new Error('Record not found');
+      
+      const tResult = transition({ entity: 'rfp', currentStatus: oldRecord.status, action: 'receive', user: req.user });
+      if (!tResult.allowed) throw new Error(tResult.error);
+
+      const updateData = {
+        status: tResult.nextStatus,
+        ...tResult.sideEffects,
+        receivedBy: req.user.name || 'ACCOUNTING',
+        receivedDate: new Date()
+      };
+      
+      const updateResult = await tx.rfp.updateMany({
+        where: { id, status: oldRecord.status },
+        data: updateData
+      });
+
+      if (updateResult.count === 0) {
+        throw Object.assign(new Error("Invalid or stale workflow state"), { statusCode: 409 });
+      }
+
+      const updatedRecord = await tx.rfp.findUnique({ where: { id } });
+
+      await auditService.log(tx, {
+        userId: req.user.id, action: 'RECEIVE', tableName: 'Rfp', recordId: id, oldValues: oldRecord, newValues: updatedRecord, ipAddress: req.ip
+      });
+      return updatedRecord;
+    });
+    res.json(updated);
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: err.message });
+  }
+};
+
+module.exports = {
+  createRFP,
+  getRFPs,
+  getRFPById,
+  updateRFP,
+  deleteRFP,
+  cancelRFP,
+  approveRFP,
+  approveDeptRFP,
+  rejectRFP,
+  receiveRFP
+};

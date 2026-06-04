@@ -1,0 +1,190 @@
+/* ==========================================================================
+   DASHBOARD STYLES
+   Ito ang mga styles para sa Dashboard page. Pinaghiwalay mula sa JSX
+   para mas malinis ang code at hindi maging spaghetti.
+   ========================================================================== */
+
+/* --- Main Layout & Animations --- */
+.dashboard-view { 
+  padding: 1.5rem; 
+  min-height: 100vh; 
+  animation: fadeIn 0.5s ease-out; 
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.dashboard-content { max-width: 100%; margin: 0 auto; }
+
+/* --- Headers & Typography --- */
+.dashboard-header { margin-bottom: 1.5rem; }
+.dashboard-title { 
+  font-size: 1.75rem; font-weight: 700; margin-bottom: 4px; color: var(--text-main); 
+  letter-spacing: -0.5px; 
+}
+.dashboard-subtitle { font-size: 0.9rem; color: var(--text-dim); font-weight: 400; }
+.dashboard-user { color: var(--primary); font-weight: 700; }
+
+/* --- Quick Actions (Mga Buttons sa Taas) --- */
+.quick-actions { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; }
+.quick-actions-left { display: flex; gap: 0.8rem; flex-wrap: wrap; flex: 1; }
+.customize-btn { margin-left: auto; }
+
+/* Loader Animation */
+.loader-line { height: 3px; width: 100%; background: var(--primary-light); overflow: hidden; border-radius: 10px; margin-top: 1rem; }
+.loader-line::after { content: ''; display: block; height: 100%; width: 40%; background: var(--text-main); animation: slide 1.2s infinite ease-in-out; border-radius: 10px; }
+@keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
+
+/* Quick Action Buttons Styling */
+.quick-action-btn {
+  display: flex; align-items: center; gap: 6px; white-space: nowrap;
+  padding: 0.5rem 1rem; border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border); background: var(--card-bg);
+  color: var(--text-dim); font-size: 0.8rem; font-weight: 500;
+  cursor: pointer; transition: var(--transition-smooth);
+  font-family: inherit;
+}
+.quick-action-btn:hover {
+  border-color: var(--text-main); color: var(--text-main);
+  transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+.quick-action-btn.accent {
+  background: var(--text-main); color: var(--card-bg); border-color: var(--text-main);
+}
+.quick-action-btn.accent:hover {
+  background: var(--text-dim); border-color: var(--text-dim); color: var(--card-bg);
+}
+
+/* --- KPI Grid (Mga Cards sa Dashboard) --- */
+.kpi-grid { 
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; 
+}
+@media (max-width: 1200px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px) { .kpi-grid { grid-template-columns: 1fr; } }
+
+.kpi-card { 
+  background: var(--card-bg); 
+  padding: 1.25rem; 
+  border-radius: var(--radius-lg); 
+  border: 1px solid var(--glass-border); 
+  display: flex; align-items: center; gap: 0; 
+  transition: var(--transition-smooth); 
+  cursor: pointer; position: relative; overflow: hidden;
+  box-shadow: var(--card-shadow);
+}
+.kpi-card:hover { 
+  transform: translateY(-2px); 
+  box-shadow: var(--premium-shadow); 
+  border-color: var(--text-main); 
+}
+
+.kpi-card-inner { display: flex; flex-direction: column; width: 100%; gap: 0.75rem; }
+.kpi-top { display: flex; justify-content: space-between; align-items: center; }
+
+/* KPI Icons & Hover Effects */
+.kpi-icon { 
+  width: 40px; height: 40px; border-radius: var(--radius-md); 
+  display: flex; align-items: center; justify-content: center; 
+  transition: var(--transition-smooth); 
+}
+.kpi-card:hover .kpi-icon { transform: scale(1.05); }
+
+/* Turn purple KPI icons black on hover for better contrast */
+.kpi-card:hover .kpi-icon[data-color="#8B5CF6"],
+.kpi-card:hover .kpi-icon[data-color="#6366F1"],
+.kpi-card:hover .kpi-icon[data-color="#6D28D9"],
+.kpi-card:hover .kpi-icon[data-color="#7C3AED"],
+.kpi-card:hover .kpi-icon[data-color="#A78BFA"] {
+    background: #1e293b !important;
+    color: #ffffff !important;
+}
+
+.kpi-trend {
+  display: flex; align-items: center; gap: 2px;
+  padding: 2px 8px; border-radius: 100px;
+  font-size: 0.7rem; font-weight: 600;
+}
+.kpi-trend.positive { background: var(--success-light); color: var(--success); }
+.kpi-trend.negative { background: var(--danger-light); color: var(--danger); }
+
+.kpi-value { font-size: 1.75rem; font-weight: 700; line-height: 1; color: var(--text-main); }
+.kpi-label { font-size: 0.8rem; font-weight: 500; color: var(--text-dim); }
+.kpi-sparkline { height: 32px; width: 100%; margin-top: 0.25rem; }
+
+.kpi-arrow { 
+  position: absolute; right: 1rem; color: var(--text-muted); 
+  opacity: 0; transition: var(--transition-smooth); 
+}
+.kpi-card:hover .kpi-arrow { opacity: 1; transform: translateX(2px); color: var(--text-main); }
+
+/* --- Dashboard Grid (Charts and Recent Activity) --- */
+.dashboard-grid-2 { 
+  display: grid; grid-template-columns: 2.5fr 1fr; gap: 1.5rem; 
+}
+.dashboard-grid-2.single-col { grid-template-columns: 1fr; }
+@media (max-width: 1400px) { .dashboard-grid-2 { grid-template-columns: 2fr 1fr; } }
+@media (max-width: 1200px) { .dashboard-grid-2 { grid-template-columns: 1fr; } }
+
+.section-heading { 
+  font-size: 1rem; font-weight: 600; color: var(--text-main); 
+  margin-bottom: 0.75rem; 
+}
+
+.activity-card { 
+  background: var(--card-bg); border-radius: var(--radius-lg); 
+  border: 1px solid var(--glass-border); padding: 1rem; 
+  height: 380px; overflow: hidden; display: flex; flex-direction: column; box-shadow: var(--card-shadow);
+}
+.section-title { 
+  font-size: 1rem; font-weight: 600; color: var(--text-main); 
+  margin-bottom: 1rem; 
+}
+
+/* --- Customize Modal & Toggles --- */
+.toggle-switch {
+    position: relative; display: inline-block; width: 44px; height: 24px;
+}
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.slider-round {
+    position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+    background-color: var(--border-color); transition: .3s; border-radius: 34px;
+}
+.slider-round:before {
+    position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+    background-color: white; transition: .3s; border-radius: 50%;
+}
+input:checked + .slider-round { background-color: #10b981; }
+input:checked + .slider-round:before { transform: translateX(20px); }
+
+/* Modal Overlay Styles */
+.modal-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.4); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center; z-index: 1000;
+}
+.modal-content.customize-modal {
+    background: var(--card-bg); border-radius: 12px; width: 90%; max-width: 400px;
+    max-height: 85vh; display: flex; flex-direction: column; padding: 1.5rem;
+    box-shadow: var(--card-shadow); border: 1px solid var(--glass-border);
+}
+.modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-bottom: 1rem; border-bottom: 1px solid var(--glass-border);
+}
+.modal-body { overflow-y: auto; padding-right: 0.5rem; margin-top: 1rem; flex: 1; }
+.modal-header h2 { margin: 0; font-size: 1.2rem; color: var(--text-main); }
+
+.close-btn { 
+  background: none; border: none; color: var(--text-dim); cursor: pointer; 
+  display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 4px; 
+}
+.close-btn:hover { color: var(--text-main); background: rgba(0,0,0,0.05); }
+
+.customize-desc { font-size: 0.9rem; color: var(--text-dim); margin-bottom: 1.2rem; }
+.kpi-toggles { display: flex; flex-direction: column; gap: 0.6rem; }
+
+.kpi-toggle-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.6rem 0.8rem; background: var(--bg-main);
+    border: 1px solid var(--glass-border); border-radius: 8px; cursor: pointer;
+    transition: var(--transition-smooth);
+}
+.kpi-toggle-item:hover { border-color: var(--text-dim); }
+.toggle-name { font-weight: 600; color: var(--text-main); font-size: 0.9rem; }

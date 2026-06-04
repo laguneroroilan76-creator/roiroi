@@ -1,20 +1,20 @@
 const express = require('express');
 const router = express.Router();
-const prfController = require('../controllers/prf.controller');
+const { createPRF, getPRFs, getPRFById, updatePRF, deletePRF, verifyPRF, approvePRF, rejectPRF, cancelPRF } = require('../controllers/prf.controller');
 const { authenticateToken } = require('../middleware/auth.middleware');
-const { verifyRole, verifyOwnershipOrRole } = require('../middleware/authz.middleware');
+const { sanitizePayload } = require('../middleware/sanitizePayload.middleware');
+const { verifyOwnershipOrRole } = require('../middleware/idor.middleware');
 
-router.use(authenticateToken);
-
-router.post('/', prfController.createPRF);
-router.get('/', prfController.getPRFs);
-router.get('/:id', verifyOwnershipOrRole('Prf', ['Admin', 'Approver', 'Verifier']), prfController.getPRFById);
-router.put('/:id', verifyOwnershipOrRole('Prf', ['Admin', 'Approver', 'Verifier']), prfController.updatePRF);
-router.delete('/:id', verifyOwnershipOrRole('Prf', ['Admin']), prfController.deletePRF);
+router.post('/', authenticateToken, sanitizePayload, createPRF);
+router.get('/', authenticateToken, getPRFs);
+router.get('/:id', authenticateToken, verifyOwnershipOrRole('prf'), getPRFById);
+router.put('/:id', authenticateToken, verifyOwnershipOrRole('prf'), sanitizePayload, updatePRF);
+router.delete('/:id', authenticateToken, verifyOwnershipOrRole('prf'), deletePRF);
 
 // State Machine Workflow Endpoints
-router.post('/:id/verify', verifyOwnershipOrRole('Prf', ['Admin', 'Verifier']), prfController.verifyPRF);
-router.post('/:id/approve', verifyOwnershipOrRole('Prf', ['Admin', 'Approver']), prfController.approvePRF);
-router.post('/:id/reject', verifyOwnershipOrRole('Prf', ['Admin', 'Approver', 'Verifier']), prfController.rejectPRF);
+router.post('/:id/cancel', authenticateToken, cancelPRF);
+router.post('/:id/verify', authenticateToken, verifyOwnershipOrRole('prf'), verifyPRF);
+router.post('/:id/approve', authenticateToken, verifyOwnershipOrRole('prf'), approvePRF);
+router.post('/:id/reject', authenticateToken, verifyOwnershipOrRole('prf'), rejectPRF);
 
 module.exports = router;

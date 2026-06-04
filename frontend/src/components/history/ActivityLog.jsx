@@ -72,28 +72,30 @@ const ActivityLog = ({ onViewResource }) => {
   };
 
   return (
-    <div className="activity-list-container fade-in">
-      {loading && <div style={{ textAlign: 'center', padding: '2rem' }}><Loader className="spin" /></div>}
+    <div className="activity-list-container fade-in" style={{ minHeight: '600px' }}>
+      {loading && logs.length === 0 && <div style={{ textAlign: 'center', padding: '2rem' }}><Loader className="spin" /></div>}
       
-      {!loading && logs.map(log => (
-        <div key={log.id} className="activity-card-compact">
-          <div className="card-top-compact">
-            <span className={`resource-tag-compact ${log.resource}`}>
-              {log.resource.replace('_', ' ')}
-            </span>
-            <span className="timestamp-compact">{new Date(log.createdAt).toLocaleString()}</span>
+      <div style={{ opacity: loading ? 0.5 : 1, transition: 'opacity 0.2s', pointerEvents: loading ? 'none' : 'auto', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+        {logs.map(log => (
+          <div key={log.id} className="activity-card-compact">
+            <div className="card-top-compact">
+              <span className={`resource-tag-compact ${log.resource}`}>
+                {log.resource.replace('_', ' ')}
+              </span>
+              <span className="timestamp-compact">{new Date(log.createdAt).toLocaleString()}</span>
+            </div>
+            <div className="log-details-compact">{formatLogDetails(log)}</div>
+            <div className="card-bottom-compact">
+              <span className="user-tag-compact" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <User size={12} /> {log.user?.name || 'System'}
+              </span>
+              <button className="inline-btn-compact" onClick={() => onViewResource(log)}>
+                View Reference
+              </button>
+            </div>
           </div>
-          <div className="log-details-compact">{formatLogDetails(log)}</div>
-          <div className="card-bottom-compact">
-            <span className="user-tag-compact" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <User size={12} /> {log.user?.name || 'System'}
-            </span>
-            <button className="inline-btn-compact" onClick={() => onViewResource(log)}>
-              View Reference
-            </button>
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
       
       {!loading && logs.length === 0 && (
         <div className="empty-row glass" style={{ padding: '4rem', textAlign: 'center' }}>

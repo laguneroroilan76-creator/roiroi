@@ -39,7 +39,7 @@ export default function RecordCard({ record, type, onClick, onArchive, onCancel,
             ? (record.requestorName || record.author?.name || 'Unnamed Request') 
             : (type === 'PRF' 
                 ? (record.requestor || record.author?.name || (record.prfNo ? `PRF #${record.prfNo}` : 'Unnamed PRF'))
-                : (record.requestor || record.author?.name || (record.rrfNo ? `RFP #${record.rrfNo}` : 'Unnamed RFP'))
+                : (record.requestor || record.author?.name || (record.rfpNo ? `RFP #${record.rfpNo}` : 'Unnamed RFP'))
               )}
         </h3>
 

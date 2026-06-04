@@ -1,20 +1,29 @@
 import React from 'react';
 
-export const FormHeader = ({ formData, handleChange, isFieldDisabled, user }) => {
+export const FormHeader = ({ formData, handleChange, isFieldDisabled, user, companies = [] }) => {
   const company = formData?.company || formData?.author?.company || user?.company;
-  const logoSrc = company === 'Adventures' ? "/Adventures_Logo.png" : company === 'Capital Growth' ? "/CGI_Logo.png" : "/HDI Primary Logo .png";
+  const selectedCompany = companies.find(c => c.name === company);
+  
+  let logoSrc = "/HDI Primary Logo .png";
+  if (selectedCompany?.logoUrl) {
+    logoSrc = `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}${selectedCompany.logoUrl}`;
+  } else if (company?.includes('Adventures')) {
+    logoSrc = "/Adventures_Logo.png";
+  } else if (company?.includes('Capital')) {
+    logoSrc = "/CGI_Logo.png";
+  }
 
   return (
-    <div className="form-header" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '2rem' }}>
-      <div className="header-logo" style={{ display: 'flex', justifyContent: 'flex-start' }}>
-        <img src={logoSrc} alt={`${company} Logo`} className="form-logo" />
+    <div className="form-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', gap: '1rem' }}>
+      <div className="header-logo" style={{ flexShrink: 0 }}>
+        <img src={logoSrc} alt={`${company} Logo`} className="form-logo" style={{ height: '60px', width: 'auto' }} />
       </div>
-      <div className="header-title" style={{ textAlign: 'center', whiteSpace: 'nowrap', padding: '0 20px' }}>
-        <h1 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '-0.5px' }}>
+      <div className="header-title" style={{ flexGrow: 1, textAlign: 'center', minWidth: '150px', whiteSpace: 'nowrap' }}>
+        <h1 style={{ margin: 0, fontSize: 'clamp(1rem, 2.5vw, 1.4rem)', fontWeight: 900, color: 'var(--primary)', letterSpacing: '-0.5px' }}>
           PURCHASE REQUISITION FORM
         </h1>
       </div>
-      <div className="header-meta" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.4rem' }}>
+      <div className="header-meta" style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.4rem' }}>
       <div className="meta-row">
         <label>PRF No.:</label>
         <input type="text" name="prfNo" value={formData.prfNo} onChange={handleChange} disabled={isFieldDisabled('prfNo')} placeholder={isFieldDisabled('prfNo') ? "" : "AUTO"} />
@@ -52,7 +61,14 @@ export const BasicInfo = ({ formData, handleChange, isFieldDisabled }) => (
       </div>
       <div className="form-group flex-1">
           <label>CO:</label>
-          <input type="text" name="company" value={formData.company} onChange={handleChange} disabled={isFieldDisabled('company')} placeholder={isFieldDisabled('company') ? "" : "e.g. HDI Adventures"} />
+          <input 
+            type="text" 
+            name="company" 
+            value={formData.company || ''} 
+            readOnly
+            disabled
+            placeholder="Selected from toolbar"
+          />
       </div>
     </div>
   </>

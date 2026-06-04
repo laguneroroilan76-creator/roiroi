@@ -207,3 +207,76 @@
 .dark-mode .custom-form-page { background: var(--bg-gradient); }
 
 /* True dark mode for the form container removed to keep forms white */
+
+
+/* ==========================================================================
+   EXTRACTED FROM PRFFORM.JSX
+   Mga naiwang inline styles sa JSX na inilipat na rito.
+   ========================================================================== */
+
+.custom-form-page { background: #ffffff; min-height: 100vh; padding: 100px 20px 60px; display: flex; flex-direction: column; align-items: center; font-family: 'Outfit', sans-serif; color: #1e293b; }
+        .sticky-toolbar { position: absolute; top: 64px; left: 0; right: 0; padding: 1rem 3rem; display: flex; justify-content: space-between; align-items: center; z-index: 890; border-bottom: 1px solid #e2e8f0; background: #ffffff; box-shadow: 0 2px 10px rgba(0,0,0,0.05); transition: left 0.2s ease; }
+        .sidebar-collapsed .sticky-toolbar { left: 0; }
+        @media (max-width: 1024px) { .sticky-toolbar { left: 0; padding: 1rem; flex-wrap: wrap; gap: 1rem; } }
+        .tool-group { display: flex; gap: 12px; align-items: center; }
+        .tool-btn {
+          align-items: center;
+          appearance: none;
+          background-color: #ffffff;
+          border-radius: 8px;
+          border-width: 0;
+          box-shadow: rgba(0, 0, 0, 0.1) 0 2px 4px, rgba(0, 0, 0, 0.05) 0 7px 13px -3px, rgba(0, 0, 0, 0.2) 0 -3px 0 inset;
+          box-sizing: border-box;
+          color: #0f172a;
+          cursor: pointer;
+          display: inline-flex;
+          height: 44px;
+          justify-content: center;
+          line-height: 1;
+          list-style: none;
+          overflow: hidden;
+          padding-left: 20px;
+          padding-right: 20px;
+          position: relative;
+          text-align: left;
+          text-decoration: none;
+          transition: box-shadow 0.15s, transform 0.15s;
+          user-select: none;
+          -webkit-user-select: none;
+          touch-action: manipulation;
+          white-space: nowrap;
+          will-change: box-shadow, transform;
+          font-size: 0.85rem;
+          font-weight: 800;
+          font-family: inherit;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          gap: 8px;
+        }
+
+        .tool-btn:focus {
+          box-shadow: rgba(0, 0, 0, 0.2) 0 0 0 1.5px inset, rgba(0, 0, 0, 0.1) 0 2px 4px, rgba(0, 0, 0, 0.05) 0 7px 13px -3px, rgba(0, 0, 0, 0.2) 0 -3px 0 inset;
+        }
+
+        .tool-btn:hover {
+          box-shadow: rgba(0, 0, 0, 0.15) 0 4px 8px, rgba(0, 0, 0, 0.1) 0 7px 13px -3px, rgba(0, 0, 0, 0.2) 0 -3px 0 inset;
+          transform: translateY(-2px);
+        }
+
+        .tool-btn:active {
+          box-shadow: rgba(0, 0, 0, 0.25) 0 3px 7px inset;
+          transform: translateY(2px);
+        }
+        .tool-btn.back { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+        .tool-btn.save { background: #2563eb; color: white; }
+        .tool-btn.approve { background: #2563eb; color: white; }
+        .tool-btn.disapprove { background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; }
+        .tool-btn.archive-btn { background: #2563eb; color: white; filter: brightness(1.1); }
+        .tool-btn.print-btn { background: #334155; color: white; }
+        .form-container { width: 100%; max-width: 1000px; background: #ffffff; border-radius: 12px; padding: 3rem; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 10000; padding: 1rem; }
+        .modal-content { width: 100%; max-width: 500px; padding: 2rem; border-radius: 24px; background: var(--card-bg); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); }
+        .modal-content h3 { margin-bottom: 1rem; color: var(--primary); }
+        .modal-content textarea { width: 100%; padding: 1rem; border-radius: 12px; background: rgba(0,0,0,0.1); color: var(--text-main); border: 1px solid var(--glass-border); margin-bottom: 1.5rem; }
+        .modal-actions { display: flex; gap: 1rem; }
+        .tool-btn.cancel { background: rgba(0,0,0,0.05); color: var(--text-main); }

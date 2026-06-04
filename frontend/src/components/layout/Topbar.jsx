@@ -5,6 +5,7 @@ import { useTheme } from '../../context/ThemeContext';
 import NotificationBell from './NotificationBell';
 import './Topbar.css';
 import { BASE_URL } from '../../services/api';
+import api from '../../services/api';
 
 export default function Topbar({ user, toggleSidebar, isSidebarCollapsed }) {
   const { isDarkMode, toggleDarkMode } = useTheme();
@@ -22,7 +23,12 @@ export default function Topbar({ user, toggleSidebar, isSidebarCollapsed }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch (e) {
+      console.error(e);
+    }
     localStorage.clear();
     navigate('/');
   };

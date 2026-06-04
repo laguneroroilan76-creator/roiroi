@@ -12,34 +12,36 @@ const verifyOwnershipOrRole = (Model, roles) => async (req, res, next) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID parameter' });
 
-    // Ensure the model name is exactly what Prisma expects (e.g. prf, rrf, tripTicket)
-    // Sometimes Model can be passed as 'Prf', 'Rrf', 'TripTicket', so we lowerCamelCase it for Prisma.
+    // Normalise to lowerCamelCase for Prisma client access
     let modelName = Model.charAt(0).toLowerCase() + Model.slice(1);
-    
-    // Quick map for models that don't directly match
-    if (modelName === 'prf') modelName = 'prf';
-    if (modelName === 'rrf') modelName = 'rrf';
-    if (modelName === 'tripTicket') modelName = 'tripTicket';
 
     const record = await prisma[modelName].findUnique({ where: { id } });
     if (!record) return res.status(404).json({ error: 'Record not found' });
 
-    const isAuthor = record.authorId === req.user.id;
-    const hasRole = roles.includes(req.user.role);
+    const user = req.user;
+    const isAdmin = user.role === 'Admin';
+    const isAuthor = record.authorId === user.id;
 
-    // In this app, users with generic specific boolean flags can also bypass if they have it
-    // For example, if it's TripTicket, `canApproveTripTicket` implies they have Approver power.
-    // However, it's safer to stick to explicit roles or we can let the controller do the secondary check
-    // if they pass this. Wait, verifyOwnershipOrRole handles the *primary* authorization check.
-    // We should allow Admin as a default.
-    const isAdmin = req.user.role === 'Admin';
+    // Check actual DB roles (not phantom strings like 'Approver' / 'Verifier')
+    const hasExplicitRole = roles.includes(user.role);
 
-    if (isAdmin || hasRole || isAuthor) {
-      req.record = record; // Pass record to next middleware/controller
+    // Check boolean permission flags per document type.
+    // These are populated by auth.middleware from the live DB record on every request.
+    let hasPermissionFlag = false;
+    if (modelName === 'prf') {
+      hasPermissionFlag = !!(user.canApprovePRF || user.canVerify || user.canApprove);
+    } else if (modelName === 'rfp') {
+      hasPermissionFlag = !!(user.canApproveRFP || user.canApproveDeptHead || user.canApprove || user.role === 'Accounting');
+    } else if (modelName === 'tripTicket') {
+      hasPermissionFlag = !!(user.canApproveTripTicket || user.canEndorse || user.canApprove || user.role === 'Guard');
+    }
+
+    if (isAdmin || isAuthor || hasExplicitRole || hasPermissionFlag) {
+      req.record = record; // Pass the pre-fetched record to the controller
       return next();
     }
 
-    return res.status(403).json({ error: 'Ownership unauthorized' });
+    return res.status(403).json({ error: 'Access denied: insufficient permissions.' });
   } catch (error) {
     console.error('Authorization Middleware Error:', error);
     res.status(500).json({ error: 'Internal server error during authorization' });

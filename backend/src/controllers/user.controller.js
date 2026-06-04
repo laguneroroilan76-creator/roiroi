@@ -3,6 +3,7 @@ const activityService = require('../services/activity.service');
 const imageUtils = require('../utils/image.js');
 const bcrypt = require('bcryptjs');
 const path = require('path');
+const { sanitizeUser } = require('../utils/userUtils');
 
 const getUsers = async (req, res) => {
   try {
@@ -17,8 +18,7 @@ const getMe = async (req, res) => {
   try {
     const user = await userService.getUserById(req.user.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
-    const { password, ...safeUser } = user;
-    res.json(safeUser);
+    res.json(sanitizeUser(user));
   } catch (err) {
     console.error(err); res.status(500).json({ error: err.message });
   }
@@ -116,13 +116,16 @@ const updateUserData = async (req, res) => {
       data.password = await bcrypt.hash(data.password, 10);
     }
 
+    // Remove company if it's in the data
+    delete data.company;
+
     // Only Admins can change roles — prevent canApprove users from privilege escalation
     if (data.role !== undefined && req.user.role !== 'Admin') {
       delete data.role;
     }
 
     const user = await userService.updateUser(id, data);
-    res.json(user);
+    res.json(sanitizeUser(user));
   } catch (err) {
     console.error(err); res.status(500).json({ error: err.message });
   }

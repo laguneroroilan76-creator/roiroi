@@ -12,13 +12,22 @@ const formatDateTime = (dateStr) => {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
-export const FormHeader = ({ status, formData, user }) => {
+export const FormHeader = ({ status, formData, user, companies = [] }) => {
   const isOngoing = status === 'Approved' && !!formData?.dateTimeDeparture && (!formData?.dateTimeReturn || formData.dateTimeReturn === "");
   const isCompleted = status === 'Approved' && !!formData?.dateTimeDeparture && !!formData?.dateTimeReturn && formData.dateTimeReturn !== "";
   
   // Determine company to use for logo
   const company = formData?.company || formData?.author?.company || user?.company;
-  const logoSrc = company === 'Adventures' ? "/Adventures_Logo.png" : company === 'Capital Growth' ? "/CGI_Logo.png" : "/HDI Primary Logo .png";
+  const selectedCompany = companies.find(c => c.name === company);
+  
+  let logoSrc = "/HDI Primary Logo .png";
+  if (selectedCompany?.logoUrl) {
+    logoSrc = `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}${selectedCompany.logoUrl}`;
+  } else if (company?.includes('Adventures')) {
+    logoSrc = "/Adventures_Logo.png";
+  } else if (company?.includes('Capital')) {
+    logoSrc = "/CGI_Logo.png";
+  }
 
   return (
     <div className="form-header">
@@ -56,10 +65,21 @@ export const FormHeader = ({ status, formData, user }) => {
 export const GeneralInfo = ({ formData, handleChange, isFieldDisabled, isReadOnly }) => (
   <div className="form-section">
     <h3 className="section-title">General Information</h3>
-    <div className="grid-3">
+    <div className="grid-2">
       <div className="form-group">
         <label>Date Requested</label>
         <input type="date" name="dateRequested" value={formData.dateRequested} onChange={handleChange} disabled={isFieldDisabled('dateRequested', isReadOnly)} />
+      </div>
+      <div className="form-group">
+        <label>Company</label>
+        <input 
+          type="text" 
+          value={formData.company || ''} 
+          disabled={true} 
+          className="locked-input"
+          style={{ background: 'rgba(15, 23, 42, 0.03)', color: '#0f172a', fontWeight: 600 }}
+          placeholder="Select company from toolbar"
+        />
       </div>
       <div className="form-group">
         <label>Requestor Name</label>

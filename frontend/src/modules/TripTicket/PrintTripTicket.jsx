@@ -49,7 +49,7 @@ const PrintTripTicket = ({ ticket }) => {
       {/* HEADER SECTION */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #000', paddingBottom: '15px', marginBottom: '22px' }}>
         <img 
-          src={(ticket?.company || ticket?.author?.company || user?.company) === 'Adventures' ? "/Adventures_Logo.png" : (ticket?.company || ticket?.author?.company || user?.company) === 'Capital Growth' ? "/CGI_Logo.png" : "/HDI Primary Logo .png"} 
+          src={(ticket?.company || ticket?.author?.company || user?.company) === 'Adventures' ? "/Adventures_Logo.png" : (ticket?.company || ticket?.author?.company || user?.company) === 'Capital' ? "/CGI_Logo.png" : "/HDI Primary Logo .png"} 
           alt="Company Logo" 
           style={{ height: '75px' }} 
         />

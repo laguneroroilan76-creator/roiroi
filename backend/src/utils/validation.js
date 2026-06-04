@@ -23,7 +23,7 @@ const prfItemSchema = z.object({
   availableStocks: z.string().optional().nullable().or(z.literal('')),
 });
 
-const rrfItemSchema = z.object({
+const rfpItemSchema = z.object({
   qty: z.string().optional().nullable().or(z.literal('')),
   unit: z.string().optional().nullable().or(z.literal('')),
   particulars: z.string().optional().nullable().or(z.literal('')),
@@ -34,7 +34,7 @@ const rrfItemSchema = z.object({
 // PRF schemas
 const prfCreateBodySchema = z.object({
   prfNo: z.string().optional().nullable().or(z.literal('')),
-  rrfNo: z.string().optional().nullable().or(z.literal('')), // Alias for backward compatibility
+  rfpNo: z.string().optional().nullable().or(z.literal('')), // Alias for backward compatibility
   dateRequested: z.string().optional().nullable(),
   dateNeeded: z.string().optional().nullable(),
   to: z.string().optional().nullable().or(z.literal('')),
@@ -56,7 +56,7 @@ const prfCreateBodySchema = z.object({
 
 const prfUpdateBodySchema = z.object({
   prfNo: z.string().optional().nullable().or(z.literal('')),
-  rrfNo: z.string().optional().nullable().or(z.literal('')), // Alias for backward compatibility
+  rfpNo: z.string().optional().nullable().or(z.literal('')), // Alias for backward compatibility
   dateRequested: z.string().optional().nullable(),
   dateNeeded: z.string().optional().nullable(),
   to: z.string().optional().nullable().or(z.literal('')),
@@ -79,9 +79,9 @@ const prfUpdateBodySchema = z.object({
 
 
 // RFP schemas
-const rrfCreateBodySchema = z.object({
+const rfpCreateBodySchema = z.object({
   rfpNo: z.string().optional().nullable().or(z.literal('')),
-  rrfNo: z.string().optional().nullable().or(z.literal('')), // Legacy support
+  rfpNo: z.string().optional().nullable().or(z.literal('')), // Legacy support
   dateRequested: z.string().optional().nullable(),
   dateNeeded: z.string().optional().nullable(),
   chargeTo: z.string().optional().nullable().or(z.literal('')),
@@ -97,7 +97,7 @@ const rrfCreateBodySchema = z.object({
   requestor: z.string().optional().nullable().or(z.literal('')),
   approvedBy: z.string().optional().nullable().or(z.literal('')),
   deptHead: z.string().optional().nullable().or(z.literal('')),
-  items: z.array(rrfItemSchema).optional().nullable(),
+  items: z.array(rfpItemSchema).optional().nullable(),
 });
 
 
@@ -163,7 +163,7 @@ module.exports = {
   idParamSchema,
   prfCreateBodySchema,
   prfUpdateBodySchema,
-  rrfCreateBodySchema,
+  rfpCreateBodySchema,
   ticketCreateBodySchema,
   supportTicketCreateSchema,
   supportTicketUpdateSchema,

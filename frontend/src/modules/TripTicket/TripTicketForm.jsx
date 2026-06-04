@@ -25,10 +25,12 @@ export default function TripTicketForm() {
   const [guards, setGuards] = useState([]);
   const [occupiedDrivers, setOccupiedDrivers] = useState([]);
   const [occupiedVehicles, setOccupiedVehicles] = useState([]);
+  const [companies, setCompanies] = useState([]);
 
   const getDefaultFormData = () => ({
     dateRequested: new Date().toISOString().split('T')[0],
     requestorName: user?.name || '',
+    company: location.state?.initialData?.company || user?.company || '',
     subsidiary: '',
     driver: '',
     vehicle: '',
@@ -123,14 +125,16 @@ export default function TripTicketForm() {
     const fetchOptions = async () => {
       try {
         if (isGuard) {
-          const [guardsRes, vehiclesRes] = await Promise.all([api.get('/users/guards'), api.get('/vehicles')]);
+          const [guardsRes, vehiclesRes, companiesRes] = await Promise.all([api.get('/users/guards'), api.get('/vehicles'), api.get('/companies')]);
           setGuards(guardsRes.data || []);
           setVehicles(vehiclesRes.data);
+          setCompanies(companiesRes.data || []);
         } else {
-          const [usersRes, vehiclesRes] = await Promise.all([api.get(`/users?_t=${Date.now()}`), api.get('/vehicles')]);
+          const [usersRes, vehiclesRes, companiesRes] = await Promise.all([api.get(`/users?_t=${Date.now()}`), api.get('/vehicles'), api.get('/companies')]);
           console.log("USERS FETCHED:", usersRes.data.filter(u => u.role === 'Driver'));
           setDrivers(usersRes.data.filter(u => u.role === 'Driver'));
           setVehicles(vehiclesRes.data);
+          setCompanies(companiesRes.data || []);
         }
       } catch (err) { console.error("Failed to fetch options", err); }
     };
@@ -164,7 +168,8 @@ export default function TripTicketForm() {
   const handleSave = async () => {
     try {
       const now = new Date().toLocaleString('sv').replace(' ', 'T').slice(0, 16);
-      let payload = { ...formData, status: status === 'Pending' ? 'Pending Endorsement' : status };
+      let payload = { ...formData };
+      delete payload.status;
 
       if (isGuard) {
         // Departure phase
@@ -174,7 +179,6 @@ export default function TripTicketForm() {
             return;
           }
           payload.dateTimeDeparture = now;
-          payload.status = 'DEPARTED';
         }
         // Return phase
         else if (formData.dateTimeDeparture && !formData.dateTimeReturn) {
@@ -183,7 +187,6 @@ export default function TripTicketForm() {
             return;
           }
           payload.dateTimeReturn = now;
-          payload.status = 'ARRIVED';
         }
       }
 
@@ -192,7 +195,7 @@ export default function TripTicketForm() {
       } else if (isGuard && isReviewMode && initialData?.id) {
         // Extract only guard-log fields for update
         const guardPayload = {};
-        ['kmOut', 'kmIn', 'guardOut', 'guardIn', 'dateTimeDeparture', 'dateTimeReturn', 'status'].forEach(k => {
+        ['kmOut', 'kmIn', 'guardOut', 'guardIn', 'dateTimeDeparture', 'dateTimeReturn'].forEach(k => {
           if (payload[k] !== undefined) guardPayload[k] = payload[k];
         });
         payload = guardPayload;
@@ -216,8 +219,7 @@ export default function TripTicketForm() {
     if (!await confirm('Endorse this Trip Ticket?')) return;
     try {
       const payload = { ...formData, endorsedBy: formData.endorsedBy || user.name };
-      await api.put(`/trip-tickets/${initialData.id}`, payload);
-      await api.post(`/trip-tickets/${initialData.id}/endorse`);
+      await api.post(`/trip-tickets/${initialData.id}/endorse`, payload);
       showToast('Trip Ticket Endorsed!', 'success');
       navigate('/pending');
     } catch (err) {
@@ -229,8 +231,7 @@ export default function TripTicketForm() {
     if (!await confirm('Approve this Trip Ticket?')) return;
     try {
       const payload = { ...formData, approvedBy: formData.approvedBy || user.name };
-      await api.put(`/trip-tickets/${initialData.id}`, payload);
-      await api.post(`/trip-tickets/${initialData.id}/approve`);
+      await api.post(`/trip-tickets/${initialData.id}/approve`, payload);
       showToast('Trip Ticket Approved!', 'success');
       navigate('/pending');
     } catch (err) {
@@ -244,8 +245,8 @@ export default function TripTicketForm() {
 
   const confirmDisapprove = async () => {
     try {
-      await api.put(`/trip-tickets/${initialData.id}`, formData);
-      await api.post(`/trip-tickets/${initialData.id}/reject`, { disapprovalReason: disReason });
+      const payload = { ...formData, disapprovalReason: disReason };
+      await api.post(`/trip-tickets/${initialData.id}/reject`, payload);
       showToast('Trip Ticket Disapproved', 'info');
       navigate('/pending');
     } catch (err) {
@@ -256,7 +257,7 @@ export default function TripTicketForm() {
   const handleCancelRequest = async () => {
     if (!await confirm('Are you sure you want to cancel this request?')) return;
     try {
-      await api.put(`/trip-tickets/${initialData.id}`, { status: 'Cancelled' });
+      await api.post(`/trip-tickets/${initialData.id}/cancel`);
       showToast('Request Cancelled', 'info');
       initialData ? navigate(-1) : navigate('/dashboard');
     } catch (err) {
@@ -273,6 +274,22 @@ export default function TripTicketForm() {
           <button className="tool-btn back" onClick={() => initialData ? navigate(-1) : navigate('/dashboard')}>Back</button>
         </div>
         <div className="tool-group">
+          {!isReadOnly && !isReviewMode && !isGuard && (
+            <div className="toolbar-company-select" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#f1f5f9', padding: '0 16px', borderRadius: '12px', border: '1px solid #cbd5e1', height: '44px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Company:</span>
+              <select 
+                name="company" 
+                value={formData.company || ''} 
+                onChange={handleChange}
+                style={{ border: 'none', background: 'transparent', outline: 'none', fontWeight: 800, color: '#0f172a', fontSize: '0.9rem', cursor: 'pointer' }}
+              >
+                <option value="">Select Company</option>
+                {companies.map(c => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
           {!isGuard && ['ARRIVED', 'Completed'].includes(status) && (
             <button className="tool-btn print-btn" onClick={() => window.print()} style={{ background: '#334155', color: 'white' }}>Print</button>
           )}
@@ -355,6 +372,7 @@ export default function TripTicketForm() {
           occupiedDrivers={occupiedDrivers}
           occupiedVehicles={occupiedVehicles}
           guards={guards}
+          companies={companies}
           user={user}
         />
       </div>

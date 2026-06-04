@@ -33,6 +33,9 @@ model AuditTrail {
   ipAddress  String?
   createdAt  DateTime @default(now())
 
+  hash       String?
+  previousHash String?
+
   @@index([userId])
   @@map("audittrail")
 }
@@ -106,11 +109,11 @@ model Reminder {
   @@map("reminder")
 }
 
-model Rrf {
+model Rfp {
   id            Int       @id @default(autoincrement())
-  rrfNo         String?
+  rfpNo         String?
   requestorId   Int?
-  requestor     User?     @relation("RrfRequestor", fields: [requestorId], references: [id])
+  requestor     User?     @relation("RfpRequestor", fields: [requestorId], references: [id])
   dateRequested DateTime? @default(now())
   dateNeeded    DateTime?
   to            String?
@@ -119,39 +122,39 @@ model Rrf {
   company       String?
   remarks       String?
   preparedById  Int?
-  preparedBy    User?     @relation("RrfPreparedBy", fields: [preparedById], references: [id])
+  preparedBy    User?     @relation("RfpPreparedBy", fields: [preparedById], references: [id])
   verifiedById  Int?
-  verifiedBy    User?     @relation("RrfVerifiedBy", fields: [verifiedById], references: [id])
+  verifiedBy    User?     @relation("RfpVerifiedBy", fields: [verifiedById], references: [id])
   approvedById  Int?
-  approvedBy    User?     @relation("RrfApprovedBy", fields: [approvedById], references: [id])
+  approvedBy    User?     @relation("RfpApprovedBy", fields: [approvedById], references: [id])
   layout        String?   @db.LongText
   status        String    @default("Pending")
   authorId      Int?
   createdAt     DateTime  @default(now())
   archivedById  Int?
-  archivedBy    User?     @relation("RrfArchivedBy", fields: [archivedById], references: [id])
+  archivedBy    User?     @relation("RfpArchivedBy", fields: [archivedById], references: [id])
   receivedBy    String?
   receivedDate  DateTime?
   disapprovalReason String?
-  author           User?     @relation("RrfAuthor", fields: [authorId], references: [id], onDelete: Cascade)
-  items         RrfItem[]
+  author           User?     @relation("RfpAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  items         RfpItem[]
 
   @@index([authorId])
-  @@map("rrf")
+  @@map("rfp")
 }
 
-model RrfItem {
+model RfpItem {
   id            Int     @id @default(autoincrement())
   qty           String?
   unit          String?
   particulars   String?
   estimatedCost String?
   availableStocks String?
-  rrfId         Int
-  rrf           Rrf     @relation(fields: [rrfId], references: [id], onDelete: Cascade, map: "RrfItem_rrfId_fkey")
+  rfpId         Int
+  rfp           Rfp     @relation(fields: [rfpId], references: [id], onDelete: Cascade, map: "RfpItem_rfpId_fkey")
 
-  @@index([rrfId], map: "RrfItem_rrfId_fkey")
-  @@map("rrfitem")
+  @@index([rfpId], map: "RfpItem_rfpId_fkey")
+  @@map("rfpitem")
 }
 
 model Task {
@@ -258,13 +261,13 @@ model User {
   prfArchived         Prf[] @relation("PrfArchivedBy")
   prfRequested        Prf[] @relation("PrfRequestor")
 
-  // Rrf
-  rrfAuthors          Rrf[] @relation("RrfAuthor")
-  rrfPrepared         Rrf[] @relation("RrfPreparedBy")
-  rrfVerified         Rrf[] @relation("RrfVerifiedBy")
-  rrfApproved         Rrf[] @relation("RrfApprovedBy")
-  rrfArchived         Rrf[] @relation("RrfArchivedBy")
-  rrfRequested        Rrf[] @relation("RrfRequestor")
+  // Rfp
+  rfpAuthors          Rfp[] @relation("RfpAuthor")
+  rfpPrepared         Rfp[] @relation("RfpPreparedBy")
+  rfpVerified         Rfp[] @relation("RfpVerifiedBy")
+  rfpApproved         Rfp[] @relation("RfpApprovedBy")
+  rfpArchived         Rfp[] @relation("RfpArchivedBy")
+  rfpRequested        Rfp[] @relation("RfpRequestor")
 
   // TripTicket
   ticketAuthors       TripTicket[] @relation("TripTicketAuthor")
@@ -354,4 +357,14 @@ enum UserRole {
   Accounting
   IT
   @@map("user_role")
+}
+
+model Company {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  logoUrl   String?
+  status    String   @default("Active")
+  createdAt DateTime @default(now())
+
+  @@map("company")
 }

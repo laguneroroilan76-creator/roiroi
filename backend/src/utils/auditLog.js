@@ -12,7 +12,7 @@ const prisma = require('../config/database');
  * Records an audit trail entry
  * @param {number} userId - User ID performing the action
  * @param {string} action - Action type (CREATE, UPDATE, APPROVE, REJECT, DELETE)
- * @param {string} tableName - Table name (Prf, TripTicket, Rrf)
+ * @param {string} tableName - Table name (Prf, TripTicket, Rfp)
  * @param {number} recordId - ID of the affected record
  * @param {object} oldValues - Original data (null for CREATE)
  * @param {object} newValues - New data (null for DELETE)

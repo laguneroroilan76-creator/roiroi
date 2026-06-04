@@ -1,39 +1,103 @@
 const prisma = require('../config/database');
 
+const pendingStatuses = ['Pending', 'Pending Verification', 'Pending Approval', 'Pending Endorsement', 'Pending Dept Head Approval', 'Pending Final Approval', 'Verified', 'Endorsed'];
+const rejectedStatuses = ['Disapproved', 'Closed', 'Cancelled', 'CANCELLED'];
+const ongoingStatuses = ['In Progress', 'Ongoing', 'DEPARTED'];
+const approvedStatuses = ['Approved', 'Resolved', 'Completed', 'ARRIVED', 'Received'];
+
 exports.getDashboardStats = async (req, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Fetch all forms to calculate statuses
-    const [prfs, rrfs, triptickets] = await Promise.all([
-      prisma.prf.findMany(),
-      prisma.rrf.findMany(),
-      prisma.tripTicket.findMany()
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(today.getDate() - 6);
+
+    const fourteenDaysAgo = new Date(today);
+    fourteenDaysAgo.setDate(today.getDate() - 13);
+
+    // 1. Aggregated DB Counts
+    const [
+      pending, rejected, approved, ongoing, totalForms, todayCount, activeUsers, availableVehicles, activeDrivers
+    ] = await Promise.all([
+      Promise.all([
+        prisma.prf.count({ where: { status: { in: pendingStatuses } } }),
+        prisma.rfp.count({ where: { OR: [{ status: { in: pendingStatuses } }, { status: 'Approved', receivedBy: null }, { status: 'Approved', receivedBy: '' }] } }),
+        prisma.tripTicket.count({ where: { status: { in: pendingStatuses } } })
+      ]).then(arr => arr.reduce((a, b) => a + b, 0)),
+      
+      Promise.all([
+        prisma.prf.count({ where: { status: { in: rejectedStatuses } } }),
+        prisma.rfp.count({ where: { status: { in: rejectedStatuses } } }),
+        prisma.tripTicket.count({ where: { status: { in: rejectedStatuses } } })
+      ]).then(arr => arr.reduce((a, b) => a + b, 0)),
+      
+      Promise.all([
+        prisma.prf.count({ where: { status: { in: approvedStatuses } } }),
+        prisma.rfp.count({ where: { status: { in: approvedStatuses }, receivedBy: { not: null }, NOT: { receivedBy: '' } } }),
+        prisma.tripTicket.count({ where: { status: { in: approvedStatuses }, guardInId: { not: null } } })
+      ]).then(arr => arr.reduce((a, b) => a + b, 0)),
+      
+      Promise.all([
+        prisma.prf.count({ where: { status: { in: ongoingStatuses } } }),
+        prisma.rfp.count({ where: { status: { in: ongoingStatuses } } }),
+        prisma.tripTicket.count({ where: { OR: [{ status: { in: ongoingStatuses } }, { status: { in: ['Approved', 'Resolved', 'Completed'] }, guardInId: null }] } })
+      ]).then(arr => arr.reduce((a, b) => a + b, 0)),
+
+      Promise.all([
+        prisma.prf.count({ where: { status: { not: 'Archived' } } }),
+        prisma.rfp.count({ where: { status: { not: 'Archived' } } }),
+        prisma.tripTicket.count({ where: { status: { not: 'Archived' } } })
+      ]).then(arr => arr.reduce((a, b) => a + b, 0)),
+
+      Promise.all([
+        prisma.prf.count({ where: { createdAt: { gte: today } } }),
+        prisma.rfp.count({ where: { createdAt: { gte: today } } }),
+        prisma.tripTicket.count({ where: { createdAt: { gte: today } } })
+      ]).then(arr => arr.reduce((a, b) => a + b, 0)),
+
+      prisma.user.count({ where: { status: 'Active' } }),
+      prisma.vehicle.count({ where: { status: 'Active' } }),
+      prisma.user.count({ where: { role: 'Driver', status: 'Active' } })
     ]);
 
-    const parseRecord = (record) => {
-        if (!record.layout) return record;
-        try {
-            const parsed = JSON.parse(record.layout);
-            return { ...parsed, ...record, status: record.status || parsed.status || 'Pending' };
-        } catch(e) { return record; }
-    };
-
-    const parsedPrfs = prfs.map(parseRecord);
-    const parsedRrfs = rrfs.map(parseRecord);
-    const parsedTriptickets = triptickets.map(parseRecord);
-
-    const allForms = [...parsedPrfs, ...parsedRrfs, ...parsedTriptickets];
-    let pending = 0;
-    let approved = 0;
-    let rejected = 0;
-    let ongoing = 0;
-    let todayCount = 0;
+    // 2. Trends & Sparklines (Database-level Aggregation)
+    const [prfs14, rfps14, tts14] = await Promise.all([
+      prisma.$queryRaw`
+        SELECT DATE(createdAt) as date,
+          SUM(CASE WHEN status IN ('Pending', 'Pending Verification', 'Pending Approval', 'Pending Endorsement', 'Pending Dept Head Approval', 'Pending Final Approval', 'Verified', 'Endorsed') THEN 1 ELSE 0 END) as pending,
+          SUM(CASE WHEN status IN ('Disapproved', 'Closed', 'Cancelled', 'CANCELLED') THEN 1 ELSE 0 END) as rejected,
+          SUM(CASE WHEN status IN ('In Progress', 'Ongoing', 'DEPARTED') THEN 1 ELSE 0 END) as ongoing,
+          SUM(CASE WHEN status IN ('Approved', 'Resolved', 'Completed', 'ARRIVED') THEN 1 ELSE 0 END) as approved
+        FROM prf
+        WHERE createdAt >= DATE_SUB(NOW(), INTERVAL 14 DAY) AND status != 'Archived'
+        GROUP BY DATE(createdAt)
+      `,
+      prisma.$queryRaw`
+        SELECT DATE(createdAt) as date,
+          SUM(CASE WHEN status IN ('Pending', 'Pending Verification', 'Pending Approval', 'Pending Endorsement', 'Pending Dept Head Approval', 'Pending Final Approval', 'Verified', 'Endorsed') OR (status = 'Approved' AND (receivedBy IS NULL OR receivedBy = '')) THEN 1 ELSE 0 END) as pending,
+          SUM(CASE WHEN status IN ('Disapproved', 'Closed', 'Cancelled', 'CANCELLED') THEN 1 ELSE 0 END) as rejected,
+          SUM(CASE WHEN status IN ('In Progress', 'Ongoing', 'DEPARTED') THEN 1 ELSE 0 END) as ongoing,
+          SUM(CASE WHEN status IN ('Approved', 'Resolved', 'Completed', 'ARRIVED', 'Received') AND receivedBy IS NOT NULL AND receivedBy != '' THEN 1 ELSE 0 END) as approved
+        FROM rfp
+        WHERE createdAt >= DATE_SUB(NOW(), INTERVAL 14 DAY) AND status != 'Archived'
+        GROUP BY DATE(createdAt)
+      `,
+      prisma.$queryRaw`
+        SELECT DATE(createdAt) as date,
+          SUM(CASE WHEN status IN ('Pending', 'Pending Verification', 'Pending Approval', 'Pending Endorsement', 'Pending Dept Head Approval', 'Pending Final Approval', 'Verified', 'Endorsed') THEN 1 ELSE 0 END) as pending,
+          SUM(CASE WHEN status IN ('Disapproved', 'Closed', 'Cancelled', 'CANCELLED') THEN 1 ELSE 0 END) as rejected,
+          SUM(CASE WHEN status IN ('In Progress', 'Ongoing', 'DEPARTED') OR (status IN ('Approved', 'Resolved', 'Completed') AND guardInId IS NULL) THEN 1 ELSE 0 END) as ongoing,
+          SUM(CASE WHEN status IN ('Approved', 'Resolved', 'Completed', 'ARRIVED') AND guardInId IS NOT NULL THEN 1 ELSE 0 END) as approved
+        FROM tripticket
+        WHERE createdAt >= DATE_SUB(NOW(), INTERVAL 14 DAY) AND status != 'Archived'
+        GROUP BY DATE(createdAt)
+      `
+    ]);
 
     const currentWeekCounts = { pending: 0, approved: 0, rejected: 0, ongoing: 0 };
     const prevWeekCounts = { pending: 0, approved: 0, rejected: 0, ongoing: 0 };
-
+    
     const sparklineMap = {};
     for (let i = 6; i >= 0; i--) {
         const d = new Date(today);
@@ -42,65 +106,41 @@ exports.getDashboardStats = async (req, res) => {
         sparklineMap[dateStr] = { name: dateStr, pending: 0, approved: 0, rejected: 0, ongoing: 0 };
     }
 
-    const sevenDaysAgo = new Date(today);
-    sevenDaysAgo.setDate(today.getDate() - 6);
+    const processTrendCounts = (dataArray) => {
+      dataArray.forEach(row => {
+        const fDate = new Date(row.date);
+        fDate.setHours(0,0,0,0);
+        
+        const p = Number(row.pending) || 0;
+        const a = Number(row.approved) || 0;
+        const r = Number(row.rejected) || 0;
+        const o = Number(row.ongoing) || 0;
 
-    const fourteenDaysAgo = new Date(today);
-    fourteenDaysAgo.setDate(today.getDate() - 13);
+        if (fDate >= sevenDaysAgo) {
+          currentWeekCounts.pending += p;
+          currentWeekCounts.approved += a;
+          currentWeekCounts.rejected += r;
+          currentWeekCounts.ongoing += o;
+          
+          const dateStr = fDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          if (sparklineMap[dateStr]) {
+            sparklineMap[dateStr].pending += p;
+            sparklineMap[dateStr].approved += a;
+            sparklineMap[dateStr].rejected += r;
+            sparklineMap[dateStr].ongoing += o;
+          }
+        } else if (fDate >= fourteenDaysAgo && fDate < sevenDaysAgo) {
+          prevWeekCounts.pending += p;
+          prevWeekCounts.approved += a;
+          prevWeekCounts.rejected += r;
+          prevWeekCounts.ongoing += o;
+        }
+      });
+    };
 
-    allForms.forEach(form => {
-      const s = form.status || 'Pending';
-      const formDate = new Date(form.createdAt || new Date());
-      const fDate = new Date(formDate.getFullYear(), formDate.getMonth(), formDate.getDate());
-      
-      let category = '';
-
-      const isTripTicket = form.driver !== undefined || form.plateNumber !== undefined || form.etdOffice !== undefined;
-      const isRFP = form.releaseFundsTo !== undefined || form.chargeTo !== undefined || 'rrfNo' in form;
-
-      // Pending
-      if (s === 'Pending' || 
-          s === 'Pending Verification' || 
-          s === 'Pending Approval' || 
-          s === 'Pending Endorsement' || 
-          s === 'Pending Dept Head Approval' || 
-          s === 'Pending Final Approval' ||
-          (isRFP && s === 'Approved' && !form.receivedBy)) { // RRF specific pending condition for Accounting
-        pending++;
-        category = 'pending';
-      }
-      // Rejected / Cancelled (Excluding normal Archived)
-      else if (s === 'Disapproved' || s === 'Closed' || s === 'Cancelled' || s === 'CANCELLED') {
-        rejected++;
-        category = 'rejected';
-      }
-      // Ongoing (In Progress)
-      else if (s === 'In Progress' || s === 'Ongoing' || s === 'DEPARTED' || (isTripTicket && (s === 'Approved' || s === 'Completed' || s === 'ARRIVED') && !form.guardIn)) {
-        ongoing++;
-        category = 'ongoing';
-      }
-      // Approved / Resolved (Completed)
-      else if (s === 'Approved' || s === 'Resolved' || s === 'Completed' || s === 'ARRIVED') {
-        approved++;
-        category = 'approved';
-      }
-
-      // Populate trends and sparklines
-      if (category) {
-         if (fDate >= sevenDaysAgo) {
-            currentWeekCounts[category]++;
-            const dateStr = fDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            if (sparklineMap[dateStr]) sparklineMap[dateStr][category]++;
-         } else if (fDate >= fourteenDaysAgo && fDate < sevenDaysAgo) {
-            prevWeekCounts[category]++;
-         }
-      }
-
-      // Today
-      if (fDate.getTime() === today.getTime()) {
-        todayCount++;
-      }
-    });
+    processTrendCounts(prfs14);
+    processTrendCounts(rfps14);
+    processTrendCounts(tts14);
 
     const calculateTrend = (curr, prev) => {
         if (prev === 0) return curr > 0 ? '+100%' : '0%';
@@ -109,37 +149,27 @@ exports.getDashboardStats = async (req, res) => {
         return percent > 0 ? `+${percent}%` : `${percent}%`;
     };
 
-    const trends = {
-        pending: calculateTrend(currentWeekCounts.pending, prevWeekCounts.pending),
-        approved: calculateTrend(currentWeekCounts.approved, prevWeekCounts.approved),
-        rejected: calculateTrend(currentWeekCounts.rejected, prevWeekCounts.rejected),
-        ongoing: calculateTrend(currentWeekCounts.ongoing, prevWeekCounts.ongoing)
-    };
-
-    const sparklines = Object.values(sparklineMap);
-
-    // Counts
-    const [activeUsers, availableVehicles, activeDrivers] = await Promise.all([
-      prisma.user.count(),
-      prisma.vehicle.count({ where: { status: 'Active' } }),
-      prisma.user.count({ where: { role: 'Driver' } })
-    ]);
-
     res.json({
       pending,
       approved,
       rejected,
       ongoing,
       today: todayCount,
-      totalForms: allForms.filter(f => f.status !== 'Archived').length,
+      totalForms,
       activeUsers,
       availableVehicles,
       activeDrivers,
-      trends,
-      sparklines
+      trends: {
+        pending: calculateTrend(currentWeekCounts.pending, prevWeekCounts.pending),
+        approved: calculateTrend(currentWeekCounts.approved, prevWeekCounts.approved),
+        rejected: calculateTrend(currentWeekCounts.rejected, prevWeekCounts.rejected),
+        ongoing: calculateTrend(currentWeekCounts.ongoing, prevWeekCounts.ongoing)
+      },
+      sparklines: Object.values(sparklineMap)
     });
 
   } catch (error) {
+    require('fs').appendFileSync('error.log', new Date().toISOString() + ' ' + error.stack + '\n');
     console.error('Failed to get dashboard stats:', error);
     res.status(500).json({ error: 'Failed to fetch dashboard stats' });
   }
@@ -147,7 +177,7 @@ exports.getDashboardStats = async (req, res) => {
 
 exports.getAnalyticsData = async (req, res) => {
   try {
-    const period = req.query.period || 'this_month'; // 'today', 'this_week', 'this_month', 'yearly', 'custom'
+    const period = req.query.period || 'this_month';
     const { start, end } = req.query;
 
     const now = new Date();
@@ -156,35 +186,52 @@ exports.getAnalyticsData = async (req, res) => {
     let endDate = new Date();
     endDate.setHours(23,59,59,999);
 
-    if (period === 'today') {
-        // already set to today
-    } else if (period === 'this_week') {
-        startDate.setDate(now.getDate() - now.getDay()); // Sunday
-    } else if (period === 'this_month') {
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-    } else if (period === 'yearly') {
-        startDate = new Date(now.getFullYear(), 0, 1);
-    } else if (period === 'custom' && start && end) {
-        startDate = new Date(start);
-        startDate.setHours(0,0,0,0);
-        endDate = new Date(end);
-        endDate.setHours(23,59,59,999);
-    } else if (period === 'all_time') {
-        startDate = new Date('2000-01-01');
-    }
+    if (period === 'this_week') startDate.setDate(now.getDate() - now.getDay());
+    else if (period === 'this_month') startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    else if (period === 'yearly') startDate = new Date(now.getFullYear(), 0, 1);
+    else if (period === 'custom' && start && end) {
+        startDate = new Date(start); startDate.setHours(0,0,0,0);
+        endDate = new Date(end); endDate.setHours(23,59,59,999);
+    } else if (period === 'all_time') startDate = new Date('2000-01-01');
 
-    const [prfs, rrfs, triptickets] = await Promise.all([
-      prisma.prf.findMany({ where: { createdAt: { gte: startDate, lte: endDate } } }),
-      prisma.rrf.findMany({ where: { createdAt: { gte: startDate, lte: endDate } } }),
-      prisma.tripTicket.findMany({ where: { createdAt: { gte: startDate, lte: endDate } } })
+    // 1. Fetch Aggregated Data via DB Queries
+    const [prfAgg, rfpAgg, ttAgg] = await Promise.all([
+      prisma.$queryRaw`
+        SELECT DATE(createdAt) as date, IFNULL(department, 'General') as department,
+          SUM(CASE WHEN status IN ('Pending', 'Pending Verification', 'Pending Approval', 'Pending Endorsement', 'Pending Dept Head Approval', 'Pending Final Approval', 'Verified', 'Endorsed') THEN 1 ELSE 0 END) as submitted,
+          SUM(CASE WHEN status IN ('Disapproved', 'Closed', 'Cancelled', 'CANCELLED') THEN 1 ELSE 0 END) as rejected,
+          SUM(CASE WHEN status IN ('In Progress', 'Ongoing', 'DEPARTED') THEN 1 ELSE 0 END) as ongoing,
+          SUM(CASE WHEN status IN ('Approved', 'Resolved', 'Completed', 'ARRIVED') THEN 1 ELSE 0 END) as completed,
+          COUNT(id) as total
+        FROM prf
+        WHERE createdAt >= ${startDate} AND createdAt <= ${endDate} AND status != 'Archived'
+        GROUP BY DATE(createdAt), IFNULL(department, 'General')
+      `,
+      prisma.$queryRaw`
+        SELECT DATE(createdAt) as date, IFNULL(department, 'General') as department,
+          SUM(CASE WHEN status IN ('Pending', 'Pending Verification', 'Pending Approval', 'Pending Endorsement', 'Pending Dept Head Approval', 'Pending Final Approval', 'Verified', 'Endorsed') OR (status = 'Approved' AND (receivedBy IS NULL OR receivedBy = '')) THEN 1 ELSE 0 END) as submitted,
+          SUM(CASE WHEN status IN ('Disapproved', 'Closed', 'Cancelled', 'CANCELLED') THEN 1 ELSE 0 END) as rejected,
+          SUM(CASE WHEN status IN ('In Progress', 'Ongoing', 'DEPARTED') THEN 1 ELSE 0 END) as ongoing,
+          SUM(CASE WHEN status IN ('Approved', 'Resolved', 'Completed', 'ARRIVED', 'Received') AND receivedBy IS NOT NULL AND receivedBy != '' THEN 1 ELSE 0 END) as completed,
+          COUNT(id) as total
+        FROM rfp
+        WHERE createdAt >= ${startDate} AND createdAt <= ${endDate} AND status != 'Archived'
+        GROUP BY DATE(createdAt), IFNULL(department, 'General')
+      `,
+      prisma.$queryRaw`
+        SELECT DATE(createdAt) as date, 'General' as department,
+          SUM(CASE WHEN status IN ('Pending', 'Pending Verification', 'Pending Approval', 'Pending Endorsement', 'Pending Dept Head Approval', 'Pending Final Approval', 'Verified', 'Endorsed') THEN 1 ELSE 0 END) as submitted,
+          SUM(CASE WHEN status IN ('Disapproved', 'Closed', 'Cancelled', 'CANCELLED') THEN 1 ELSE 0 END) as rejected,
+          SUM(CASE WHEN status IN ('In Progress', 'Ongoing', 'DEPARTED') OR (status IN ('Approved', 'Resolved', 'Completed') AND guardInId IS NULL) THEN 1 ELSE 0 END) as ongoing,
+          SUM(CASE WHEN status IN ('Approved', 'Resolved', 'Completed', 'ARRIVED') AND guardInId IS NOT NULL THEN 1 ELSE 0 END) as completed,
+          COUNT(id) as total
+        FROM tripticket
+        WHERE createdAt >= ${startDate} AND createdAt <= ${endDate} AND status != 'Archived'
+        GROUP BY DATE(createdAt)
+      `
     ]);
 
-    const allForms = [
-        ...prfs.map(f => ({ ...f, docType: 'PRF' })),
-        ...rrfs.map(f => ({ ...f, docType: 'RRF' })),
-        ...triptickets.map(f => ({ ...f, docType: 'TRIP_TICKET' }))
-    ];
-
+    // 2. Initialize Data Structures
     const monthlyTrendsMap = {};
     const isGroupingByMonth = period === 'yearly' || period === 'all_time';
 
@@ -203,86 +250,72 @@ exports.getAnalyticsData = async (req, res) => {
     }
 
     const departmentStatsMap = {};
-    let prfCount = 0;
-    let rrfCount = 0;
-    let ttCount = 0;
-
     const workloadMap = {};
-    for (const key in monthlyTrendsMap) {
-        workloadMap[key] = { name: key, active: 0 };
-    }
+    for (const key in monthlyTrendsMap) workloadMap[key] = { name: key, active: 0 };
 
-    allForms.forEach(form => {
-        const s = form.status || 'Pending';
-        const formDate = new Date(form.createdAt);
-        let key = '';
+    let prfCount = 0, rfpCount = 0, ttCount = 0;
+    let totalForms = 0;
 
-        if (isGroupingByMonth) {
-            key = formDate.toLocaleString('en-US', { month: 'short', year: '2-digit' });
-        } else {
-            key = formDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        }
+    // 3. Process Aggregated Results
+    const processAnalytics = (dataArray, formType) => {
+      dataArray.forEach(row => {
+        const rowDate = new Date(row.date);
+        const key = isGroupingByMonth 
+          ? rowDate.toLocaleString('en-US', { month: 'short', year: '2-digit' }) 
+          : rowDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-        if (form.docType === 'PRF') prfCount++;
-        if (form.docType === 'RRF') rrfCount++;
-        if (form.docType === 'TRIP_TICKET') ttCount++;
+        const dept = row.department || 'General';
+        const submitted = Number(row.submitted) || 0;
+        const rejected = Number(row.rejected) || 0;
+        const ongoing = Number(row.ongoing) || 0;
+        const completed = Number(row.completed) || 0;
+        const total = Number(row.total) || 0;
 
-        const dept = form.department || 'General';
+        totalForms += total;
+        if (formType === 'PRF') prfCount += total;
+        if (formType === 'RFP') rfpCount += total;
+        if (formType === 'TRIP_TICKET') ttCount += total;
+
         if (!departmentStatsMap[dept]) departmentStatsMap[dept] = { name: dept, volume: 0, approved: 0, approvalRate: 0 };
-        departmentStatsMap[dept].volume++;
-
-        let category = '';
-        if (s === 'Pending' || s.includes('Pending')) {
-            category = 'submitted';
-        } else if (s === 'Approved' || s === 'DEPARTED') {
-            category = 'approved';
-            departmentStatsMap[dept].approved++;
-        } else if (s === 'Archived' || s === 'Disapproved' || s === 'Closed' || s.includes('Cancel')) {
-            category = 'rejected';
-        } else if (s === 'Resolved' || s === 'Completed' || s === 'ARRIVED') {
-            category = 'completed';
-            departmentStatsMap[dept].approved++;
-        }
+        departmentStatsMap[dept].volume += total;
+        departmentStatsMap[dept].approved += completed; // We consider 'completed' as 'approved' for department rating
 
         if (monthlyTrendsMap[key]) {
-            monthlyTrendsMap[key].submitted++;
-            if (category === 'approved') monthlyTrendsMap[key].approved++;
-            if (category === 'rejected') monthlyTrendsMap[key].rejected++;
-            if (category === 'completed') monthlyTrendsMap[key].completed++;
+            monthlyTrendsMap[key].submitted += submitted;
+            monthlyTrendsMap[key].approved += completed; // Using completed for trends mapping
+            monthlyTrendsMap[key].rejected += rejected;
+            monthlyTrendsMap[key].completed += completed;
         }
 
         if (workloadMap[key]) {
-            if (category === 'submitted' || category === 'approved' || category === 'ongoing') {
-                workloadMap[key].active++;
-            }
+            workloadMap[key].active += (submitted + completed + ongoing);
         }
-    });
+      });
+    };
 
-    const monthlyTrends = Object.values(monthlyTrendsMap);
-    const workloadActivity = Object.values(workloadMap);
-    
+    processAnalytics(prfAgg, 'PRF');
+    processAnalytics(rfpAgg, 'RFP');
+    processAnalytics(ttAgg, 'TRIP_TICKET');
+
     const departmentStatsRaw = Object.values(departmentStatsMap);
     departmentStatsRaw.forEach(d => {
-        d.approvalRate = Math.round((d.approved / d.volume) * 100);
+      d.approvalRate = d.volume > 0 ? Math.round((d.approved / d.volume) * 100) : 0;
     });
-    const departmentStats = departmentStatsRaw.sort((a,b) => b.volume - a.volume).slice(0, 10);
-
-    const formTypeStats = [
-        { name: 'Trip Tickets', value: ttCount },
-        { name: 'Purchase Req', value: prfCount },
-        { name: 'Payment Req', value: rrfCount }
-    ].filter(f => f.value > 0);
-
+    
     res.json({
-        monthlyTrends,
-        departmentStats,
-        formTypeStats,
-        workloadActivity,
-        totalForms: allForms.filter(f => f.status !== 'Archived').length
+        monthlyTrends: Object.values(monthlyTrendsMap),
+        departmentStats: departmentStatsRaw.sort((a,b) => b.volume - a.volume).slice(0, 10),
+        formTypeStats: [
+            { name: 'Trip Tickets', value: ttCount },
+            { name: 'Purchase Req', value: prfCount },
+            { name: 'Payment Req', value: rfpCount }
+        ].filter(f => f.value > 0),
+        workloadActivity: Object.values(workloadMap),
+        totalForms
     });
 
   } catch (err) {
-      console.error(err);
+      console.error('Failed to get analytics:', err);
       res.status(500).json({ error: 'Failed to get analytics' });
   }
 };

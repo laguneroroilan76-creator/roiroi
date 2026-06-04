@@ -13,7 +13,7 @@ export default function TripTicketPreview({ record, onClose, onActionComplete })
   const handleApprove = async () => {
     if (!await confirm('Approve this Trip Ticket?')) return;
     try {
-      await api.put(`/trip-tickets/${record.id}`, { status: 'Approved', approvedBy: user.name });
+      await api.post(`/trip-tickets/${record.id}/approve`);
       showToast('Trip Ticket Approved!', 'success');
       onActionComplete();
     } catch (err) { showToast('Error approving', 'error'); }
@@ -25,7 +25,7 @@ export default function TripTicketPreview({ record, onClose, onActionComplete })
 
   const confirmDisapprove = async () => {
     try {
-      await api.put(`/trip-tickets/${record.id}`, { status: 'Disapproved', disapprovalReason: disReason });
+      await api.post(`/trip-tickets/${record.id}/reject`, { disapprovalReason: disReason });
       showToast('Trip Ticket Disapproved', 'info');
       onActionComplete();
     } catch (err) { showToast('Error disapproving', 'error'); }

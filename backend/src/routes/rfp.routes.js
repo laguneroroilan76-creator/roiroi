@@ -1,19 +1,21 @@
 const express = require('express');
 const router = express.Router();
-const rfpController = require('../controllers/rfp.controller');
+const { createRFP, getRFPs, getRFPById, updateRFP, deleteRFP, approveRFP, approveDeptRFP, rejectRFP, cancelRFP, receiveRFP } = require('../controllers/rfp.controller');
 const { authenticateToken } = require('../middleware/auth.middleware');
-const { verifyOwnershipOrRole } = require('../middleware/authz.middleware');
+const { sanitizePayload } = require('../middleware/sanitizePayload.middleware');
+const { verifyOwnershipOrRole } = require('../middleware/idor.middleware');
 
-router.use(authenticateToken);
-
-router.post('/', rfpController.createRFP);
-router.get('/', rfpController.getRFPs);
-router.get('/:id', verifyOwnershipOrRole('Rrf', ['Admin', 'Approver', 'Verifier', 'Accounting']), rfpController.getRFPById);
-router.put('/:id', verifyOwnershipOrRole('Rrf', ['Admin', 'Approver', 'Verifier', 'Accounting']), rfpController.updateRFP);
-router.delete('/:id', verifyOwnershipOrRole('Rrf', ['Admin']), rfpController.deleteRFP);
+router.post('/', authenticateToken, sanitizePayload, createRFP);
+router.get('/', authenticateToken, getRFPs);
+router.get('/:id', authenticateToken, verifyOwnershipOrRole('rfp'), getRFPById);
+router.put('/:id', authenticateToken, verifyOwnershipOrRole('rfp'), sanitizePayload, updateRFP);
+router.delete('/:id', authenticateToken, verifyOwnershipOrRole('rfp'), deleteRFP);
 
 // State Machine Workflow Endpoints
-router.post('/:id/approve', verifyOwnershipOrRole('Rrf', ['Admin', 'Approver']), rfpController.approveRFP);
-router.post('/:id/reject', verifyOwnershipOrRole('Rrf', ['Admin', 'Approver']), rfpController.rejectRFP);
+router.post('/:id/cancel', authenticateToken, cancelRFP);
+router.post('/:id/approve', authenticateToken, verifyOwnershipOrRole('rfp'), approveRFP);
+router.post('/:id/approve_dept', authenticateToken, verifyOwnershipOrRole('rfp'), approveDeptRFP);
+router.post('/:id/receive', authenticateToken, verifyOwnershipOrRole('rfp'), receiveRFP);
+router.post('/:id/reject', authenticateToken, verifyOwnershipOrRole('rfp'), rejectRFP);
 
 module.exports = router;

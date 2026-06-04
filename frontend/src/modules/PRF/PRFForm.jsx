@@ -31,6 +31,7 @@ export default function PRFForm() {
   const [status, setStatus] = useState(initialData?.status || 'Pending');
   const [showReasonModal, setShowReasonModal] = useState(false);
   const [disReason, setDisReason] = useState('');
+  const [companies, setCompanies] = useState([]);
 
   const getDefaultFormData = () => {
     const today = new Date().toISOString().split('T')[0];
@@ -67,6 +68,7 @@ export default function PRFForm() {
   useEffect(() => {
     setFormData(getDefaultFormData());
     setStatus(location.state?.initialData?.status || 'Pending');
+    api.get('/companies').then(res => setCompanies(res.data)).catch(console.error);
   }, [location.state]);
 
   const isFieldDisabled = (fieldName, baseDisabled = false) => {
@@ -101,7 +103,8 @@ export default function PRFForm() {
   const handleSave = async () => {
     try {
       const items = (formData?.items || []).filter(it => it?.particulars?.trim() !== '');
-      const payload = { ...formData, status: 'Pending Verification', items };
+      const payload = { ...formData, items };
+      delete payload.status;
       if (isReviewMode && initialData?.id) {
         await api.put(`/prfs/${initialData.id}`, payload);
         showToast('Purchase Requisition Updated!', 'success');
@@ -124,8 +127,7 @@ export default function PRFForm() {
         ...formData, 
         items 
       };
-      await api.put(`/prfs/${initialData.id}`, payload);
-      await api.post(`/prfs/${initialData.id}/verify`);
+      await api.post(`/prfs/${initialData.id}/verify`, payload);
       showToast('Purchase Requisition Verified!', 'success');
       navigate('/pending');
     } catch (err) {
@@ -141,8 +143,7 @@ export default function PRFForm() {
         ...formData, 
         items 
       };
-      await api.put(`/prfs/${initialData.id}`, payload);
-      await api.post(`/prfs/${initialData.id}/approve`);
+      await api.post(`/prfs/${initialData.id}/approve`, payload);
       showToast('Purchase Requisition Approved!', 'success');
       navigate('/pending');
     } catch (err) {
@@ -155,8 +156,8 @@ export default function PRFForm() {
 
   const confirmDisapprove = async () => {
     try {
-      const payload = { ...formData, status: 'Disapproved', disapprovalReason: disReason, items: formData.items.filter(it => it.particulars.trim() !== '') };
-      await api.put(`/prfs/${initialData.id}`, payload);
+      const payload = { ...formData, disapprovalReason: disReason, items: formData.items.filter(it => it.particulars.trim() !== '') };
+      await api.post(`/prfs/${initialData.id}/reject`, payload);
       showToast('Disapproved', 'info');
       navigate('/pending');
     } catch (err) { showToast('Error disapproving', 'error'); }
@@ -174,7 +175,7 @@ export default function PRFForm() {
   const handleCancelRequest = async () => {
     if (!await confirm('Are you sure you want to cancel this request?')) return;
     try {
-      await api.put(`/prfs/${initialData.id}`, { status: 'Cancelled' });
+      await api.post(`/prfs/${initialData.id}/cancel`);
       showToast('Request Cancelled', 'info');
       initialData ? navigate(-1) : navigate('/dashboard');
     } catch (err) { showToast('Error cancelling request', 'error'); }
@@ -193,10 +194,26 @@ export default function PRFForm() {
             <button className="tool-btn print-btn" onClick={() => window.print()} style={{ background: '#334155', color: 'white' }}>Print</button>
           )}
           {!isReviewMode && !isReadOnly && (
-            <button className="action-btn-premium primary" onClick={handleSave} style={{ borderRadius: '16px', padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <PlusCircle size={20} />
-              <span>Submit Request</span>
-            </button>
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#f1f5f9', padding: '0 16px', borderRadius: '12px', border: '1px solid #cbd5e1', height: '44px' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Company:</span>
+                <select 
+                  name="company" 
+                  value={formData.company || ''} 
+                  onChange={handleChange} 
+                  style={{ border: 'none', background: 'transparent', outline: 'none', fontWeight: 800, color: '#0f172a', fontSize: '0.9rem', cursor: 'pointer' }}
+                >
+                  <option value="">Select Company</option>
+                  {companies.map(c => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+              <button className="action-btn-premium primary" onClick={handleSave} style={{ borderRadius: '16px', padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <PlusCircle size={20} />
+                <span>Submit Request</span>
+              </button>
+            </>
           )}
           
           {isReviewMode && (
@@ -207,7 +224,7 @@ export default function PRFForm() {
                   <button className="tool-btn disapprove" onClick={() => setShowReasonModal(true)}>Disapprove</button>
                 </>
               )}
-              {status === 'Pending Approval' && (user?.role === 'Admin' || user?.canApprove || user?.canApprovePRF || user?.role === 'Accounting') && (
+              {(status === 'Pending Approval' || status === 'Verified') && (user?.role === 'Admin' || user?.canApprove || user?.canApprovePRF || user?.role === 'Accounting') && (
                 <>
                   <button className="tool-btn approve" onClick={handleApprove}>Approve</button>
                   <button className="tool-btn disapprove" onClick={() => setShowReasonModal(true)}>Disapprove</button>
@@ -225,7 +242,7 @@ export default function PRFForm() {
 
       <div className="form-container office-form-container">
         <div className="printable-form prf-form-theme">
-          <FormHeader formData={formData} handleChange={handleChange} isFieldDisabled={isFieldDisabled} user={user} />
+          <FormHeader formData={formData} handleChange={handleChange} isFieldDisabled={isFieldDisabled} user={user} companies={companies} />
           <BasicInfo formData={formData} handleChange={handleChange} isFieldDisabled={isFieldDisabled} />
           <ItemsTable formData={formData} handleItemChange={handleItemChange} isFieldDisabled={isFieldDisabled} />
           <RemarksSection formData={formData} handleChange={handleChange} isFieldDisabled={isFieldDisabled} />
@@ -280,74 +297,7 @@ export default function PRFForm() {
         </div>
       )}
 
-      <style>{`
-        .custom-form-page { background: #ffffff; min-height: 100vh; padding: 100px 20px 60px; display: flex; flex-direction: column; align-items: center; font-family: 'Outfit', sans-serif; color: #1e293b; }
-        .sticky-toolbar { position: absolute; top: 64px; left: 0; right: 0; padding: 1rem 3rem; display: flex; justify-content: space-between; align-items: center; z-index: 890; border-bottom: 1px solid #e2e8f0; background: #ffffff; box-shadow: 0 2px 10px rgba(0,0,0,0.05); transition: left 0.2s ease; }
-        .sidebar-collapsed .sticky-toolbar { left: 0; }
-        @media (max-width: 1024px) { .sticky-toolbar { left: 0; padding: 1rem; flex-wrap: wrap; gap: 1rem; } }
-        .tool-group { display: flex; gap: 12px; align-items: center; }
-        .tool-btn {
-          align-items: center;
-          appearance: none;
-          background-color: #ffffff;
-          border-radius: 8px;
-          border-width: 0;
-          box-shadow: rgba(0, 0, 0, 0.1) 0 2px 4px, rgba(0, 0, 0, 0.05) 0 7px 13px -3px, rgba(0, 0, 0, 0.2) 0 -3px 0 inset;
-          box-sizing: border-box;
-          color: #0f172a;
-          cursor: pointer;
-          display: inline-flex;
-          height: 44px;
-          justify-content: center;
-          line-height: 1;
-          list-style: none;
-          overflow: hidden;
-          padding-left: 20px;
-          padding-right: 20px;
-          position: relative;
-          text-align: left;
-          text-decoration: none;
-          transition: box-shadow 0.15s, transform 0.15s;
-          user-select: none;
-          -webkit-user-select: none;
-          touch-action: manipulation;
-          white-space: nowrap;
-          will-change: box-shadow, transform;
-          font-size: 0.85rem;
-          font-weight: 800;
-          font-family: inherit;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          gap: 8px;
-        }
-
-        .tool-btn:focus {
-          box-shadow: rgba(0, 0, 0, 0.2) 0 0 0 1.5px inset, rgba(0, 0, 0, 0.1) 0 2px 4px, rgba(0, 0, 0, 0.05) 0 7px 13px -3px, rgba(0, 0, 0, 0.2) 0 -3px 0 inset;
-        }
-
-        .tool-btn:hover {
-          box-shadow: rgba(0, 0, 0, 0.15) 0 4px 8px, rgba(0, 0, 0, 0.1) 0 7px 13px -3px, rgba(0, 0, 0, 0.2) 0 -3px 0 inset;
-          transform: translateY(-2px);
-        }
-
-        .tool-btn:active {
-          box-shadow: rgba(0, 0, 0, 0.25) 0 3px 7px inset;
-          transform: translateY(2px);
-        }
-        .tool-btn.back { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
-        .tool-btn.save { background: #2563eb; color: white; }
-        .tool-btn.approve { background: #2563eb; color: white; }
-        .tool-btn.disapprove { background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; }
-        .tool-btn.archive-btn { background: #2563eb; color: white; filter: brightness(1.1); }
-        .tool-btn.print-btn { background: #334155; color: white; }
-        .form-container { width: 100%; max-width: 1000px; background: #ffffff; border-radius: 12px; padding: 3rem; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
-        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 10000; padding: 1rem; }
-        .modal-content { width: 100%; max-width: 500px; padding: 2rem; border-radius: 24px; background: var(--card-bg); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); }
-        .modal-content h3 { margin-bottom: 1rem; color: var(--primary); }
-        .modal-content textarea { width: 100%; padding: 1rem; border-radius: 12px; background: rgba(0,0,0,0.1); color: var(--text-main); border: 1px solid var(--glass-border); margin-bottom: 1.5rem; }
-        .modal-actions { display: flex; gap: 1rem; }
-        .tool-btn.cancel { background: rgba(0,0,0,0.05); color: var(--text-main); }
-      `}</style>
+      
     </div>
   );
 }

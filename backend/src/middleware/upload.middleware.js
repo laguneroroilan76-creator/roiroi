@@ -39,6 +39,19 @@ const avatarStorage = multer.diskStorage({
   }
 });
 
+// Configure Multer Storage for Logos
+const logoStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = 'uploads/logos/';
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'logo-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
 const uploadSignature = multer({
   storage: signatureStorage,
   fileFilter: imageFileFilter,
@@ -51,4 +64,10 @@ const uploadAvatar = multer({
   limits: { fileSize: 5 * 1024 * 1024 } // 5MB max
 });
 
-module.exports = { uploadSignature, uploadAvatar };
+const uploadLogo = multer({
+  storage: logoStorage,
+  fileFilter: imageFileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB max
+});
+
+module.exports = { uploadSignature, uploadAvatar, uploadLogo };

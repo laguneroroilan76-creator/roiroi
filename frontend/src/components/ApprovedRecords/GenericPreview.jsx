@@ -22,7 +22,7 @@ export default function GenericPreview({ record, onClose, onArchive }) {
           <h2 style={{ margin: 0, color: 'var(--text-main)' }}>
             {type === 'PRF'
               ? (record.prfNo ? `PRF #${record.prfNo}` : 'Approved Purchase Requisition')
-              : (record.rrfNo ? `RFP #${record.rrfNo}` : 'Approved Request For Payment')}
+              : (record.rfpNo ? `RFP #${record.rfpNo}` : 'Approved Request For Payment')}
           </h2>
           <p style={{ margin: '0.35rem 0 0', color: 'var(--text-dim)' }}>{type} • {statusLabel}</p>
         </div>

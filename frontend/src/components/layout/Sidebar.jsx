@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import api from '../../services/api';
 import { 
   LayoutDashboard, 
   FileText, 
@@ -11,9 +12,11 @@ import {
   Archive, 
   Car,
   Users,
+  Building,
   LogOut,
   ChevronDown,
-  HeadphonesIcon
+  HeadphonesIcon,
+  Inbox
 } from 'lucide-react';
 
 export default function Sidebar({ isOpen, onClose, isCollapsed }) {
@@ -73,7 +76,12 @@ export default function Sidebar({ isOpen, onClose, isCollapsed }) {
   }, [location.pathname, location.state, isCollapsed]);
 
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch (e) {
+      console.error(e);
+    }
     localStorage.clear();
     navigate('/');
   };
@@ -109,7 +117,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed }) {
           </div>
         )}
 
-        {!isGuard && (canView('tripTicket') || canView('prf') || canView('rrf')) && (
+        {!isGuard && (canView('tripTicket') || canView('prf') || canView('rfp')) && (
           <div className="nav-group">
             <div
               className={`nav-item ${['/trip-ticket', '/prf', '/rfp'].includes(location.pathname) && !location.state?.readOnly && !location.state?.isReview ? 'active' : ''}`}
@@ -140,7 +148,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed }) {
                     {isCollapsed ? <FileText size={16} /> : "Purchase Requisition (PRF)"}
                   </div>
                 )}
-                {canView('rfp') || canView('rrf') ? (
+                {canView('rfp') || canView('rfp') ? (
                   <div
                     className={`sub-item ${location.pathname === '/rfp' && !location.state?.readOnly && !location.state?.isReview ? 'active' : ''}`}
                     onClick={() => { navigate('/rfp', { state: null }); onClose(); }}
@@ -180,6 +188,16 @@ export default function Sidebar({ isOpen, onClose, isCollapsed }) {
           </div>
         )}
 
+        {isAccounting && (
+          <div 
+            className={`nav-item ${(isActive('/approved') && location.state?.isInbox) ? 'active' : ''}`}
+            onClick={() => { navigate('/approved', { state: { isInbox: true } }); onClose(); }}
+            title="RFP Inbox"
+          >
+            <Inbox size={20} />
+            <span className="nav-text">RFP Inbox</span>
+          </div>
+        )}
 
         {(isAdmin || isDriver) && !isAccounting && (
           <div className={`nav-item ${isActive('/driver-schedule') ? 'active' : ''}`} onClick={() => { navigate('/driver-schedule'); onClose(); }} title="Driving Schedule">
@@ -226,6 +244,13 @@ export default function Sidebar({ isOpen, onClose, isCollapsed }) {
           <div className={`nav-item ${isActive('/users') ? 'active' : ''}`} onClick={() => { navigate('/users'); onClose(); }} title="User Management">
             <Users size={20} />
             <span className="nav-text">User Management</span>
+          </div>
+        )}
+
+        {!isGuard && !isAccounting && (isAdmin || user?.role === 'IT' || canView('companies')) && (
+          <div className={`nav-item ${isActive('/companies') ? 'active' : ''}`} onClick={() => { navigate('/companies'); onClose(); }} title="Company Management">
+            <Building size={20} />
+            <span className="nav-text">Company Management</span>
           </div>
         )}
 

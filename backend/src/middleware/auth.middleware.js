@@ -8,8 +8,7 @@ if (!JWT_SECRET) {
 }
 
 const authenticateToken = async (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  const token = req.cookies?.token;
 
   if (!token) return res.status(401).json({ error: 'Access denied' });
 
@@ -19,6 +18,10 @@ const authenticateToken = async (req, res, next) => {
     const user = await prisma.user.findUnique({ where: { id: decoded.id } });
     
     if (!user) return res.status(401).json({ error: 'User not found' });
+
+    if (user.status !== 'Active') {
+      return res.status(403).json({ error: 'Account is inactive or suspended' });
+    }
 
     // Normalize user role and permissions for runtime checks.
     const normalizedRole = ['Admin', 'Driver', 'Guard', 'User', 'Accounting', 'IT'].includes(user.role)

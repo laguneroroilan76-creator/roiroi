@@ -1,28 +1,29 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import GuardDashboard from './pages/GuardDashboard';
+import Login from './pages/Login/Login';
+import Dashboard from './pages/Dashboard/Dashboard';
+import GuardDashboard from './pages/GuardDashboard/GuardDashboard';
 import TripTicketForm from './modules/TripTicket/TripTicketForm';
 import PRFForm from './modules/PRF/PRFForm';
 import RFPForm from './modules/RFP/RFPForm';
-import History from './pages/History';
-import Users from './pages/Users';
-import Profile from './pages/Profile';
-import ApprovedRecords from './pages/ApprovedRecords';
-import ArchivedRecords from './pages/ArchivedRecords';
-import PendingRecords from './pages/PendingRecords';
-import OngoingRecords from './pages/OngoingRecords';
-import TodayRecords from './pages/TodayRecords';
-import Vehicles from './pages/Vehicles';
-import DriverSchedule from './pages/DriverSchedule';
-import ActiveDrivers from './pages/ActiveDrivers';
-import SupportLog from './pages/SupportLog';
+import History from './pages/History/History';
+import Users from './pages/Users/Users';
+import Profile from './pages/Profile/Profile';
+import ApprovedRecords from './pages/ApprovedRecords/ApprovedRecords';
+import ArchivedRecords from './pages/ArchivedRecords/ArchivedRecords';
+import PendingRecords from './pages/PendingRecords/PendingRecords';
+import OngoingRecords from './pages/OngoingRecords/OngoingRecords';
+import TodayRecords from './pages/TodayRecords/TodayRecords';
+import Vehicles from './pages/Vehicles/Vehicles';
+import DriverSchedule from './pages/DriverSchedule/DriverSchedule';
+import ActiveDrivers from './pages/ActiveDrivers/ActiveDrivers';
+import SupportLog from './pages/SupportLog/SupportLog';
+import CompanyManagement from './pages/CompanyManagement/CompanyManagement';
 import Layout from './components/layout/Layout';
 import { ToastProvider } from './context/ToastContext';
 import { ThemeProvider } from './context/ThemeContext';
 import './index.css';
 
-const isAuthenticated = () => !!localStorage.getItem('token');
+const isAuthenticated = () => !!localStorage.getItem('user');
 
 const getStoredUser = () => {
   try {
@@ -123,6 +124,10 @@ function App() {
             <Route 
               path="/support" 
               element={<ProtectedRoute><Layout><SupportLog /></Layout></ProtectedRoute>} 
+            />
+            <Route 
+              path="/companies" 
+              element={<ProtectedRoute><Layout><CompanyManagement /></Layout></ProtectedRoute>} 
             />
           </Routes>
         </Router>

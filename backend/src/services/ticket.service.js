@@ -38,8 +38,11 @@ const getDriverSchedule = async (driverName, isAdmin) => {
   });
 };
 
-const getTicketById = async (id) => {
-  return await prisma.tripTicket.findUnique({
+/**
+ * Defense-in-depth: requestingUser is passed from the controller.
+ */
+const getTicketById = async (id, requestingUser) => {
+  const ticket = await prisma.tripTicket.findUnique({
     where: { id: parseInt(id) },
     include: { 
       author: { select: { name: true, avatarUrl: true, company: true } },
@@ -52,6 +55,21 @@ const getTicketById = async (id) => {
       guardInUser: { select: { name: true } }
     }
   });
+
+  if (!ticket) return null;
+
+  if (requestingUser) {
+    const isAdmin = requestingUser.role === 'Admin';
+    const isAuthor = ticket.authorId === requestingUser.id;
+    const hasFlag = !!(requestingUser.canApproveTripTicket || requestingUser.canEndorse || requestingUser.canApprove || requestingUser.role === 'Guard');
+    if (!isAdmin && !isAuthor && !hasFlag) {
+      const err = new Error('Access denied: insufficient permissions.');
+      err.statusCode = 403;
+      throw err;
+    }
+  }
+
+  return ticket;
 };
 
 const deleteTicket = async (id) => {

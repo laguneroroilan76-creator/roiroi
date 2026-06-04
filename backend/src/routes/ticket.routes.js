@@ -1,22 +1,22 @@
 const express = require('express');
 const router = express.Router();
-const ticketController = require('../controllers/ticket.controller');
+const { createTicket, getTickets, getTicketById, updateTicket, deleteTicket, getDriverSchedule, checkOccupancy, endorseTicket, approveTicket, rejectTicket, cancelTicket } = require('../controllers/ticket.controller');
 const { authenticateToken } = require('../middleware/auth.middleware');
-const { verifyOwnershipOrRole } = require('../middleware/authz.middleware');
+const { sanitizePayload } = require('../middleware/sanitizePayload.middleware');
+const { verifyOwnershipOrRole } = require('../middleware/idor.middleware');
 
-router.use(authenticateToken);
-
-router.post('/', ticketController.createTicket);
-router.get('/', ticketController.getTickets);
-router.get('/schedule/driver', ticketController.getDriverSchedule);
-router.get('/check-occupancy', ticketController.checkOccupancy);
-router.get('/:id', ticketController.getTicketById);
-router.put('/:id', verifyOwnershipOrRole('TripTicket', ['Admin', 'Approver', 'Guard']), ticketController.updateTicket);
-router.delete('/:id', verifyOwnershipOrRole('TripTicket', ['Admin']), ticketController.deleteTicket);
+router.post('/', authenticateToken, sanitizePayload, createTicket);
+router.get('/', authenticateToken, getTickets);
+router.get('/schedule/driver', authenticateToken, getDriverSchedule);
+router.get('/check-occupancy', authenticateToken, checkOccupancy);
+router.get('/:id', authenticateToken, verifyOwnershipOrRole('tripTicket'), getTicketById);
+router.put('/:id', authenticateToken, verifyOwnershipOrRole('tripTicket'), sanitizePayload, updateTicket);
+router.delete('/:id', authenticateToken, verifyOwnershipOrRole('tripTicket'), deleteTicket);
 
 // State Machine Workflow Endpoints
-router.post('/:id/endorse', verifyOwnershipOrRole('TripTicket', ['Admin', 'Approver']), ticketController.endorseTicket);
-router.post('/:id/approve', verifyOwnershipOrRole('TripTicket', ['Admin', 'Approver']), ticketController.approveTicket);
-router.post('/:id/reject', verifyOwnershipOrRole('TripTicket', ['Admin', 'Approver']), ticketController.rejectTicket);
+router.post('/:id/cancel', authenticateToken, cancelTicket);
+router.post('/:id/endorse', authenticateToken, verifyOwnershipOrRole('tripTicket'), endorseTicket);
+router.post('/:id/approve', authenticateToken, verifyOwnershipOrRole('tripTicket'), approveTicket);
+router.post('/:id/reject', authenticateToken, verifyOwnershipOrRole('tripTicket'), rejectTicket);
 
 module.exports = router;
