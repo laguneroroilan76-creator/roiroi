@@ -26,7 +26,7 @@ model AuditTrail {
   userId     Int
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   action     String   // CREATE, UPDATE, APPROVE, REJECT, DELETE
-  tableName  String   // Prf, Rrf, TripTicket
+  tableName  String   // Prf, Rfp, TripTicket
   recordId   Int
   oldValues  Json?    // Snapshot of record BEFORE mutation
   newValues  Json?    // Snapshot of record AFTER mutation
