@@ -34,13 +34,13 @@ export default function Sidebar({ isOpen, onClose, isCollapsed }) {
   }
 
   const isActive = (path) => location.pathname === path;
-  const isGuard = user?.role === 'Guard';
-  const isAdmin = user?.role === 'Admin';
-  const isDriver = user?.role === 'Driver';
-  const isAccounting = user?.role === 'Accounting';
+  const isGuard = user?.role?.toLowerCase() === 'guard';
+  const isAdmin = user?.role?.toLowerCase() === 'admin';
+  const isDriver = user?.role?.toLowerCase() === 'driver';
+  const isAccounting = user?.role?.toLowerCase() === 'accounting';
 
   const canView = (module) => {
-    if (isAdmin || user?.role === 'IT') return true;
+    if (isAdmin || user?.role?.toLowerCase() === 'it') return true;
     
     // Sensitive modules require explicit 'true' permission if not Admin/IT
     if (['archived', 'vehicles', 'users'].includes(module)) {
