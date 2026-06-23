@@ -2,9 +2,43 @@ const ticketService = require('../services/ticket.service');
 const activityService = require('../services/activity.service');
 const { createNotification } = require('./notification.controller');
 const prisma = require('../config/database');
-const { ticketCreateBodySchema } = require('../utils/validation');
+const { ticketCreateBodySchema, validateTripTicketDates } = require('../utils/validation');
 const auditService = require('../services/audit.service');
 const { transition } = require('../workflow/workflow.engine');
+
+const normalizePassengerValue = (value) => {
+  if (value === undefined || value === null || value === '') return 0;
+  const parsed = parseInt(value, 10);
+  if (Number.isNaN(parsed) || parsed < 0) return null;
+  return parsed;
+};
+
+const getVehicleCapacityLimit = async (vehicleName) => {
+  if (!vehicleName) return null;
+  const vehicle = await prisma.vehicle.findFirst({ where: { name: vehicleName } });
+  if (!vehicle || vehicle.capacity == null) return null;
+  return Math.max(0, vehicle.capacity - 1);
+};
+
+const ensurePassengerCountAndCapacity = async (data, existingData = {}) => {
+  const hdi = normalizePassengerValue(data.hdiPassengers ?? existingData.hdiPassengers);
+  const outside = normalizePassengerValue(data.outsidePassengers ?? existingData.outsidePassengers);
+  if (hdi === null || outside === null) {
+    throw buildValidationError([{ path: ['passengers'], message: 'Passenger counts must be non-negative whole numbers.' }]);
+  }
+
+  data.hdiPassengers = String(hdi);
+  data.outsidePassengers = String(outside);
+  data.passengerCount = String(hdi + outside);
+
+  const vehicleName = data.vehicle ?? existingData.vehicle;
+  if (vehicleName) {
+    const maxPassengers = await getVehicleCapacityLimit(vehicleName);
+    if (maxPassengers !== null && hdi + outside > maxPassengers) {
+      throw buildValidationError([{ path: ['vehicle'], message: `Vehicle capacity exceeded. Selected vehicle can carry up to ${maxPassengers} passenger(s) excluding the driver.` }]);
+    }
+  }
+};
 
 const sanitizePayload = async (payload, reqUser) => {
   const data = { ...payload };
@@ -47,11 +81,21 @@ const sanitizePayload = async (payload, reqUser) => {
   return data;
 };
 
+const buildValidationError = (errors) => {
+  const error = new Error(errors.map(err => `${err.path.join('.')}: ${err.message}`).join(', '));
+  error.statusCode = 400;
+  return error;
+};
+
 const createTicket = async (req, res) => {
   try {
     const validatedBody = ticketCreateBodySchema.parse(req.body);
+    const validationErrors = validateTripTicketDates(validatedBody);
+    if (validationErrors.length) throw buildValidationError(validationErrors);
     const sanitizedData = await sanitizePayload(validatedBody, req.user);
     sanitizedData.authorId = req.user.id;
+    sanitizedData.requestedById = req.user.id;
+    await ensurePassengerCountAndCapacity(sanitizedData);
 
     // Prevent non-Guard users from setting guard-only or actual travel log fields on create
     const guardedFields = ['kmOut', 'kmIn', 'guardOutId', 'guardInId', 'dateTimeDeparture', 'dateTimeReturn'];
@@ -71,6 +115,7 @@ const createTicket = async (req, res) => {
     await createNotification({ message: `${req.user.name || 'A user'} submitted a new Trip Ticket`, type: 'NEW_TRIPTICKET', targetRole: 'TripTicket_Approver', link: '/forms/tripticket' });
     res.status(201).json(ticket);
   } catch (err) {
+    if (err.name === 'ZodError' || err.statusCode === 400) return res.status(400).json({ error: err.message });
     console.error(err); res.status(500).json({ error: err.message });
   }
 };
@@ -91,6 +136,7 @@ const getTicketById = async (req, res) => {
     if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
     res.json(ticket);
   } catch (err) {
+    if (err.name === 'ZodError' || err.statusCode === 400) return res.status(400).json({ error: err.message });
     if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
     console.error(err); res.status(500).json({ error: err.message });
   }
@@ -100,11 +146,15 @@ const updateTicket = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const validatedBody = ticketCreateBodySchema.parse(req.body);
+    const validationErrors = validateTripTicketDates(validatedBody);
+    if (validationErrors.length) throw buildValidationError(validationErrors);
     const sanitizedData = await sanitizePayload(validatedBody, req.user);
+    delete sanitizedData.requestedById;
 
     // Get the existing ticket to check status and permissions
     const existingTicket = await prisma.tripTicket.findUnique({ where: { id } });
     if (!existingTicket) return res.status(404).json({ error: 'Ticket not found' });
+    await ensurePassengerCountAndCapacity(sanitizedData, existingTicket);
 
     // If ticket is ARRIVED, no one can edit
     if (existingTicket.status === 'ARRIVED') {
@@ -154,6 +204,7 @@ const updateTicket = async (req, res) => {
 
     res.json(ticket);
   } catch (err) {
+    if (err.name === 'ZodError' || err.statusCode === 400) return res.status(400).json({ error: err.message });
     console.error(err); res.status(500).json({ error: err.message });
   }
 };
@@ -225,6 +276,8 @@ const endorseTicket = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const validatedBody = Object.keys(req.body).length > 0 ? ticketCreateBodySchema.parse(req.body) : {};
+    const validationErrors = validateTripTicketDates(validatedBody);
+    if (validationErrors.length) throw buildValidationError(validationErrors);
     const sanitizedData = await sanitizePayload(validatedBody, req.user);
 
     const guardedFields = ['kmOut', 'kmIn', 'guardOutId', 'guardInId', 'dateTimeDeparture', 'dateTimeReturn'];
@@ -261,7 +314,7 @@ const endorseTicket = async (req, res) => {
     });
     res.json(updated);
   } catch (err) {
-    if (err.name === 'ZodError') return res.status(400).json({ error: formatZodErrors(err) });
+    if (err.name === 'ZodError' || err.statusCode === 400) return res.status(400).json({ error: err.message });
     console.error(err); res.status(500).json({ error: err.message });
   }
 };
@@ -270,6 +323,8 @@ const approveTicket = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const validatedBody = Object.keys(req.body).length > 0 ? ticketCreateBodySchema.parse(req.body) : {};
+    const validationErrors = validateTripTicketDates(validatedBody);
+    if (validationErrors.length) throw buildValidationError(validationErrors);
     const sanitizedData = await sanitizePayload(validatedBody, req.user);
 
     const guardedFields = ['kmOut', 'kmIn', 'guardOutId', 'guardInId', 'dateTimeDeparture', 'dateTimeReturn'];
@@ -306,7 +361,7 @@ const approveTicket = async (req, res) => {
     });
     res.json(updated);
   } catch (err) {
-    if (err.name === 'ZodError') return res.status(400).json({ error: formatZodErrors(err) });
+    if (err.name === 'ZodError' || err.statusCode === 400) return res.status(400).json({ error: err.message });
     console.error(err); res.status(500).json({ error: err.message });
   }
 };
@@ -315,6 +370,8 @@ const rejectTicket = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const validatedBody = Object.keys(req.body).length > 0 ? ticketCreateBodySchema.parse(req.body) : {};
+    const validationErrors = validateTripTicketDates(validatedBody);
+    if (validationErrors.length) throw buildValidationError(validationErrors);
     const sanitizedData = await sanitizePayload(validatedBody, req.user);
 
     const guardedFields = ['kmOut', 'kmIn', 'guardOutId', 'guardInId', 'dateTimeDeparture', 'dateTimeReturn'];
@@ -352,7 +409,7 @@ const rejectTicket = async (req, res) => {
     });
     res.json(updated);
   } catch (err) {
-    if (err.name === 'ZodError') return res.status(400).json({ error: formatZodErrors(err) });
+    if (err.name === 'ZodError' || err.statusCode === 400) return res.status(400).json({ error: err.message });
     console.error(err); res.status(500).json({ error: err.message });
   }
 };

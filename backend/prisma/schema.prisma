@@ -317,6 +317,7 @@ model Vehicle {
   transmission  String?
   engineNumber  String?
   chassisNumber String?
+  capacity      Int
   status        String   @default("Active")
   createdAt     DateTime @default(now())
   @@map("vehicle")

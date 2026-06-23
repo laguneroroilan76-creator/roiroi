@@ -157,6 +157,36 @@ const formatZodErrors = (error) => {
   return error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join(', ');
 };
 
+const parseLocalDateOnly = (dateString) => {
+  if (!dateString || typeof dateString !== 'string') return null;
+  const datePart = dateString.split('T')[0];
+  const parts = datePart.split('-').map(Number);
+  if (parts.length !== 3 || parts.some((value) => !Number.isInteger(value))) return null;
+  const [year, month, day] = parts;
+  return new Date(year, month - 1, day);
+};
+
+const isPastLocalDate = (dateString) => {
+  const dateOnly = parseLocalDateOnly(dateString);
+  if (!dateOnly) return false;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return dateOnly < today;
+};
+
+const validateTripTicketDates = (data) => {
+  const errors = [];
+  if (data.dateRequested && isPastLocalDate(data.dateRequested)) {
+    errors.push({ path: ['dateRequested'], message: 'You cannot select a past date for Date Requested.' });
+  }
+  if (data.etdOffice && isPastLocalDate(data.etdOffice)) {
+    errors.push({ path: ['etdOffice'], message: 'You cannot select a past date for ETD.' });
+  }
+  if (data.etaDestination && isPastLocalDate(data.etaDestination)) {
+    errors.push({ path: ['etaDestination'], message: 'You cannot select a past date for ETA.' });
+  }
+  return errors;
+};
 
 module.exports = {
   validatePassword,
@@ -167,5 +197,6 @@ module.exports = {
   ticketCreateBodySchema,
   supportTicketCreateSchema,
   supportTicketUpdateSchema,
-  formatZodErrors
+  formatZodErrors,
+  validateTripTicketDates
 };

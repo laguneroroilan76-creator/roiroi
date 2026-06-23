@@ -27,39 +27,51 @@ export default function TripTicketForm() {
   const [occupiedVehicles, setOccupiedVehicles] = useState([]);
   const [companies, setCompanies] = useState([]);
 
-  const getDefaultFormData = () => ({
-    dateRequested: new Date().toISOString().split('T')[0],
-    requestorName: user?.name || '',
-    company: location.state?.initialData?.company || user?.company || '',
-    subsidiary: '',
-    driver: '',
-    vehicle: '',
-    plateNumber: '',
-    etdOffice: '',
-    etaDestination: '',
-    dateTimeDeparture: '',
-    dateTimeReturn: '',
-    passengerCount: '',
-    hdiPassengers: '',
-    outsidePassengers: '',
-    passengersDetail: '',
-    destination: '',
-    purpose: '',
-    medium: '',
-    requestedBy: user?.name || '',
-    endorsedBy: '',
-    approvedBy: '',
-    kmOut: '',
-    kmIn: '',
-    guardOut: '',
-    guardIn: '',
-    ...location.state?.initialData,
-    requestedBy: location.state?.initialData?.requestedBy?.name || location.state?.initialData?.requestedBy || user?.name || "",
-    endorsedBy: location.state?.initialData?.endorsedBy?.name || location.state?.initialData?.endorsedBy || "",
-    approvedBy: location.state?.initialData?.approvedBy?.name || location.state?.initialData?.approvedBy || "",
-    guardOut: location.state?.initialData?.guardOutUser?.name || location.state?.initialData?.guardOut || "",
-    guardIn: location.state?.initialData?.guardInUser?.name || location.state?.initialData?.guardIn || ""
-  });
+  const getDefaultFormData = () => {
+    const requestedBy = initialData?.requestedBy?.name || initialData?.requestedBy || user?.name || '';
+    const endorsedBy = initialData?.endorsedBy?.name || initialData?.endorsedBy || '';
+    const approvedBy = initialData?.approvedBy?.name || initialData?.approvedBy || '';
+    const guardOut = initialData?.guardOutUser?.name || initialData?.guardOut || '';
+    const guardIn = initialData?.guardInUser?.name || initialData?.guardIn || '';
+
+    const defaults = {
+      dateRequested: new Date().toISOString().split('T')[0],
+      requestorName: user?.name || '',
+      company: initialData?.company || user?.company || '',
+      subsidiary: '',
+      driver: '',
+      vehicle: '',
+      plateNumber: '',
+      etdOffice: '',
+      etaDestination: '',
+      dateTimeDeparture: '',
+      dateTimeReturn: '',
+      passengerCount: '',
+      hdiPassengers: '',
+      outsidePassengers: '',
+      passengersDetail: '',
+      destination: '',
+      purpose: '',
+      medium: '',
+      requestedBy: user?.name || '',
+      endorsedBy: '',
+      approvedBy: '',
+      kmOut: '',
+      kmIn: '',
+      guardOut: '',
+      guardIn: ''
+    };
+
+    const merged = initialData ? { ...defaults, ...initialData } : defaults;
+
+    merged.requestedBy = requestedBy;
+    merged.endorsedBy = endorsedBy;
+    merged.approvedBy = approvedBy;
+    merged.guardOut = guardOut;
+    merged.guardIn = guardIn;
+
+    return merged;
+  };
 
   const [formData, setFormData] = useState(getDefaultFormData());
 
@@ -67,6 +79,28 @@ export default function TripTicketForm() {
     setFormData(getDefaultFormData());
     setStatus(location.state?.initialData?.status || 'Pending');
   }, [location.state]);
+
+  const parsePassengerValue = (value) => {
+    if (value === undefined || value === null || value === '') return 0;
+    const parsed = parseInt(value, 10);
+    return Number.isNaN(parsed) || parsed < 0 ? 0 : parsed;
+  };
+
+  const selectedVehicle = vehicles.find(v => v.name === formData.vehicle);
+  const vehicleCapacityLimit = selectedVehicle && Number.isInteger(selectedVehicle.capacity)
+    ? Math.max(0, selectedVehicle.capacity - 1)
+    : null;
+
+  useEffect(() => {
+    const hdi = parsePassengerValue(formData.hdiPassengers);
+    const outside = parsePassengerValue(formData.outsidePassengers);
+    const total = hdi + outside;
+
+    setFormData((prev) => {
+      if (prev.passengerCount === String(total)) return prev;
+      return { ...prev, passengerCount: String(total) };
+    });
+  }, [formData.hdiPassengers, formData.outsidePassengers]);
 
   const isCompleted = !!(formData.dateTimeDeparture && formData.dateTimeReturn);
 
@@ -160,15 +194,56 @@ export default function TripTicketForm() {
     if (name === 'vehicle') {
       const selectedVehicle = vehicles.find(v => v.name === value);
       setFormData(prev => ({ ...prev, vehicle: value, plateNumber: selectedVehicle ? selectedVehicle.plateNumber : prev.plateNumber }));
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
+      return;
     }
+
+    if (name === 'hdiPassengers' || name === 'outsidePassengers') {
+      const normalized = value === '' ? '' : String(Math.max(0, parseInt(value, 10) || 0));
+      setFormData(prev => ({ ...prev, [name]: normalized }));
+      return;
+    }
+
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const isDateInPast = (dateTimeValue) => {
+    if (!dateTimeValue) return false;
+    const localDate = dateTimeValue.split('T')[0];
+    const today = new Date().toISOString().split('T')[0];
+    return localDate < today;
   };
 
   const handleSave = async () => {
     try {
+      if (!isGuard) {
+        if (isDateInPast(formData.dateRequested)) {
+          showToast('You cannot select a past date for Date Requested.', 'error');
+          return;
+        }
+        if (isDateInPast(formData.etdOffice)) {
+          showToast('You cannot select a past date for ETD.', 'error');
+          return;
+        }
+        if (isDateInPast(formData.etaDestination)) {
+          showToast('You cannot select a past date for ETA.', 'error');
+          return;
+        }
+      }
+
+      const hdi = parsePassengerValue(formData.hdiPassengers);
+      const outside = parsePassengerValue(formData.outsidePassengers);
+      const totalPassengers = hdi + outside;
+      if (selectedVehicle && Number.isInteger(selectedVehicle.capacity)) {
+        const maxAllowed = Math.max(0, selectedVehicle.capacity - 1);
+        if (totalPassengers > maxAllowed) {
+          showToast(`Selected vehicle can carry at most ${maxAllowed} passengers excluding driver.`, 'error');
+          return;
+        }
+      }
+
       const now = new Date().toLocaleString('sv').replace(' ', 'T').slice(0, 16);
       let payload = { ...formData };
+      payload.passengerCount = String(totalPassengers);
       delete payload.status;
 
       if (isGuard) {
@@ -374,6 +449,7 @@ export default function TripTicketForm() {
           guards={guards}
           companies={companies}
           user={user}
+          vehicleCapacityLimit={vehicleCapacityLimit}
         />
       </div>
 

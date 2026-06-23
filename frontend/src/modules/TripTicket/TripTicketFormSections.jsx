@@ -12,6 +12,16 @@ const formatDateTime = (dateStr) => {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
+const getLocalDateString = (date = new Date()) => {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getLocalDateTimeMin = () => `${getLocalDateString()}T00:00`;
+
 export const FormHeader = ({ status, formData, user, companies = [] }) => {
   const isOngoing = status === 'Approved' && !!formData?.dateTimeDeparture && (!formData?.dateTimeReturn || formData.dateTimeReturn === "");
   const isCompleted = status === 'Approved' && !!formData?.dateTimeDeparture && !!formData?.dateTimeReturn && formData.dateTimeReturn !== "";
@@ -68,7 +78,7 @@ export const GeneralInfo = ({ formData, handleChange, isFieldDisabled, isReadOnl
     <div className="grid-2">
       <div className="form-group">
         <label>Date Requested</label>
-        <input type="date" name="dateRequested" value={formData.dateRequested} onChange={handleChange} disabled={isFieldDisabled('dateRequested', isReadOnly)} />
+        <input type="date" name="dateRequested" value={formData.dateRequested} onChange={handleChange} disabled={isFieldDisabled('dateRequested', isReadOnly)} min={getLocalDateString()} />
       </div>
       <div className="form-group">
         <label>Company</label>
@@ -93,7 +103,7 @@ export const GeneralInfo = ({ formData, handleChange, isFieldDisabled, isReadOnl
   </div>
 );
 
-export const TravelDetails = ({ formData, handleChange, isFieldDisabled, isReadOnly }) => (
+export const TravelDetails = ({ formData, handleChange, isFieldDisabled, isReadOnly, vehicleCapacityLimit }) => (
   <div className="form-section">
     <h3 className="section-title">Travel Details</h3>
     <div className="grid-2">
@@ -113,7 +123,7 @@ export const TravelDetails = ({ formData, handleChange, isFieldDisabled, isReadO
     <div className="grid-3 mt-3">
       <div className="form-group">
         <label>Number of Passenger</label>
-        <input type="number" min="0" name="passengerCount" value={formData.passengerCount} onChange={handleChange} disabled={isFieldDisabled('passengerCount', isReadOnly)} placeholder={isFieldDisabled('passengerCount', isReadOnly) ? "" : "Total passengers"} />
+        <input type="number" min="0" name="passengerCount" value={formData.passengerCount} readOnly disabled placeholder="Total passengers" />
       </div>
       <div className="form-group">
         <label>HDI Passengers</label>
@@ -124,6 +134,11 @@ export const TravelDetails = ({ formData, handleChange, isFieldDisabled, isReadO
         <input type="number" min="0" name="outsidePassengers" value={formData.outsidePassengers} onChange={handleChange} disabled={isFieldDisabled('outsidePassengers', isReadOnly)} placeholder={isFieldDisabled('outsidePassengers', isReadOnly) ? "" : "No. of external clients"} />
       </div>
     </div>
+    <p className="field-note" style={{ fontSize: '0.85rem', marginTop: '0.75rem', color: '#475569' }}>
+      {vehicleCapacityLimit !== null
+        ? `Selected vehicle can carry up to ${vehicleCapacityLimit} passenger(s) excluding the driver.`
+        : 'Passenger total is calculated from HDI and external passenger counts.'}
+    </p>
     <div className="form-group mt-3">
       <label>Passengers Names</label>
       <textarea name="passengersDetail" value={formData.passengersDetail} onChange={handleChange} disabled={isFieldDisabled('passengersDetail', isReadOnly)} placeholder={isFieldDisabled('passengersDetail', isReadOnly) ? "" : "Names of all passengers"} rows="2"></textarea>
@@ -205,11 +220,11 @@ export const LogisticsSection = ({ formData, handleChange, isFieldDisabled, isRe
         <h4>Planned Schedule</h4>
         <div className="form-group">
           <label>ETD (Estimated Time of Departure)</label>
-          <input type="datetime-local" name="etdOffice" value={formatDateTime(formData.etdOffice)} onChange={handleChange} disabled={isFieldDisabled('etdOffice', isReadOnly)} />
+          <input type="datetime-local" name="etdOffice" value={formatDateTime(formData.etdOffice)} onChange={handleChange} disabled={isFieldDisabled('etdOffice', isReadOnly)} min={getLocalDateTimeMin()} />
         </div>
         <div className="form-group mt-3">
           <label>ETA (Estimated Time of Arrival)</label>
-          <input type="datetime-local" name="etaDestination" value={formatDateTime(formData.etaDestination)} onChange={handleChange} disabled={isFieldDisabled('etaDestination', isReadOnly)} />
+          <input type="datetime-local" name="etaDestination" value={formatDateTime(formData.etaDestination)} onChange={handleChange} disabled={isFieldDisabled('etaDestination', isReadOnly)} min={getLocalDateTimeMin()} />
         </div>
       </div>
       <div className="schedule-box actual-log">

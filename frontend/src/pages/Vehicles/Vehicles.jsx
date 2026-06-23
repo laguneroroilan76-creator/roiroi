@@ -19,6 +19,7 @@ export default function Vehicles() {
     transmission: '',
     engineNumber: '',
     chassisNumber: '',
+    capacity: '',
     status: 'Active'
   });
   const { showToast } = useToast();
@@ -54,6 +55,7 @@ export default function Vehicles() {
         transmission: vehicle.transmission || '',
         engineNumber: vehicle.engineNumber || '',
         chassisNumber: vehicle.chassisNumber || '',
+        capacity: vehicle.capacity != null ? String(vehicle.capacity) : '',
         status: vehicle.status || 'Active'
       });
     } else {
@@ -69,6 +71,7 @@ export default function Vehicles() {
         transmission: '',
         engineNumber: '',
         chassisNumber: '',
+        capacity: '',
         status: 'Active'
       });
     }
@@ -143,8 +146,8 @@ export default function Vehicles() {
                 </td>
                 <td>
                   <div className="spec-info">
-                    <span>{vehicle.color || 'N/A'}</span>
-                    <small>{vehicle.fuelType} | {vehicle.transmission}</small>
+                    <span>{vehicle.capacity != null ? `${vehicle.capacity} seats` : 'N/A'}</span>
+                    <small>{vehicle.color || 'N/A'} · {vehicle.fuelType || 'N/A'} | {vehicle.transmission || 'N/A'}</small>
                   </div>
                 </td>
                 <td>
@@ -183,7 +186,7 @@ export default function Vehicles() {
 
             <form onSubmit={handleSubmit} className="vehicle-form">
               <div className="form-grid">
-                {/* Basic Info */}
+                {/* Identity Section */}
                 <div className="form-section">
                   <h3 className="section-title">Identity</h3>
                   <div className="input-group">
@@ -196,6 +199,7 @@ export default function Vehicles() {
                       required
                     />
                   </div>
+
                   <div className="input-group">
                     <label>Plate Number</label>
                     <input
@@ -206,34 +210,52 @@ export default function Vehicles() {
                       required
                     />
                   </div>
-                </div>
 
-                {/* Technical Specs */}
-                <div className="form-section">
-                  <h3 className="section-title">Specifications</h3>
-                  <div className="input-row">
-                    <div className="input-group">
-                      <label>Brand</label>
-                      <input type="text" value={formData.brand} placeholder="Toyota" onChange={(e) => setFormData({ ...formData, brand: e.target.value })} />
-                    </div>
-                    <div className="input-group">
-                      <label>Model</label>
-                      <input type="text" value={formData.model} placeholder="Hilux" onChange={(e) => setFormData({ ...formData, model: e.target.value })} />
-                    </div>
+                  <div className="input-group">
+                    <label>Seating Capacity</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={formData.capacity}
+                      placeholder="e.g. 5"
+                      onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
+                      required
+                    />
                   </div>
+
+                  <div className="input-group">
+                    <label>Model</label>
+                    <input
+                      type="text"
+                      value={formData.model}
+                      placeholder="Hilux"
+                      onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+                    />
+                  </div>
+
                   <div className="input-row">
                     <div className="input-group">
                       <label>Year</label>
-                      <input type="text" value={formData.year} placeholder="2023" onChange={(e) => setFormData({ ...formData, year: e.target.value })} />
+                      <input
+                        type="text"
+                        value={formData.year}
+                        placeholder="2023"
+                        onChange={(e) => setFormData({ ...formData, year: e.target.value })}
+                      />
                     </div>
                     <div className="input-group">
                       <label>Color</label>
-                      <input type="text" value={formData.color} placeholder="Metallic Silver" onChange={(e) => setFormData({ ...formData, color: e.target.value })} />
+                      <input
+                        type="text"
+                        value={formData.color}
+                        placeholder="Metallic Silver"
+                        onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                      />
                     </div>
                   </div>
                 </div>
 
-                {/* Performance */}
+                {/* Performance Section */}
                 <div className="form-section">
                   <h3 className="section-title">Performance & Parts</h3>
                   <div className="input-row">
@@ -256,18 +278,30 @@ export default function Vehicles() {
                       </select>
                     </div>
                   </div>
+
                   <div className="input-row">
                     <div className="input-group">
                       <label>Engine Number</label>
-                      <input type="text" value={formData.engineNumber} placeholder="ENG-XXXXXX" onChange={(e) => setFormData({ ...formData, engineNumber: e.target.value })} />
+                      <input
+                        type="text"
+                        value={formData.engineNumber}
+                        placeholder="ENG-XXXXXX"
+                        onChange={(e) => setFormData({ ...formData, engineNumber: e.target.value })}
+                      />
                     </div>
                     <div className="input-group">
                       <label>Chassis Number</label>
-                      <input type="text" value={formData.chassisNumber} placeholder="CHS-XXXXXX" onChange={(e) => setFormData({ ...formData, chassisNumber: e.target.value })} />
+                      <input
+                        type="text"
+                        value={formData.chassisNumber}
+                        placeholder="CHS-XXXXXX"
+                        onChange={(e) => setFormData({ ...formData, chassisNumber: e.target.value })}
+                      />
                     </div>
                   </div>
                 </div>
 
+                {/* Availability Section */}
                 <div className="form-section">
                   <h3 className="section-title">Availability</h3>
                   <div className="input-group">

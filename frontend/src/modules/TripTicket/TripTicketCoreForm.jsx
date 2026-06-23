@@ -21,7 +21,8 @@ export default function TripTicketCoreForm({
   occupiedVehicles, 
   guards, 
   companies,
-  user 
+  user,
+  vehicleCapacityLimit
 }) {
   return (
     <div className="form-container">
@@ -38,6 +39,7 @@ export default function TripTicketCoreForm({
           handleChange={handleChange} 
           isFieldDisabled={isFieldDisabled} 
           isReadOnly={isReadOnly} 
+          vehicleCapacityLimit={vehicleCapacityLimit}
         />
         <FleetAssignment 
           formData={formData} 
