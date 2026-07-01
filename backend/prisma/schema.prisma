@@ -238,7 +238,15 @@ model User {
   role         UserRole      @default(User)
   status       String        @default("Active")
   inactiveReason String?     @db.Text
-  company      String?
+  companyId    Int?
+  company      Company?      @relation(fields: [companyId], references: [id])
+  departmentId Int?
+  department   Department?   @relation(fields: [departmentId], references: [id])
+  departmentRole DepartmentRole?
+  isDriver     Boolean       @default(false)
+  isRFPApprover Boolean      @default(false)
+  isSecurityGuard  Boolean  @default(false)
+  isITSpecialist   Boolean  @default(false)
   permissions  Json?
   
   // Backwards relations
@@ -320,6 +328,8 @@ model Vehicle {
   capacity      Int
   status        String   @default("Active")
   createdAt     DateTime @default(now())
+  companyId     Int?
+  company       Company?  @relation(fields: [companyId], references: [id])
   @@map("vehicle")
 }
 
@@ -360,12 +370,32 @@ enum UserRole {
   @@map("user_role")
 }
 
+enum DepartmentRole {
+  President
+  DepartmentHead
+  Staff
+  @@map("department_role")
+}
+
+model Department {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  isAdmin   Boolean  @default(false)
+  status    String   @default("Active")
+  createdAt DateTime @default(now())
+  users     User[]
+
+  @@map("department")
+}
+
 model Company {
   id        Int      @id @default(autoincrement())
   name      String   @unique
   logoUrl   String?
   status    String   @default("Active")
   createdAt DateTime @default(now())
+  users     User[]
+  vehicles  Vehicle[]
 
   @@map("company")
 }

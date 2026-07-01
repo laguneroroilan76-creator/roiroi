@@ -37,7 +37,7 @@ export default function TripTicketForm() {
     const defaults = {
       dateRequested: new Date().toISOString().split('T')[0],
       requestorName: user?.name || '',
-      company: initialData?.company || user?.company || '',
+      company: initialData?.company || user?.company?.name || '',
       subsidiary: '',
       driver: '',
       vehicle: '',

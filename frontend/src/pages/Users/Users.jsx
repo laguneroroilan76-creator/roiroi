@@ -16,12 +16,18 @@ export default function Users() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const [companies, setCompanies] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [formData, setFormData] = useState({
     name: '', email: '', password: '',
     canApprove: false, canApprovePRF: false,
     canApproveTripTicket: false, canApproveRFP: false,
     canApproveDeptHead: false, canEndorse: false, canVerify: false,
-    role: 'User', permissions: {}
+    role: 'User', permissions: {},
+    companyId: '', departmentId: '', departmentRole: '',
+    isDriver: false, isRFPApprover: false,
+    isSecurityGuard: false,
+    isITSpecialist: false
   });
   const [searchTerm, setSearchTerm] = useState('');
   const { showToast } = useToast();
@@ -30,6 +36,25 @@ export default function Users() {
 
   useEffect(() => {
     fetchUsers();
+
+    const fetchCompaniesAndDepartments = async () => {
+      try {
+        const [companiesRes, departmentsRes] = await Promise.all([
+          api.get('/companies'),
+          api.get('/departments')
+        ]);
+        setCompanies(companiesRes.data);
+        setDepartments(departmentsRes.data);
+        if (companiesRes.data.length === 1) {
+          setFormData((prev) => ({ ...prev, companyId: companiesRes.data[0].id }));
+        }
+      } catch (err) {
+        console.error('Error fetching companies/departments:', err);
+        showToast('Failed to load companies or departments.', 'error');
+      }
+    };
+
+    fetchCompaniesAndDepartments();
   }, []);
 
   const fetchUsers = async () => {
@@ -61,7 +86,14 @@ export default function Users() {
         role: user.role || 'User',
         permissions: typeof user.permissions === 'string'
           ? JSON.parse(user.permissions)
-          : (user.permissions || {})
+          : (user.permissions || {}),
+        companyId: user.companyId || '',
+        departmentId: user.departmentId || '',
+        departmentRole: user.departmentRole || '',
+        isDriver: user.isDriver || false,
+        isRFPApprover: user.isRFPApprover || false,
+        isSecurityGuard: user.isSecurityGuard || false,
+        isITSpecialist: user.isITSpecialist || false
       });
     } else {
       setEditingUser(null);
@@ -70,7 +102,11 @@ export default function Users() {
         canApprove: false, canApprovePRF: false,
         canApproveTripTicket: false, canApproveRFP: false,
         canApproveDeptHead: false, canEndorse: false, canVerify: false,
-        role: 'User', permissions: {}
+        role: 'User', permissions: {},
+        companyId: '', departmentId: '', departmentRole: '',
+        isDriver: false, isRFPApprover: false,
+        isSecurityGuard: false,
+        isITSpecialist: false
       });
     }
     setIsModalOpen(true);
@@ -297,38 +333,139 @@ export default function Users() {
                     </div>
                     <span className="um-hint">Min. 8 chars, 1 capital letter, and 1 special character.</span>
                   </div>
+                </div>
+                <div className="um-grid-2">
                   <div className="um-field">
-                    <label className="um-label">Primary System Role</label>
+                    <label className="um-label">Company</label>
                     <div className="um-select-wrap">
                       <select
                         className="um-select"
-                        value={formData.role}
-                        onChange={(e) => {
-                          const selectedRole = e.target.value;
-                          setFormData({
-                            ...formData,
-                            role: selectedRole,
-                            canApprove: ['Admin', 'Driver', 'Guard', 'Accounting'].includes(selectedRole) ? false : formData.canApprove
-                          });
-                        }}
+                        value={formData.companyId}
+                        disabled={formData.isSecurityGuard}
+                        onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
                       >
-                        <option value="User">Standard User</option>
-                        <option value="Admin">Administrator</option>
-                        <option value="Driver">Driver</option>
-                        <option value="Guard">Security</option>
-                        <option value="Accounting">Accounting</option>
-                        <option value="IT">IT Specialist</option>
+                        <option value="">Select Company</option>
+                        {companies.map((company) => (
+                          <option key={company.id} value={company.id}>{company.name}</option>
+                        ))}
                       </select>
                       <ChevronDown size={15} className="um-select-arrow" />
                     </div>
-                    {formData.role && (
-                      <p className="um-role-desc">{roleDescriptions[formData.role]}</p>
+                  </div>
+                  <div className="um-field">
+                    <label className="um-label">Department</label>
+                    <div className="um-select-wrap">
+                      <select
+                        className="um-select"
+                        value={formData.departmentId}
+                        disabled={formData.isSecurityGuard}
+                        onChange={(e) => {
+                          const selectedDepartmentId = e.target.value;
+                          const departmentName = departments.find((d) => d.id === Number(selectedDepartmentId))?.name;
+                          setFormData({
+                            ...formData,
+                            departmentId: selectedDepartmentId,
+                            isRFPApprover: departmentName === 'Accounting' ? formData.isRFPApprover : false,
+                            isITSpecialist: departmentName === 'Admin' ? formData.isITSpecialist : false
+                          });
+                        }}
+                      >
+                        <option value="">Select Department</option>
+                        {departments.map((department) => (
+                          <option key={department.id} value={department.id}>{department.name}</option>
+                        ))}
+                      </select>
+                      <ChevronDown size={15} className="um-select-arrow" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="um-grid-2">
+                  <div className="um-field">
+                    <label className="um-label">Department Role</label>
+                    <div className="um-select-wrap">
+                      <select
+                        className="um-select"
+                        value={formData.departmentRole}
+                        disabled={formData.isSecurityGuard}
+                        onChange={(e) => setFormData({ ...formData, departmentRole: e.target.value })}
+                      >
+                        <option value="">Select Role</option>
+                        <option value="President">President</option>
+                        <option value="DepartmentHead">Department Head</option>
+                        <option value="Staff">Staff</option>
+                      </select>
+                      <ChevronDown size={15} className="um-select-arrow" />
+                    </div>
+                  </div>
+                  <div className="um-field">
+                    <label className="um-master-toggle">
+                      <input
+                        type="checkbox"
+                        checked={formData.isDriver}
+                        disabled={formData.isSecurityGuard}
+                        onChange={(e) => setFormData({ ...formData, isDriver: e.target.checked })}
+                      />
+                      <span className={`um-toggle-track ${formData.isDriver ? 'active' : ''}`}>
+                        <span className="um-toggle-thumb" />
+                      </span>
+                      <span className="um-toggle-label">Driver</span>
+                    </label>
+                    <label className="um-master-toggle">
+                      <input
+                        type="checkbox"
+                        checked={formData.isSecurityGuard}
+                        onChange={e => setFormData({
+                          ...formData,
+                          isSecurityGuard: e.target.checked,
+                          ...(e.target.checked && {
+                            companyId: '',
+                            departmentId: '',
+                            departmentRole: '',
+                            isDriver: false,
+                          })
+                        })}
+                      />
+                      <span className={`um-toggle-track ${formData.isSecurityGuard ? 'active' : ''}`}>
+                        <span className="um-toggle-thumb" />
+                      </span>
+                      <span className="um-toggle-label">Security Guard</span>
+                    </label>
+                    {formData.isSecurityGuard && (
+                      <small style={{ display: 'block', marginTop: '0.5rem', color: 'var(--text-dim)' }}>
+                        Company, Department, and Department Role are not required for Security Guards.
+                      </small>
+                    )}
+                    {departments.find((d) => d.id === Number(formData.departmentId))?.name === 'Accounting' && (
+                      <label className="um-master-toggle" style={{ marginTop: '1rem' }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.isRFPApprover}
+                          onChange={(e) => setFormData({ ...formData, isRFPApprover: e.target.checked })}
+                        />
+                        <span className={`um-toggle-track ${formData.isRFPApprover ? 'active' : ''}`}>
+                          <span className="um-toggle-thumb" />
+                        </span>
+                        <span className="um-toggle-label">RFP Approver</span>
+                      </label>
+                    )}
+                    {departments.find((d) => d.id === Number(formData.departmentId))?.name === 'Admin' && (
+                      <label className="um-master-toggle" style={{ marginTop: '1rem' }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.isITSpecialist}
+                          onChange={(e) => setFormData({ ...formData, isITSpecialist: e.target.checked })}
+                        />
+                        <span className={`um-toggle-track ${formData.isITSpecialist ? 'active' : ''}`}>
+                          <span className="um-toggle-thumb" />
+                        </span>
+                        <span className="um-toggle-label">IT Specialist</span>
+                      </label>
                     )}
                   </div>
                 </div>
 
                 {/* SECTION 2 — Approvals */}
-                {(formData.role === 'User' || formData.role === 'Admin') && (
                   <>
                     <div className="um-divider" />
                     <div className="um-section-row">
@@ -441,10 +578,8 @@ export default function Users() {
                       </div>
                     </div>
                   </>
-                )}
 
                 {/* SECTION 3 — Module Access */}
-                {(formData.role === 'User' || formData.role === 'Admin') && (
                   <>
                     <div className="um-divider" />
                     <div className="um-section-label">
@@ -500,7 +635,6 @@ export default function Users() {
                       ))}
                     </div>
                   </>
-                )}
               </div>
 
               {/* ── STICKY FOOTER ── */}

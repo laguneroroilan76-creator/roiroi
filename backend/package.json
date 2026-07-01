@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "npx nodemon server.js",
-    "test": "jest"
+    "test": "jest",
+    "seed": "node prisma/seed.js"
   },
   "keywords": [],
   "author": "",
@@ -30,6 +31,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@express-rate-limit/tsconfig": "^1.0.5",
     "form-data": "^4.0.6",
     "jest": "^30.4.2",
     "multer": "^2.2.0",

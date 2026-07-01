@@ -232,9 +232,9 @@ export default function Profile() {
                 <span className={`role-badge ${user.role?.toLowerCase() || 'user'}`}>
                   {user.role || 'Standard User'}
                 </span>
-              ) : user.company ? (
+              ) : user.company?.name ? (
                 <span className="role-badge" style={{ backgroundColor: 'rgba(37, 99, 235, 0.08)', color: '#2563eb' }}>
-                  {user.company}
+                  {user.company?.name}
                 </span>
               ) : null}
             </div>
@@ -356,10 +356,10 @@ export default function Profile() {
                     <span className="value role-highlight">{user.role}</span>
                   </div>
                 )}
-                {user.company && (
+                {user.company?.name && (
                   <div className="read-row">
                     <span className="label">Company</span>
-                    <span className="value">{user.company}</span>
+                    <span className="value">{user.company?.name}</span>
                   </div>
                 )}
 

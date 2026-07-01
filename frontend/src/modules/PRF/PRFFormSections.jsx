@@ -1,7 +1,7 @@
 import React from 'react';
 
 export const FormHeader = ({ formData, handleChange, isFieldDisabled, user, companies = [] }) => {
-  const company = formData?.company || formData?.author?.company || user?.company;
+  const company = formData?.company || formData?.author?.company || user?.company?.name;
   const selectedCompany = companies.find(c => c.name === company);
   
   let logoSrc = "/HDI Primary Logo .png";

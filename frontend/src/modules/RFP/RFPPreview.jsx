@@ -60,7 +60,7 @@ export default function RFPPreview({ record, onClose, onActionComplete }) {
           <div className="rfp-header">
             <div className="rfp-logo-section">
               <img 
-                src={(formData?.company || formData?.author?.company || user?.company) === 'Adventures' ? "/Adventures_Logo.png" : (formData?.company || formData?.author?.company || user?.company) === 'Capital Growth' ? "/CGI_Logo.png" : "/HDI Primary Logo .png"} 
+                src={(formData?.company || formData?.author?.company || user?.company?.name) === 'Adventures' ? "/Adventures_Logo.png" : (formData?.company || formData?.author?.company || user?.company?.name) === 'Capital Growth' ? "/CGI_Logo.png" : "/HDI Primary Logo .png"}
                 alt="Company Logo" 
                 className="rfp-logo" 
                 style={{ height: '75px' }} 

@@ -23,6 +23,7 @@ const statsRoutes = require('./stats.routes');
 const auditRoutes = require('./audit.routes');
 const adminRoutes = require('./admin.routes');
 const companyRoutes = require('./company.routes');
+const departmentRoutes = require('./department.routes');
 
 // Apply general rate limit to all /api routes below this router
 router.use(generalApiLimiter);
@@ -43,5 +44,6 @@ router.use('/stats', statsRoutes);
 router.use('/audit', auditRoutes);
 router.use('/admin', adminRoutes);
 router.use('/companies', companyRoutes);
+router.use('/departments', departmentRoutes);
 
 module.exports = router;

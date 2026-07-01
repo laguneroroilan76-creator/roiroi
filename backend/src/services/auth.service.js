@@ -1,5 +1,5 @@
 const prisma = require('../config/database');
-const { sanitizeUser } = require('../utils/userUtils');
+const { sanitizeUser, deriveRole } = require('../utils/userUtils');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -25,17 +25,29 @@ const login = async (email, password) => {
 };
 
 const register = async (userData) => {
-  const normalizedRole = VALID_ROLES.includes(userData.role) ? userData.role : 'User';
-  const canApprove = normalizedRole === 'Admin' ? true : (normalizedRole === 'User' && !!userData.canApprove);
+  // Determine department name (if any) so we can derive role
+  let departmentName = null;
+  if (userData.departmentId) {
+    const dept = await prisma.department.findUnique({ where: { id: Number(userData.departmentId) } });
+    departmentName = dept?.name || null;
+  }
+
+  const derivedRole = deriveRole(departmentName, !!userData.isDriver, !!userData.isSecurityGuard, !!userData.isITSpecialist);
+  const canApprove = derivedRole === 'Admin' ? true : (derivedRole === 'User' && !!userData.canApprove);
   const hashedPassword = await bcrypt.hash(userData.password, 10);
   
   // Default permissions if none provided
   const permissions = userData.permissions || {};
 
+  // Normalize empty strings/undefined for relation fields to null
+  if (userData.companyId === '' || userData.companyId === undefined) userData.companyId = null;
+  if (userData.departmentId === '' || userData.departmentId === undefined) userData.departmentId = null;
+  if (userData.departmentRole === '' || userData.departmentRole === undefined) userData.departmentRole = null;
+
   const newUser = await prisma.user.create({
     data: {
       ...userData,
-      role: normalizedRole,
+      role: derivedRole,
       canApprove,
       permissions,
       password: hashedPassword

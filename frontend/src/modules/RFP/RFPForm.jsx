@@ -23,7 +23,7 @@ export default function RFPForm() {
       rfpNo: stateInitialData?.rfpNo || stateInitialData?.rfpNo || '',
       dateRequested: stateInitialData?.dateRequested || new Date().toISOString().split('T')[0],
       dateNeeded: stateInitialData?.dateNeeded || '',
-      company: stateInitialData?.company || user?.company || '',
+      company: stateInitialData?.company || user?.company?.name || '',
       chargeTo: stateInitialData?.chargeTo || '',
       releaseFundsTo: stateInitialData?.releaseFundsTo || '',
       amount: stateInitialData?.amount || '',
@@ -292,7 +292,7 @@ export default function RFPForm() {
               <div className="rfp-logo-section">
                 <img 
                   src={(() => {
-                    const compName = formData?.company || formData?.author?.company || user?.company;
+                    const compName = formData?.company || formData?.author?.company || user?.company?.name;
                     const selected = companies.find(c => c.name === compName);
                     if (selected?.logoUrl) return `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}${selected.logoUrl}`;
                     if (compName?.includes('Adventures')) return "/Adventures_Logo.png";

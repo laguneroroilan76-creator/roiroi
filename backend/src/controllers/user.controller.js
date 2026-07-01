@@ -3,6 +3,7 @@ const activityService = require('../services/activity.service');
 const imageUtils = require('../utils/image.js');
 const bcrypt = require('bcryptjs');
 const path = require('path');
+const prisma = require('../config/database');
 const { sanitizeUser } = require('../utils/userUtils');
 
 const getUsers = async (req, res) => {
@@ -116,8 +117,50 @@ const updateUserData = async (req, res) => {
       data.password = await bcrypt.hash(data.password, 10);
     }
 
-    // Remove company if it's in the data
-    delete data.company;
+    if (!data.isSecurityGuard) {
+      if (data.companyId !== undefined) {
+        if (data.companyId === null) {
+          data.companyId = null;
+        } else {
+          const companyId = parseInt(data.companyId, 10);
+          if (Number.isNaN(companyId)) {
+            return res.status(400).json({ error: 'Invalid company' });
+          }
+          const company = await prisma.company.findUnique({ where: { id: companyId } });
+          if (!company) return res.status(400).json({ error: 'Invalid company' });
+          data.companyId = companyId;
+        }
+      }
+
+      if (data.departmentId !== undefined) {
+        if (data.departmentId === null) {
+          data.departmentId = null;
+        } else {
+          const departmentId = parseInt(data.departmentId, 10);
+          if (Number.isNaN(departmentId)) {
+            return res.status(400).json({ error: 'Invalid department' });
+          }
+          const department = await prisma.department.findUnique({ where: { id: departmentId } });
+          if (!department) return res.status(400).json({ error: 'Invalid department' });
+          data.departmentId = departmentId;
+        }
+      }
+
+      if (data.departmentRole !== undefined) {
+        const validDepartmentRoles = ['President', 'DepartmentHead', 'Staff'];
+        if (!validDepartmentRoles.includes(data.departmentRole)) {
+          return res.status(400).json({ error: 'Invalid department role' });
+        }
+      }
+    }
+
+    if (data.isDriver !== undefined) {
+      data.isDriver = !!data.isDriver;
+    }
+
+    if (data.isRFPApprover !== undefined) {
+      data.isRFPApprover = !!data.isRFPApprover;
+    }
 
     // Only Admins can change roles — prevent canApprove users from privilege escalation
     if (data.role !== undefined && req.user.role !== 'Admin') {

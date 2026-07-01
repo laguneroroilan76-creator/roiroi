@@ -43,7 +43,7 @@ export default function PRFForm() {
       to: '',
       from: '',
       department: '',
-      company: user?.company || '',
+      company: user?.company?.name || '',
       remarks: '',
       preparedBy: user?.name || '',
       verifiedBy: '',

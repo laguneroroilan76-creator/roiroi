@@ -19,4 +19,13 @@ const sanitizeUser = (user) => {
   return sanitized;
 };
 
-module.exports = { sanitizeUser };
+function deriveRole(departmentName, isDriver, isSecurityGuard, isITSpecialist) {
+  if (isSecurityGuard) return 'Guard';
+  if (isDriver) return 'Driver';
+  if (departmentName === 'Admin' && isITSpecialist) return 'IT';
+  if (departmentName === 'Admin') return 'Admin';
+  if (departmentName === 'Accounting') return 'Accounting';
+  return 'User';
+}
+
+module.exports = { sanitizeUser, deriveRole };

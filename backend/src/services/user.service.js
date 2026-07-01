@@ -1,4 +1,5 @@
 const prisma = require('../config/database');
+const { deriveRole } = require('../utils/userUtils');
 
 const getAllUsers = async () => {
   return await prisma.user.findMany({
@@ -9,7 +10,9 @@ const getAllUsers = async () => {
       canApproveDeptHead: true, canEndorse: true, canVerify: true,
       role: true, avatarUrl: true, 
       themeColor: true, isDarkMode: true, permissions: true,
-      status: true, inactiveReason: true, company: true
+      status: true, inactiveReason: true,
+      company: true,
+      department: true
     }
   });
 };
@@ -29,6 +32,23 @@ const updateUserProfile = async (userId, data) => {
 };
 
 const updateUser = async (id, data) => {
+  if (data.companyId === '' || data.companyId === undefined) data.companyId = null;
+  if (data.departmentId === '' || data.departmentId === undefined) data.departmentId = null;
+  if (data.departmentRole === '' || data.departmentRole === undefined) data.departmentRole = null;
+
+  // Force driver false when security guard
+  if (data.isSecurityGuard) data.isDriver = false;
+
+  // Lookup department name to derive role
+  let departmentName = null;
+  if (data.departmentId) {
+    const dept = await prisma.department.findUnique({ where: { id: Number(data.departmentId) } });
+    departmentName = dept?.name || null;
+  }
+
+  const derivedRole = deriveRole(departmentName, !!data.isDriver, !!data.isSecurityGuard, !!data.isITSpecialist);
+  data.role = derivedRole;
+
   return await prisma.user.update({
     where: { id: parseInt(id) },
     data
@@ -42,7 +62,10 @@ const deleteUser = async (id) => {
 };
 
 const getUserById = async (id) => {
-  return await prisma.user.findUnique({ where: { id: parseInt(id) } });
+  return await prisma.user.findUnique({
+    where: { id: parseInt(id) },
+    include: { company: true, department: true }
+  });
 };
 
 module.exports = { getAllUsers, getGuardUsers, updateUserProfile, updateUser, deleteUser, getUserById };
