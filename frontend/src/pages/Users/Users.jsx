@@ -20,9 +20,6 @@ export default function Users() {
   const [departments, setDepartments] = useState([]);
   const [formData, setFormData] = useState({
     name: '', email: '', password: '',
-    canApprove: false, canApprovePRF: false,
-    canApproveTripTicket: false, canApproveRFP: false,
-    canApproveDeptHead: false, canEndorse: false, canVerify: false,
     role: 'User', permissions: {},
     companyId: '', departmentId: '', departmentRole: '',
     isDriver: false, isRFPApprover: false,
@@ -76,13 +73,6 @@ export default function Users() {
         name: user.name || '',
         email: user.email,
         password: '',
-        canApprove: user.canApprove || false,
-        canApprovePRF: user.canApprovePRF || false,
-        canApproveTripTicket: user.canApproveTripTicket || false,
-        canApproveRFP: user.canApproveRFP || false,
-        canApproveDeptHead: user.canApproveDeptHead || false,
-        canEndorse: user.canEndorse || false,
-        canVerify: user.canVerify || false,
         role: user.role || 'User',
         permissions: typeof user.permissions === 'string'
           ? JSON.parse(user.permissions)
@@ -99,9 +89,6 @@ export default function Users() {
       setEditingUser(null);
       setFormData({
         name: '', email: '', password: '',
-        canApprove: false, canApprovePRF: false,
-        canApproveTripTicket: false, canApproveRFP: false,
-        canApproveDeptHead: false, canEndorse: false, canVerify: false,
         role: 'User', permissions: {},
         companyId: '', departmentId: '', departmentRole: '',
         isDriver: false, isRFPApprover: false,
@@ -150,12 +137,6 @@ export default function Users() {
       showToast('Error deleting user', 'error');
     }
   };
-
-  // Count active permissions
-  const activePermCount = [
-    formData.canApprovePRF, formData.canApproveTripTicket,
-    formData.canApproveRFP, formData.canApproveDeptHead, formData.canEndorse, formData.canVerify
-  ].filter(Boolean).length;
 
   const roleDescriptions = {
     User: 'Standard employee with configurable approval authorities and module access.',
@@ -465,121 +446,7 @@ export default function Users() {
                   </div>
                 </div>
 
-                {/* SECTION 2 — Approvals */}
-                  <>
-                    <div className="um-divider" />
-                    <div className="um-section-row">
-                      <div className="um-section-label" style={{ margin: 0 }}>
-                        <BadgeCheck size={13} />
-                        Approval Authorities
-                        {activePermCount > 0 && (
-                          <span className="um-perm-badge">{activePermCount} active</span>
-                        )}
-                      </div>
-                      {/* Master toggle */}
-                      <label className="um-master-toggle">
-                        <input
-                          type="checkbox"
-                          checked={formData.canApprove}
-                          onChange={(e) => {
-                            const checked = e.target.checked;
-                            setFormData({
-                              ...formData,
-                              canApprove: checked,
-                              canApproveTripTicket: checked,
-                              canApprovePRF: checked,
-                              canApproveRFP: checked,
-                              canApproveDeptHead: checked,
-                              canEndorse: checked,
-                              canVerify: checked
-                            });
-                          }}
-                        />
-                        <span className={`um-toggle-track ${formData.canApprove ? 'active' : ''}`}>
-                          <span className="um-toggle-thumb" />
-                        </span>
-                        <span className="um-toggle-label">Enable All</span>
-                      </label>
-                    </div>
-
-                    <div className="um-perm-grid">
-                      {/* Card 1 */}
-                      <div className="um-perm-card">
-                        <div className="um-perm-card-head">
-                          <div className="um-perm-card-icon blue">
-                            <ClipboardCheck size={14} />
-                          </div>
-                          <div>
-                            <div className="um-perm-card-title">Main Approvals</div>
-                            <div className="um-perm-card-desc">Core document sign-offs</div>
-                          </div>
-                        </div>
-                        <div className="um-perm-items">
-                          {[
-                            { key: 'canApproveTripTicket', label: 'Trip Tickets', icon: <Ticket size={13}/> },
-                            { key: 'canApprovePRF', label: 'Purchase (PRF)', icon: <ShoppingCart size={13}/> },
-                            { key: 'canApproveRFP', label: 'Payment (RFP)', icon: <CreditCard size={13}/> },
-                          ].map(({ key, label, icon }) => (
-                            <label key={key} className="um-perm-item">
-                              <span className="um-perm-item-left">
-                                <span className="um-perm-item-icon">{icon}</span>
-                                <span className="um-perm-item-text">{label}</span>
-                              </span>
-                              <div className="um-checkbox-wrap">
-                                <input
-                                  type="checkbox"
-                                  checked={formData[key]}
-                                  onChange={(e) => setFormData({ ...formData, [key]: e.target.checked })}
-                                />
-                                <span className={`um-checkbox ${formData[key] ? 'checked' : ''}`}>
-                                  {formData[key] && <span className="um-check-mark">✓</span>}
-                                </span>
-                              </div>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Card 2 */}
-                      <div className="um-perm-card">
-                        <div className="um-perm-card-head">
-                          <div className="um-perm-card-icon violet">
-                            <Star size={14} />
-                          </div>
-                          <div>
-                            <div className="um-perm-card-title">Special Signing</div>
-                            <div className="um-perm-card-desc">Elevated signing privileges</div>
-                          </div>
-                        </div>
-                        <div className="um-perm-items">
-                          {[
-                            { key: 'canApproveDeptHead', label: 'Dept Head', icon: <UserCheck size={13}/> },
-                            { key: 'canEndorse', label: 'Endorser', icon: <FileText size={13}/> },
-                            { key: 'canVerify', label: 'Verifier', icon: <CheckSquare size={13}/> },
-                          ].map(({ key, label, icon }) => (
-                            <label key={key} className="um-perm-item">
-                              <span className="um-perm-item-left">
-                                <span className="um-perm-item-icon">{icon}</span>
-                                <span className="um-perm-item-text">{label}</span>
-                              </span>
-                              <div className="um-checkbox-wrap">
-                                <input
-                                  type="checkbox"
-                                  checked={formData[key]}
-                                  onChange={(e) => setFormData({ ...formData, [key]: e.target.checked })}
-                                />
-                                <span className={`um-checkbox ${formData[key] ? 'checked' : ''}`}>
-                                  {formData[key] && <span className="um-check-mark">✓</span>}
-                                </span>
-                              </div>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </>
-
-                {/* SECTION 3 — Module Access */}
+                {/* SECTION 2 — Module Access */}
                   <>
                     <div className="um-divider" />
                     <div className="um-section-label">

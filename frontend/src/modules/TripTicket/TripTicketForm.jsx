@@ -23,9 +23,11 @@ export default function TripTicketForm() {
   const [drivers, setDrivers] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [guards, setGuards] = useState([]);
+  const [users, setUsers] = useState([]);
   const [occupiedDrivers, setOccupiedDrivers] = useState([]);
   const [occupiedVehicles, setOccupiedVehicles] = useState([]);
   const [companies, setCompanies] = useState([]);
+  const [workflowTargets, setWorkflowTargets] = useState({ expectedEndorser: null, expectedApprover: null });
 
   const getDefaultFormData = () => {
     const requestedBy = initialData?.requestedBy?.name || initialData?.requestedBy || user?.name || '';
@@ -41,6 +43,7 @@ export default function TripTicketForm() {
       subsidiary: '',
       driver: '',
       vehicle: '',
+      vehicleId: null,
       plateNumber: '',
       etdOffice: '',
       etaDestination: '',
@@ -64,6 +67,10 @@ export default function TripTicketForm() {
 
     const merged = initialData ? { ...defaults, ...initialData } : defaults;
 
+    if (initialData?.vehicleId !== undefined) {
+      merged.vehicleId = initialData.vehicleId || null;
+    }
+
     merged.requestedBy = requestedBy;
     merged.endorsedBy = endorsedBy;
     merged.approvedBy = approvedBy;
@@ -86,10 +93,56 @@ export default function TripTicketForm() {
     return Number.isNaN(parsed) || parsed < 0 ? 0 : parsed;
   };
 
-  const selectedVehicle = vehicles.find(v => v.name === formData.vehicle);
+  const selectedVehicle = vehicles.find(v => v.id === Number(formData.vehicleId));
   const vehicleCapacityLimit = selectedVehicle && Number.isInteger(selectedVehicle.capacity)
     ? Math.max(0, selectedVehicle.capacity - 1)
     : null;
+
+  const resolveRequestorUser = () => {
+    const requestedByName = formData.requestorName || user?.name || '';
+    if (!requestedByName) return user || null;
+    const matchedUser = users.find((u) => u.name === requestedByName);
+    return matchedUser || user || null;
+  };
+
+  const findDepartmentHead = (departmentId) => {
+    if (!departmentId) return null;
+    return users.find((u) => Number(u.departmentId) === Number(departmentId) && u.departmentRole === 'DepartmentHead');
+  };
+
+  const findPresident = () => users.find((u) => u.departmentRole === 'President');
+  const findAdminDepartmentHead = () => users.find((u) => u.role === 'Admin' && u.departmentRole === 'DepartmentHead');
+
+  const requestorUser = resolveRequestorUser();
+  const vehicleDepartmentId = selectedVehicle?.departmentId ?? selectedVehicle?.department?.id ?? null;
+  const vehicleCompanyId = selectedVehicle?.companyId ?? selectedVehicle?.company?.id ?? null;
+  const requestorDepartmentId = requestorUser?.departmentId ?? null;
+  const requestorCompanyId = requestorUser?.companyId ?? requestorUser?.company?.id ?? null;
+  const departmentHeadForRequestor = findDepartmentHead(requestorDepartmentId);
+  const departmentHeadForVehicle = findDepartmentHead(vehicleDepartmentId);
+  const presidentUser = findPresident();
+  const adminDepartmentHead = findAdminDepartmentHead();
+
+  let previewEndorser = 'Not yet assigned';
+  let previewApprover = 'Not yet assigned';
+  let previewValidationMessage = '';
+
+  if (requestorUser?.departmentRole === 'Staff' || !requestorUser?.departmentRole) {
+    previewEndorser = departmentHeadForRequestor?.name || 'Not yet assigned';
+    previewApprover = departmentHeadForVehicle?.name || 'Not yet assigned';
+  } else if (requestorUser?.departmentRole === 'DepartmentHead') {
+    previewEndorser = presidentUser?.name || 'Not yet assigned';
+    previewApprover = departmentHeadForVehicle?.name || 'Not yet assigned';
+  } else if (requestorUser?.departmentRole === 'President') {
+    previewEndorser = adminDepartmentHead?.name || 'Not yet assigned';
+    previewApprover = Number(requestorCompanyId) === Number(vehicleCompanyId)
+      ? adminDepartmentHead?.name || 'Not yet assigned'
+      : departmentHeadForVehicle?.name || 'Not yet assigned';
+  }
+
+  if (requestorUser?.departmentRole === 'DepartmentHead' && selectedVehicle && vehicleDepartmentId && Number(vehicleDepartmentId) === Number(requestorDepartmentId)) {
+    previewValidationMessage = 'A Department Head cannot request a vehicle from their own department.';
+  }
 
   useEffect(() => {
     const hdi = parsePassengerValue(formData.hdiPassengers);
@@ -156,17 +209,27 @@ export default function TripTicketForm() {
   }, [isGuard, initialData, navigate]);
 
   useEffect(() => {
+    if (isReviewMode && formData.id) {
+      api.get(`/trip-tickets/${formData.id}/workflow-targets`)
+        .then(res => setWorkflowTargets(res.data))
+        .catch(err => console.error('Failed to fetch workflow targets', err));
+    }
+  }, [isReviewMode, formData.id]);
+
+  useEffect(() => {
     const fetchOptions = async () => {
       try {
+        const usersRes = await api.get(`/users?_t=${Date.now()}`);
+        setUsers(usersRes.data || []);
+
         if (isGuard) {
           const [guardsRes, vehiclesRes, companiesRes] = await Promise.all([api.get('/users/guards'), api.get('/vehicles'), api.get('/companies')]);
           setGuards(guardsRes.data || []);
           setVehicles(vehiclesRes.data);
           setCompanies(companiesRes.data || []);
         } else {
-          const [usersRes, vehiclesRes, companiesRes] = await Promise.all([api.get(`/users?_t=${Date.now()}`), api.get('/vehicles'), api.get('/companies')]);
-          console.log("USERS FETCHED:", usersRes.data.filter(u => u.role === 'Driver'));
-          setDrivers(usersRes.data.filter(u => u.role === 'Driver'));
+          const [vehiclesRes, companiesRes] = await Promise.all([api.get('/vehicles'), api.get('/companies')]);
+          setDrivers((usersRes.data || []).filter(u => u.isDriver === true));
           setVehicles(vehiclesRes.data);
           setCompanies(companiesRes.data || []);
         }
@@ -192,8 +255,13 @@ export default function TripTicketForm() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     if (name === 'vehicle') {
-      const selectedVehicle = vehicles.find(v => v.name === value);
-      setFormData(prev => ({ ...prev, vehicle: value, plateNumber: selectedVehicle ? selectedVehicle.plateNumber : prev.plateNumber }));
+      const selectedVehicle = vehicles.find(v => v.id === Number(value));
+      setFormData(prev => ({
+        ...prev,
+        vehicle: selectedVehicle ? selectedVehicle.name : prev.vehicle,
+        vehicleId: selectedVehicle ? selectedVehicle.id : null,
+        plateNumber: selectedVehicle ? selectedVehicle.plateNumber || '' : prev.plateNumber
+      }));
       return;
     }
 
@@ -243,7 +311,13 @@ export default function TripTicketForm() {
 
       const now = new Date().toLocaleString('sv').replace(' ', 'T').slice(0, 16);
       let payload = { ...formData };
+
+      if (requestorUser?.departmentRole === 'DepartmentHead' && selectedVehicle && vehicleDepartmentId && Number(vehicleDepartmentId) === Number(requestorDepartmentId)) {
+        showToast('A Department Head cannot request a vehicle from their own department.', 'error');
+        return;
+      }
       payload.passengerCount = String(totalPassengers);
+      payload.vehicleId = formData.vehicleId ? Number(formData.vehicleId) : null;
       delete payload.status;
 
       if (isGuard) {
@@ -376,7 +450,7 @@ export default function TripTicketForm() {
           )}
 
           {/* Endorsement Stage */}
-          {isReviewMode && status === 'Pending Endorsement' && (user?.role === 'Admin' || user?.canApprove || user?.canEndorse) && (
+          {isReviewMode && status === 'Pending Endorsement' && Number(workflowTargets.expectedEndorser?.id) === Number(user?.id) && (
             <>
               <button className="tool-btn approve" onClick={handleEndorse}>Endorse</button>
               <button className="tool-btn disapprove-btn" onClick={handleDisapprove}>Disapprove</button>
@@ -384,7 +458,7 @@ export default function TripTicketForm() {
           )}
 
           {/* Approval Stage */}
-          {isReviewMode && status === 'Pending Approval' && (user?.role === 'Admin' || user?.canApprove || user?.canApproveTripTicket) && (
+          {isReviewMode && status === 'Pending Approval' && Number(workflowTargets.expectedApprover?.id) === Number(user?.id) && (
             <>
               <button className="tool-btn approve" onClick={handleApprove}>Approve</button>
               <button className="tool-btn disapprove-btn" onClick={handleDisapprove}>Disapprove</button>
@@ -450,6 +524,9 @@ export default function TripTicketForm() {
           companies={companies}
           user={user}
           vehicleCapacityLimit={vehicleCapacityLimit}
+          previewEndorser={previewEndorser}
+          previewApprover={previewApprover}
+          previewValidationMessage={previewValidationMessage}
         />
       </div>
 

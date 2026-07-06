@@ -1,5 +1,5 @@
 const prisma = require('../config/database');
-const { sanitizeUser, deriveRole } = require('../utils/userUtils');
+const { sanitizeUser, deriveRole, deriveApprovalFlags } = require('../utils/userUtils');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -9,7 +9,13 @@ if (!JWT_SECRET) {
 const VALID_ROLES = ['User', 'Admin', 'Driver', 'Guard', 'Accounting', 'IT'];
 
 const login = async (email, password) => {
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findUnique({
+    where: { email },
+    include: {
+      department: true,
+      company: true,
+    }
+  });
   if (!user) throw new Error('User not found');
 
   const isValid = await bcrypt.compare(password, user.password);
@@ -44,9 +50,12 @@ const register = async (userData) => {
   if (userData.departmentId === '' || userData.departmentId === undefined) userData.departmentId = null;
   if (userData.departmentRole === '' || userData.departmentRole === undefined) userData.departmentRole = null;
 
+  const approvalFlags = deriveApprovalFlags(userData.departmentRole);
+
   const newUser = await prisma.user.create({
     data: {
       ...userData,
+      ...approvalFlags,
       role: derivedRole,
       canApprove,
       permissions,

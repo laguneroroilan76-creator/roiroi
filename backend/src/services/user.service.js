@@ -1,5 +1,5 @@
 const prisma = require('../config/database');
-const { deriveRole } = require('../utils/userUtils');
+const { deriveRole, deriveApprovalFlags } = require('../utils/userUtils');
 
 const getAllUsers = async () => {
   return await prisma.user.findMany({
@@ -11,6 +11,14 @@ const getAllUsers = async () => {
       role: true, avatarUrl: true, 
       themeColor: true, isDarkMode: true, permissions: true,
       status: true, inactiveReason: true,
+      isDriver: true,
+      isSecurityGuard: true,
+      isITSpecialist: true,
+      isRFPApprover: true,
+      departmentRole: true,
+      departmentId: true,
+      companyId: true,
+      signatureUrl: true,
       company: true,
       department: true
     }
@@ -47,6 +55,8 @@ const updateUser = async (id, data) => {
   }
 
   const derivedRole = deriveRole(departmentName, !!data.isDriver, !!data.isSecurityGuard, !!data.isITSpecialist);
+  const approvalFlags = deriveApprovalFlags(data.departmentRole);
+  Object.assign(data, approvalFlags);
   data.role = derivedRole;
 
   return await prisma.user.update({

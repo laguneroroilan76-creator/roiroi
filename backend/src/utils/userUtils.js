@@ -16,16 +16,60 @@ const sanitizeUser = (user) => {
     }
   }
 
-  return sanitized;
+  return {
+    ...sanitized,
+    departmentRole: user.departmentRole || null,
+    departmentId: user.departmentId || null,
+    companyId: user.companyId || null,
+    isDriver: user.isDriver || false,
+    isRFPApprover: user.isRFPApprover || false,
+    isSecurityGuard: user.isSecurityGuard || false,
+    isITSpecialist: user.isITSpecialist || false,
+    department: user.department || null,
+    company: user.company || null,
+  };
 };
 
 function deriveRole(departmentName, isDriver, isSecurityGuard, isITSpecialist) {
   if (isSecurityGuard) return 'Guard';
-  if (isDriver) return 'Driver';
   if (departmentName === 'Admin' && isITSpecialist) return 'IT';
   if (departmentName === 'Admin') return 'Admin';
   if (departmentName === 'Accounting') return 'Accounting';
   return 'User';
 }
 
-module.exports = { sanitizeUser, deriveRole };
+const deriveApprovalFlags = (departmentRole) => {
+  if (departmentRole === 'President') {
+    return {
+      canApprove: true,
+      canApprovePRF: true,
+      canApproveRFP: true,
+      canApproveTripTicket: true,
+      canApproveDeptHead: true,
+      canEndorse: true,
+      canVerify: true,
+    };
+  }
+  if (departmentRole === 'DepartmentHead') {
+    return {
+      canApprove: false,
+      canApprovePRF: false,
+      canApproveRFP: false,
+      canApproveTripTicket: true,
+      canApproveDeptHead: true,
+      canEndorse: true,
+      canVerify: true,
+    };
+  }
+  return {
+    canApprove: false,
+    canApprovePRF: false,
+    canApproveRFP: false,
+    canApproveTripTicket: false,
+    canApproveDeptHead: false,
+    canEndorse: false,
+    canVerify: false,
+  };
+};
+
+module.exports = { sanitizeUser, deriveRole, deriveApprovalFlags };
