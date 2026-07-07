@@ -9,6 +9,9 @@ const parseIntegerIfDefined = (value) => {
 const createVehicle = async (data) => {
   const capacity = parseIntegerIfDefined(data.capacity);
 
+  data.companyId = data.companyId !== '' && data.companyId != null ? Number(data.companyId) : null;
+  data.departmentId = data.departmentId !== '' && data.departmentId != null ? Number(data.departmentId) : null;
+
   return await prisma.vehicle.create({
     data: {
       name: data.name,
@@ -22,6 +25,8 @@ const createVehicle = async (data) => {
       engineNumber: data.engineNumber,
       chassisNumber: data.chassisNumber,
       capacity,
+      companyId: data.companyId,
+      departmentId: data.departmentId,
       status: data.status || 'Active'
     }
   });
@@ -29,12 +34,20 @@ const createVehicle = async (data) => {
 
 const getVehicles = async () => {
   return await prisma.vehicle.findMany({
+    include: {
+      company: true,
+      department: true,
+    },
     orderBy: { createdAt: 'desc' }
   });
 };
 
 const updateVehicle = async (id, data) => {
   const capacity = parseIntegerIfDefined(data.capacity);
+
+  data.companyId = data.companyId !== '' && data.companyId != null ? Number(data.companyId) : null;
+  data.departmentId = data.departmentId !== '' && data.departmentId != null ? Number(data.departmentId) : null;
+
   const updateData = {
     name: data.name,
     plateNumber: data.plateNumber,
@@ -46,6 +59,8 @@ const updateVehicle = async (id, data) => {
     transmission: data.transmission,
     engineNumber: data.engineNumber,
     chassisNumber: data.chassisNumber,
+    companyId: data.companyId,
+    departmentId: data.departmentId,
     status: data.status
   };
 

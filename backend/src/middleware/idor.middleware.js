@@ -18,7 +18,7 @@ const verifyOwnershipOrRole = (modelName) => {
       // We need to look up the record's authorId
       const record = await prisma[modelName].findUnique({
         where: { id },
-        select: { authorId: true }
+        select: { authorId: true, endorsedById: true, approvedById: true }
       });
 
       if (!record) {
@@ -27,6 +27,11 @@ const verifyOwnershipOrRole = (modelName) => {
 
       // If they are the author, they have access
       if (record.authorId === req.user.id) {
+        return next();
+      }
+
+      // If they are the expected endorser or approver, they have access
+      if (record.endorsedById === req.user.id || record.approvedById === req.user.id) {
         return next();
       }
 

@@ -146,7 +146,7 @@ export const TravelDetails = ({ formData, handleChange, isFieldDisabled, isReadO
   </div>
 );
 
-export const FleetAssignment = ({ formData, handleChange, isFieldDisabled, isReadOnly, drivers, vehicles, occupiedDrivers, occupiedVehicles }) => (
+export const FleetAssignment = ({ formData, handleChange, isFieldDisabled, isReadOnly, drivers, vehicles, occupiedDrivers, occupiedVehicles, previewEndorser, previewApprover, previewValidationMessage }) => (
   <div className="form-section">
     <h3 className="section-title">Fleet Assignment</h3>
     <div className="grid-3">
@@ -179,7 +179,7 @@ export const FleetAssignment = ({ formData, handleChange, isFieldDisabled, isRea
       </div>
       <div className="form-group">
         <label>Vehicle</label>
-        <select name="vehicle" value={formData.vehicle} onChange={handleChange} disabled={isFieldDisabled('vehicle', isReadOnly)}>
+        <select name="vehicle" value={formData.vehicleId || ''} onChange={handleChange} disabled={isFieldDisabled('vehicle', isReadOnly)}>
           <option value="">Select Vehicle</option>
           {vehicles.map(v => {
             const isOccupied = occupiedVehicles.includes(v.name);
@@ -194,13 +194,13 @@ export const FleetAssignment = ({ formData, handleChange, isFieldDisabled, isRea
             }
 
             return (
-              <option key={v.id} value={v.name} disabled={disableOption}>
+              <option key={v.id} value={v.id} disabled={disableOption}>
                 {label}
               </option>
             );
           })}
-          {isReadOnly && !vehicles.find(v => v.name === formData.vehicle) && formData.vehicle && (
-            <option value={formData.vehicle}>{formData.vehicle}</option>
+          {isReadOnly && !vehicles.find(v => v.id === Number(formData.vehicleId)) && formData.vehicle && (
+            <option value={formData.vehicleId}>{formData.vehicle}</option>
           )}
         </select>
       </div>
@@ -208,6 +208,19 @@ export const FleetAssignment = ({ formData, handleChange, isFieldDisabled, isRea
         <label>Plate Number</label>
         <input type="text" name="plateNumber" value={formData.plateNumber} onChange={handleChange} disabled={isFieldDisabled('plateNumber', isReadOnly)} placeholder={isFieldDisabled('plateNumber', isReadOnly) ? "" : "ABC-1234"} />
       </div>
+    </div>
+    <div className="mt-3" style={{ display: 'grid', gap: '0.5rem' }}>
+      <div className="form-group">
+        <label>Will be endorsed by</label>
+        <input type="text" value={previewEndorser} readOnly disabled className="locked-input" />
+      </div>
+      <div className="form-group">
+        <label>Will be approved by</label>
+        <input type="text" value={previewApprover} readOnly disabled className="locked-input" />
+      </div>
+      {previewValidationMessage && (
+        <p style={{ margin: 0, color: '#ef4444', fontSize: '0.9rem' }}>{previewValidationMessage}</p>
+      )}
     </div>
   </div>
 );
@@ -298,13 +311,27 @@ export const SignatureSection = ({ formData, handleChange, isFieldDisabled, isRe
     </div>
     <div className="sig-block">
       <div className="sig-line">
-        <input type="text" name="endorsedBy" value={formData.endorsedBy} readOnly className="read-only-sig" placeholder="Name" />
+        <input 
+          type="text" 
+          name="endorsedBy" 
+          value={['Endorsed', 'Approved', 'Completed', 'DEPARTED', 'ARRIVED'].includes(formData.status) ? formData.endorsedBy : ''} 
+          readOnly 
+          className="read-only-sig" 
+          placeholder="" 
+        />
       </div>
       <label>Endorsed By</label>
     </div>
     <div className="sig-block">
       <div className="sig-line">
-        <input type="text" name="approvedBy" value={formData.approvedBy} readOnly className="read-only-sig" placeholder="Name" />
+        <input 
+          type="text" 
+          name="approvedBy" 
+          value={['Approved', 'Completed', 'DEPARTED', 'ARRIVED'].includes(formData.status) ? formData.approvedBy : ''} 
+          readOnly 
+          className="read-only-sig" 
+          placeholder="" 
+        />
       </div>
       <label>Approved By</label>
     </div>

@@ -109,6 +109,7 @@ const ticketCreateBodySchema = z.object({
   subsidiary: z.string().optional().nullable().or(z.literal('')),
   driver: z.string().optional().nullable().or(z.literal('')),
   vehicle: z.string().optional().nullable().or(z.literal('')),
+  vehicleId: z.union([z.number(), z.string().regex(/^\d+$/, 'Vehicle ID must be a number').transform(Number)]).optional().nullable(),
   plateNumber: z.string().optional().nullable().or(z.literal('')),
   etdOffice: z.string().optional().nullable(),
   etaDestination: z.string().optional().nullable(),

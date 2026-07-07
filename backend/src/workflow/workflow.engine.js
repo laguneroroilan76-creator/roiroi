@@ -38,16 +38,49 @@ const STATE_MACHINES = {
   tripTicket: {
     states: {
       'Pending': {
-        endorse: { nextStatus: 'Endorsed', roleCheck: (user) => user.canEndorse || user.role === 'Admin' },
-        reject: { nextStatus: 'Disapproved', roleCheck: (user) => user.canEndorse || user.role === 'Admin' }
+        endorse: {
+          nextStatus: 'Endorsed',
+          roleCheck: (user, context = {}) => {
+            if (!context.expectedEndorser) return false;
+            return Number(context.expectedEndorser.id) === Number(user.id);
+          }
+        },
+        reject: {
+          nextStatus: 'Disapproved',
+          roleCheck: (user, context = {}) => {
+            const isEndorser = context.expectedEndorser && Number(context.expectedEndorser.id) === Number(user.id);
+            const isApprover = context.expectedApprover && Number(context.expectedApprover.id) === Number(user.id);
+            return isEndorser || isApprover;
+          }
+        }
       },
       'Endorsed': {
-        approve: { nextStatus: 'Approved', roleCheck: (user) => user.canApproveTripTicket || user.canApprove || user.role === 'Admin' },
-        reject: { nextStatus: 'Disapproved', roleCheck: (user) => user.canApproveTripTicket || user.canApprove || user.role === 'Admin' }
+        approve: {
+          nextStatus: 'Approved',
+          roleCheck: (user, context = {}) => {
+            if (!context.expectedApprover) return false;
+            return Number(context.expectedApprover.id) === Number(user.id);
+          }
+        },
+        reject: {
+          nextStatus: 'Disapproved',
+          roleCheck: (user, context = {}) => {
+            const isEndorser = context.expectedEndorser && Number(context.expectedEndorser.id) === Number(user.id);
+            const isApprover = context.expectedApprover && Number(context.expectedApprover.id) === Number(user.id);
+            return isEndorser || isApprover;
+          }
+        }
       },
       'Approved': {
         complete: { nextStatus: 'Completed', roleCheck: (user) => user.role === 'Guard' || user.role === 'Admin' },
-        reject: { nextStatus: 'Disapproved', roleCheck: (user) => user.canApproveTripTicket || user.canApprove || user.role === 'Admin' }
+        reject: {
+          nextStatus: 'Disapproved',
+          roleCheck: (user, context = {}) => {
+            const isEndorser = context.expectedEndorser && Number(context.expectedEndorser.id) === Number(user.id);
+            const isApprover = context.expectedApprover && Number(context.expectedApprover.id) === Number(user.id);
+            return isEndorser || isApprover;
+          }
+        }
       },
       'Completed': {},
       'Disapproved': {}
@@ -64,7 +97,7 @@ const STATE_MACHINES = {
  * @param {Object} params.user
  * @returns {Object} { allowed: boolean, nextStatus: string, sideEffects: Object, error: string }
  */
-const transition = ({ entity, currentStatus, action, user }) => {
+const transition = ({ entity, currentStatus, action, user, context }) => {
   const machine = STATE_MACHINES[entity];
   if (!machine) {
     return { allowed: false, error: `Unknown entity type: ${entity}` };
@@ -94,7 +127,7 @@ const transition = ({ entity, currentStatus, action, user }) => {
     return { allowed: false, error: `Action '${action}' not allowed from status '${canonicalStatus}'` };
   }
 
-  if (!transitionDef.roleCheck(user)) {
+  if (!transitionDef.roleCheck(user, context)) {
     return { allowed: false, error: `User does not have permission to perform '${action}'` };
   }
 

@@ -92,16 +92,17 @@ export default function PendingRecords() {
         
         // Granular filtering per document type
         if (record.docType === 'TRIP_TICKET') {
-            const isTTApprover = isAdmin || user?.canApproveTripTicket;
-            const isTTEndorser = isAdmin || user?.canEndorse;
+            const isAuthor = record.authorId === user?.id;
+            const isExpectedEndorser = record.endorsedById === user?.id;
+            const isExpectedApprover = record.approvedById === user?.id;
 
             if (record.status === 'Pending Endorsement') {
-                return isTTEndorser || record.authorId === user.id;
+                return isAuthor || isExpectedEndorser;
             }
             if (record.status === 'Pending Approval' || record.status === 'Endorsed') {
-                return isTTApprover || record.authorId === user.id;
+                return isAuthor || isExpectedApprover;
             }
-            return isTTApprover || record.authorId === user.id;
+            return isAuthor || isExpectedEndorser || isExpectedApprover;
         }
 
         if (record.docType === 'PRF') {

@@ -214,7 +214,7 @@ export default function TripTicketForm() {
         .then(res => setWorkflowTargets(res.data))
         .catch(err => console.error('Failed to fetch workflow targets', err));
     }
-  }, [isReviewMode, formData.id]);
+  }, [isReviewMode, formData.id, status]);
 
   useEffect(() => {
     const fetchOptions = async () => {
@@ -369,6 +369,7 @@ export default function TripTicketForm() {
     try {
       const payload = { ...formData, endorsedBy: formData.endorsedBy || user.name };
       await api.post(`/trip-tickets/${initialData.id}/endorse`, payload);
+      setStatus('Endorsed');
       showToast('Trip Ticket Endorsed!', 'success');
       navigate('/pending');
     } catch (err) {
@@ -458,7 +459,7 @@ export default function TripTicketForm() {
           )}
 
           {/* Approval Stage */}
-          {isReviewMode && status === 'Pending Approval' && Number(workflowTargets.expectedApprover?.id) === Number(user?.id) && (
+          {isReviewMode && (status === 'Pending Approval' || status === 'Endorsed') && Number(workflowTargets.expectedApprover?.id) === Number(user?.id) && (
             <>
               <button className="tool-btn approve" onClick={handleApprove}>Approve</button>
               <button className="tool-btn disapprove-btn" onClick={handleDisapprove}>Disapprove</button>

@@ -1,16 +1,38 @@
 const prisma = require('../config/database');
 
 const getTickets = async (userId, canApprove, isGuard = false) => {
-  const where = (canApprove || isGuard) ? {} : { authorId: userId };
+  const where = (canApprove || isGuard) ? {} : {
+    OR: [
+      { authorId: userId },
+      { endorsedById: userId },
+      { approvedById: userId },
+    ]
+  };
   return await prisma.tripTicket.findMany({
     where,
     include: { 
-      author: { select: { name: true, avatarUrl: true, company: true } },
+      author: { 
+        select: { 
+          name: true, 
+          avatarUrl: true, 
+          company: true,
+          companyId: true,
+          departmentId: true,
+          departmentRole: true,
+          department: true
+        } 
+      },
       driverUser: { select: { name: true } },
       requestor: { select: { name: true } },
       requestedBy: { select: { name: true } },
       endorsedBy: { select: { name: true } },
       approvedBy: { select: { name: true } },
+      vehicleRef: {
+        include: {
+          company: true,
+          department: true,
+        }
+      },
       guardOutUser: { select: { name: true } },
       guardInUser: { select: { name: true } }
     },
@@ -45,12 +67,28 @@ const getTicketById = async (id, requestingUser) => {
   const ticket = await prisma.tripTicket.findUnique({
     where: { id: parseInt(id) },
     include: { 
-      author: { select: { name: true, avatarUrl: true, company: true } },
+      author: { 
+        select: { 
+          name: true, 
+          avatarUrl: true, 
+          company: true,
+          companyId: true,
+          departmentId: true,
+          departmentRole: true,
+          department: true
+        } 
+      },
       driverUser: { select: { name: true } },
       requestor: { select: { name: true } },
       requestedBy: { select: { name: true } },
       endorsedBy: { select: { name: true } },
       approvedBy: { select: { name: true } },
+      vehicleRef: {
+        include: {
+          company: true,
+          department: true,
+        }
+      },
       guardOutUser: { select: { name: true } },
       guardInUser: { select: { name: true } }
     }
