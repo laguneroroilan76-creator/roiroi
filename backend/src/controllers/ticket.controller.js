@@ -54,19 +54,26 @@ const sanitizePayload = async (payload, reqUser) => {
     data.dateTimeReturn = data.dateTimeReturn ? new Date(data.dateTimeReturn) : null;
   }
 
-  const lookupUser = async (name) => {
-    if (!name) return null;
-    const u = await prisma.user.findFirst({ where: { name } });
+  const resolveUserId = async (nameOrId) => {
+    if (!nameOrId) return null;
+    if (!isNaN(nameOrId)) return Number(nameOrId);
+    const u = await prisma.user.findFirst({ where: { name: String(nameOrId) } });
     return u ? u.id : null;
   };
 
-  if (data.requestorName) data.requestorId = await lookupUser(data.requestorName);
-  if (data.driver) data.driverId = await lookupUser(data.driver);
-  if (data.requestedBy) data.requestedById = await lookupUser(data.requestedBy);
-  if (data.endorsedBy) data.endorsedById = await lookupUser(data.endorsedBy);
-  if (data.approvedBy) data.approvedById = await lookupUser(data.approvedBy);
-  if (data.guardIn) data.guardInId = await lookupUser(data.guardIn);
-  if (data.guardOut) data.guardOutId = await lookupUser(data.guardOut);
+  if (data.requestorName) data.requestorId = await resolveUserId(data.requestorName);
+  if (data.driver) data.driverId = await resolveUserId(data.driver);
+  if (data.requestedBy) data.requestedById = await resolveUserId(data.requestedBy);
+  if (data.endorsedBy) data.endorsedById = await resolveUserId(data.endorsedBy);
+  if (data.approvedBy) data.approvedById = await resolveUserId(data.approvedBy);
+  if (data.guardIn) data.guardInId = await resolveUserId(data.guardIn);
+  if (data.guardOut) data.guardOutId = await resolveUserId(data.guardOut);
+
+  if (data.vehicleId !== undefined && data.vehicleId !== null && data.vehicleId !== '' && data.vehicleId !== 0) {
+    data.vehicleId = Number(data.vehicleId);
+  } else {
+    delete data.vehicleId;
+  }
   
   delete data.requestorName;
   delete data.driver;
@@ -87,6 +94,87 @@ const buildValidationError = (errors) => {
   return error;
 };
 
+const resolveTripTicketWorkflowTargets = async (ticket, user) => {
+  const requestor = ticket.requestorId
+    ? await prisma.user.findUnique({ where: { id: ticket.requestorId }, include: { department: true, company: true } })
+    : null;
+
+  const vehicle = ticket.vehicleId
+    ? await prisma.vehicle.findUnique({ where: { id: ticket.vehicleId }, include: { company: true, department: true } })
+    : null;
+
+  const findDepartmentHead = async (departmentId) => {
+    if (!departmentId) return null;
+    return prisma.user.findFirst({ where: { departmentId, departmentRole: 'DepartmentHead' } });
+  };
+
+  const findImmediateSupervisor = async (departmentId) => {
+    if (!departmentId) return null;
+    return prisma.user.findFirst({ where: { departmentId, departmentRole: 'ImmediateSupervisor' } });
+  };
+
+  const findPresident = async () =>
+    prisma.user.findFirst({ where: { departmentRole: 'President' } });
+
+  const findAdminDepartmentHead = async () =>
+    prisma.user.findFirst({ where: { departmentRole: 'DepartmentHead', department: { name: 'Admin' } } });
+
+  const requestorDeptId = requestor?.departmentId ?? null;
+  const vehicleDeptId = vehicle?.departmentId ?? vehicle?.department?.id ?? null;
+
+  const deptHeadForRequestor = await findDepartmentHead(requestorDeptId);
+  const deptHeadForVehicle = await findDepartmentHead(vehicleDeptId);
+  const immediateSupervisor = await findImmediateSupervisor(requestorDeptId);
+  const president = await findPresident();
+  const adminDeptHead = await findAdminDepartmentHead();
+
+  let expectedEndorser = null;
+  let expectedApprover = null;
+
+  const role = requestor?.departmentRole;
+
+  if (role === 'Staff') {
+    // Endorser: IS if exists in dept, else Dept Head
+    expectedEndorser = immediateSupervisor || deptHeadForRequestor;
+    // Approver: always vehicle's Dept Head
+    expectedApprover = deptHeadForVehicle;
+  } else if (role === 'ImmediateSupervisor') {
+    expectedEndorser = deptHeadForRequestor;
+    expectedApprover = deptHeadForVehicle;
+  } else if (role === 'DepartmentHead') {
+    // Block if vehicle is from own dept — handled at submission
+    expectedEndorser = president;
+    expectedApprover = deptHeadForVehicle;
+  } else if (role === 'President') {
+    expectedEndorser = adminDeptHead;
+    expectedApprover = deptHeadForVehicle;
+  }
+
+  return { expectedEndorser, expectedApprover };
+};
+
+const getTicketWorkflowTargets = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const ticket = await prisma.tripTicket.findUnique({
+      where: { id },
+      include: {
+        vehicleRef: { include: { company: true, department: true } },
+        requestor: { include: { department: true, company: true } }
+      }
+    });
+    if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
+    const targets = await resolveTripTicketWorkflowTargets(ticket, req.user);
+    res.json({
+      expectedEndorser: targets.expectedEndorser ? { id: targets.expectedEndorser.id, name: targets.expectedEndorser.name } : null,
+      expectedApprover: targets.expectedApprover ? { id: targets.expectedApprover.id, name: targets.expectedApprover.name } : null,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 const createTicket = async (req, res) => {
   try {
     const validatedBody = ticketCreateBodySchema.parse(req.body);
@@ -95,6 +183,16 @@ const createTicket = async (req, res) => {
     const sanitizedData = await sanitizePayload(validatedBody, req.user);
     sanitizedData.authorId = req.user.id;
     sanitizedData.requestedById = req.user.id;
+
+    // Resolve and store expected endorser and approver at creation
+    try {
+      const targets = await resolveTripTicketWorkflowTargets(sanitizedData, req.user);
+      if (targets.expectedEndorser) sanitizedData.endorsedById = targets.expectedEndorser.id;
+      if (targets.expectedApprover) sanitizedData.approvedById = targets.expectedApprover.id;
+    } catch (e) {
+      console.warn('Could not resolve workflow targets at creation:', e.message);
+    }
+
     await ensurePassengerCountAndCapacity(sanitizedData);
 
     // Prevent non-Guard users from setting guard-only or actual travel log fields on create
@@ -289,7 +387,14 @@ const endorseTicket = async (req, res) => {
       const oldRecord = await tx.tripTicket.findUnique({ where: { id } });
       if (!oldRecord) throw new Error('Record not found');
 
-      const tResult = transition({ entity: 'tripTicket', currentStatus: oldRecord.status, action: 'endorse', user: req.user });
+      const workflowTargets = await resolveTripTicketWorkflowTargets(oldRecord, req.user);
+      const tResult = transition({
+        entity: 'tripTicket',
+        currentStatus: oldRecord.status,
+        action: 'endorse',
+        user: req.user,
+        context: workflowTargets
+      });
       if (!tResult.allowed) throw new Error(tResult.error);
       
       const updateResult = await tx.tripTicket.updateMany({
@@ -336,7 +441,14 @@ const approveTicket = async (req, res) => {
       const oldRecord = await tx.tripTicket.findUnique({ where: { id } });
       if (!oldRecord) throw new Error('Record not found');
 
-      const tResult = transition({ entity: 'tripTicket', currentStatus: oldRecord.status, action: 'approve', user: req.user });
+      const workflowTargets = await resolveTripTicketWorkflowTargets(oldRecord, req.user);
+      const tResult = transition({
+        entity: 'tripTicket',
+        currentStatus: oldRecord.status,
+        action: 'approve',
+        user: req.user,
+        context: workflowTargets
+      });
       if (!tResult.allowed) throw new Error(tResult.error);
       
       const updateResult = await tx.tripTicket.updateMany({
@@ -383,7 +495,14 @@ const rejectTicket = async (req, res) => {
       const oldRecord = await tx.tripTicket.findUnique({ where: { id } });
       if (!oldRecord) throw new Error('Record not found');
 
-      const tResult = transition({ entity: 'tripTicket', currentStatus: oldRecord.status, action: 'reject', user: req.user });
+      const workflowTargets = await resolveTripTicketWorkflowTargets(oldRecord, req.user);
+      const tResult = transition({
+        entity: 'tripTicket',
+        currentStatus: oldRecord.status,
+        action: 'reject',
+        user: req.user,
+        context: workflowTargets
+      });
       if (!tResult.allowed) throw new Error(tResult.error);
       
       const updateResult = await tx.tripTicket.updateMany({
@@ -424,5 +543,6 @@ module.exports = {
   checkOccupancy,
   endorseTicket,
   approveTicket,
-  rejectTicket
+  rejectTicket,
+  getTicketWorkflowTargets
 };

@@ -3,7 +3,7 @@ const { validatePassword } = require('../utils/validation');
 const { sanitizeUser } = require('../utils/userUtils');
 const prisma = require('../config/database');
 const auditService = require('../services/audit.service');
-const VALID_DEPARTMENT_ROLES = ['President', 'DepartmentHead', 'Staff'];
+const VALID_DEPARTMENT_ROLES = ['President', 'DepartmentHead', 'ImmediateSupervisor', 'Staff'];
 
 const login = async (req, res, next) => {
   try {

@@ -180,6 +180,8 @@ model TripTicket {
   driverId          Int?
   driverUser        User?    @relation("TripTicketDriver", fields: [driverId], references: [id])
   vehicle           String?
+  vehicleId         Int?
+  vehicleRef        Vehicle? @relation(fields: [vehicleId], references: [id])
   plateNumber       String?
   etdOffice         String?
   etaDestination    String?
@@ -330,6 +332,9 @@ model Vehicle {
   createdAt     DateTime @default(now())
   companyId     Int?
   company       Company?  @relation(fields: [companyId], references: [id])
+  departmentId  Int?
+  department    Department?  @relation(fields: [departmentId], references: [id])
+  tripTickets   TripTicket[]
   @@map("vehicle")
 }
 
@@ -373,6 +378,7 @@ enum UserRole {
 enum DepartmentRole {
   President
   DepartmentHead
+  ImmediateSupervisor
   Staff
   @@map("department_role")
 }
@@ -384,6 +390,7 @@ model Department {
   status    String   @default("Active")
   createdAt DateTime @default(now())
   users     User[]
+  vehicles  Vehicle[]
 
   @@map("department")
 }

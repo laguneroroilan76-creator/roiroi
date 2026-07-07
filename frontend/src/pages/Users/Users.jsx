@@ -374,6 +374,7 @@ export default function Users() {
                         <option value="">Select Role</option>
                         <option value="President">President</option>
                         <option value="DepartmentHead">Department Head</option>
+                        <option value="ImmediateSupervisor">Immediate Supervisor</option>
                         <option value="Staff">Staff</option>
                       </select>
                       <ChevronDown size={15} className="um-select-arrow" />

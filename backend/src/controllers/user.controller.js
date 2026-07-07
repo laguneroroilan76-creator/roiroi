@@ -147,7 +147,7 @@ const updateUserData = async (req, res) => {
       }
 
       if (data.departmentRole !== undefined) {
-        const validDepartmentRoles = ['President', 'DepartmentHead', 'Staff'];
+        const validDepartmentRoles = ['President', 'DepartmentHead', 'ImmediateSupervisor', 'Staff'];
         if (!validDepartmentRoles.includes(data.departmentRole)) {
           return res.status(400).json({ error: 'Invalid department role' });
         }

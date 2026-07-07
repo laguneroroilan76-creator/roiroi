@@ -30,8 +30,9 @@ const sanitizeUser = (user) => {
   };
 };
 
-function deriveRole(departmentName, isDriver, isSecurityGuard, isITSpecialist) {
+function deriveRole(departmentName, isDriver, isSecurityGuard, isITSpecialist, departmentRole) {
   if (isSecurityGuard) return 'Guard';
+  if (departmentRole === 'ImmediateSupervisor' && departmentName === 'Admin') return 'Admin';
   if (departmentName === 'Admin' && isITSpecialist) return 'IT';
   if (departmentName === 'Admin') return 'Admin';
   if (departmentName === 'Accounting') return 'Accounting';
@@ -59,6 +60,17 @@ const deriveApprovalFlags = (departmentRole) => {
       canApproveDeptHead: true,
       canEndorse: true,
       canVerify: true,
+    };
+  }
+  if (departmentRole === 'ImmediateSupervisor') {
+    return {
+      canApprove: false,
+      canApprovePRF: false,
+      canApproveRFP: false,
+      canApproveTripTicket: false,
+      canApproveDeptHead: false,
+      canEndorse: true,
+      canVerify: false,
     };
   }
   return {
