@@ -140,10 +140,6 @@ export default function TripTicketForm() {
       : departmentHeadForVehicle?.name || 'Not yet assigned';
   }
 
-  if (requestorUser?.departmentRole === 'DepartmentHead' && selectedVehicle && vehicleDepartmentId && Number(vehicleDepartmentId) === Number(requestorDepartmentId)) {
-    previewValidationMessage = 'A Department Head cannot request a vehicle from their own department.';
-  }
-
   useEffect(() => {
     const hdi = parsePassengerValue(formData.hdiPassengers);
     const outside = parsePassengerValue(formData.outsidePassengers);
@@ -312,10 +308,6 @@ export default function TripTicketForm() {
       const now = new Date().toLocaleString('sv').replace(' ', 'T').slice(0, 16);
       let payload = { ...formData };
 
-      if (requestorUser?.departmentRole === 'DepartmentHead' && selectedVehicle && vehicleDepartmentId && Number(vehicleDepartmentId) === Number(requestorDepartmentId)) {
-        showToast('A Department Head cannot request a vehicle from their own department.', 'error');
-        return;
-      }
       payload.passengerCount = String(totalPassengers);
       payload.vehicleId = formData.vehicleId ? Number(formData.vehicleId) : null;
       delete payload.status;

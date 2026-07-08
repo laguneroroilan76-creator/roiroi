@@ -16,9 +16,17 @@ const verifyOwnershipOrRole = (modelName) => {
       }
 
       // We need to look up the record's authorId
+      const selectFields = { authorId: true, approvedById: true };
+      if (modelName === 'tripTicket') {
+        selectFields.endorsedById = true;
+      }
+      if (modelName === 'prf') {
+        selectFields.verifiedById = true;
+      }
+
       const record = await prisma[modelName].findUnique({
         where: { id },
-        select: { authorId: true, endorsedById: true, approvedById: true }
+        select: selectFields
       });
 
       if (!record) {
@@ -31,16 +39,9 @@ const verifyOwnershipOrRole = (modelName) => {
       }
 
       // If they are the expected endorser or approver, they have access
-      if (record.endorsedById === req.user.id || record.approvedById === req.user.id) {
-        return next();
-      }
-
-      // If they are an Approver (or have specific approve flags), they have access
-      if (
-        req.user.departmentRole === 'DepartmentHead' ||
-        req.user.departmentRole === 'ImmediateSupervisor' ||
-        req.user.isSecurityGuard === true
-      ) {
+      if (record.endorsedById === req.user.id ||
+          record.approvedById === req.user.id ||
+          record.verifiedById === req.user.id) {
         return next();
       }
 

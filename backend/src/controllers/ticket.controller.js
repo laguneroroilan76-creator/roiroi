@@ -142,7 +142,6 @@ const resolveTripTicketWorkflowTargets = async (ticket, user) => {
     expectedEndorser = deptHeadForRequestor;
     expectedApprover = deptHeadForVehicle;
   } else if (role === 'DepartmentHead') {
-    // Block if vehicle is from own dept — handled at submission
     expectedEndorser = president;
     expectedApprover = deptHeadForVehicle;
   } else if (role === 'President') {
