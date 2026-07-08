@@ -22,7 +22,10 @@ export default function TripTicketCoreForm({
   guards, 
   companies,
   user,
-  vehicleCapacityLimit
+  vehicleCapacityLimit,
+  previewEndorser,
+  previewApprover,
+  previewValidationMessage
 }) {
   return (
     <div className="form-container">
@@ -50,6 +53,9 @@ export default function TripTicketCoreForm({
           vehicles={vehicles} 
           occupiedDrivers={occupiedDrivers} 
           occupiedVehicles={occupiedVehicles} 
+          previewEndorser={previewEndorser}
+          previewApprover={previewApprover}
+          previewValidationMessage={previewValidationMessage}
         />
         <LogisticsSection 
           formData={formData} 

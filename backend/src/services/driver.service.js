@@ -8,9 +8,9 @@ const createDriver = async (data) => {
 
 const getDrivers = async () => {
   return await prisma.user.findMany({
-    where: { role: 'Driver' },
+    where: { isDriver: true },
     orderBy: { createdAt: 'desc' },
-    select: { id: true, name: true, email: true, status: true, inactiveReason: true }
+    select: { id: true, name: true, email: true, status: true, inactiveReason: true, isDriver: true, department: true, departmentRole: true }
   });
 };
 

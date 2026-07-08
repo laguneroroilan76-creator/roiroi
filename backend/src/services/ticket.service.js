@@ -133,8 +133,9 @@ const getOccupiedResources = async (startDate, endDate) => {
     select: {
       id: true,
       driverId: true,
-      vehicle: true,
-      driverUser: { select: { name: true } }
+      vehicleId: true,
+      vehicleRef: { select: { name: true } },
+      driverUser: { select: { name: true, isDriver: true } }
     }
   });
 };

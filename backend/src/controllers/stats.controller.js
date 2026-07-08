@@ -58,7 +58,7 @@ exports.getDashboardStats = async (req, res) => {
 
       prisma.user.count({ where: { status: 'Active' } }),
       prisma.vehicle.count({ where: { status: 'Active' } }),
-      prisma.user.count({ where: { role: 'Driver', status: 'Active' } })
+      prisma.user.count({ where: { isDriver: true, status: 'Active' } })
     ]);
 
     // 2. Trends & Sparklines (Database-level Aggregation)

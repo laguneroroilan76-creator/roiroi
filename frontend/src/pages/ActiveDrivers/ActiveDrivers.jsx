@@ -113,7 +113,7 @@ export default function ActiveDrivers() {
                       <span style={{ color: '#cbd5e1' }}>-</span>
                   )}
                 </td>
-                {user?.role === 'Admin' && (
+                {(user?.role === 'Admin' || user?.departmentRole === 'President') && (
                   <td>
                     <button 
                         type="button"

@@ -86,7 +86,7 @@ export default function GuardDashboard() {
                 <span className="item-no">#{ticket.id.toString().padStart(4, '0')}</span>
                 <div className="item-info">
                   <span className="item-driver">
-                    {ticket.driver || 'No Driver'}
+                    {ticket.driverUser?.name || 'No Driver'}
                     {ticket.dateTimeDeparture && !ticket.dateTimeReturn && (
                       <span className="ongoing-badge">ONGOING</span>
                     )}
@@ -97,7 +97,7 @@ export default function GuardDashboard() {
                       <span className="authorized-badge">AUTHORIZED</span>
                     )}
                   </span>
-                  <span className="item-vehicle">{ticket.vehicle || 'No Vehicle'} • {ticket.destination || 'No Destination'}</span>
+                  <span className="item-vehicle">{ticket.vehicleRef?.name || ticket.vehicle || 'No Vehicle'} • {ticket.destination || 'No Destination'}</span>
                 </div>
               </div>
               <div className="item-meta">

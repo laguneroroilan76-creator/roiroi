@@ -27,7 +27,7 @@ export const FormHeader = ({ status, formData, user, companies = [] }) => {
   const isCompleted = status === 'Approved' && !!formData?.dateTimeDeparture && !!formData?.dateTimeReturn && formData.dateTimeReturn !== "";
   
   // Determine company to use for logo
-  const company = formData?.company || formData?.author?.company || user?.company?.name;
+  const company = formData?.company || formData?.author?.company?.name || user?.company?.name;
   const selectedCompany = companies.find(c => c.name === company);
   
   let logoSrc = "/HDI Primary Logo .png";
