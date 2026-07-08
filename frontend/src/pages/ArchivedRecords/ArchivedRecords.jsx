@@ -25,7 +25,7 @@ export default function ArchivedRecords() {
   const navigate = useNavigate();
   const { showToast, confirm } = useToast();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isAdmin = user.role === 'Admin' || user.canApprove;
+  const isAdmin = user.role === 'Admin' || user.departmentRole === 'President';
   const isDarkMode = document.body.classList.contains('dark-mode');
 
   const fetchData = async () => {

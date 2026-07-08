@@ -17,7 +17,7 @@ export default function TripTicketForm() {
   const isReadOnly = location.state?.readOnly;
 
   const user = JSON.parse(localStorage.getItem('user'));
-  const isGuard = user?.role === 'Guard';
+  const isGuard = user?.isSecurityGuard === true;
 
   const [status, setStatus] = useState(initialData?.status || 'Pending');
   const [drivers, setDrivers] = useState([]);

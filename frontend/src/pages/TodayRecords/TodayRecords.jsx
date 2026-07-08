@@ -83,7 +83,7 @@ export default function TodayRecords() {
       ].filter(r => new Date(r.createdAt).toDateString() === todayDate);
 
       const filteredToday = allToday.filter(record => {
-        const isAdmin = user?.role === 'Admin' || user?.canApprove;
+        const isAdmin = user?.role === 'Admin' || user?.departmentRole === 'President';
         const isMyDoc = record.authorId === user.id || record.requestorName === user.name || record.requestor === user.name;
         
         if (isAdmin || isMyDoc) return true;

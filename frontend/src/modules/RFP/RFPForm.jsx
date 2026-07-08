@@ -96,7 +96,7 @@ export default function RFPForm() {
 
   const isAdmin = user?.role === 'Admin' || user?.canApprove;
   const isGuard = user?.role === 'Guard';
-  const isAccounting = user?.role === 'Accounting';
+  const isAccounting = user?.department?.name === 'Accounting' || user?.isRFPApprover === true;
   const isPending = formData.status === 'Pending' && !!initialData;
   const isReadOnly = location.state?.readOnly || !!initialData;
 

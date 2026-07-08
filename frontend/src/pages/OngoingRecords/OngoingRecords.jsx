@@ -87,7 +87,7 @@ export default function OngoingRecords() {
         if (isAdmin || isMyDoc) return true;
         
         if (record.docType === 'TRIP_TICKET') {
-            const isTTApprover = user?.canApproveTripTicket;
+            const isTTApprover = user?.departmentRole === 'President' || user?.departmentRole === 'DepartmentHead';
             const isTTEndorser = user?.canEndorse;
             if (record.status === 'Pending Endorsement') return isTTEndorser;
             if (record.status === 'Pending Approval') return isTTApprover;

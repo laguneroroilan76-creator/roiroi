@@ -76,7 +76,7 @@ export default function Dashboard() {
     const { showToast } = useToast();
     const { isDarkMode } = useTheme();
 
-    const isAdmin = user?.role === 'Admin';
+    const isAdmin = user?.role === 'Admin' || user?.departmentRole === 'President';
     const isGuard = user?.role === 'Guard';
     const isAccounting = user?.role === 'Accounting';
     const hasPendingAccess = !isGuard && (

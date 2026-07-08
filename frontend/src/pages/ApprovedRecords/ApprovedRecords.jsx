@@ -34,7 +34,7 @@ export default function ApprovedRecords() {
   const { showToast, confirm } = useToast();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isGuard = user.role === 'Guard';
-  const isAdmin = user.role === 'Admin' || 
+  const isAdmin = user.role === 'Admin' || user.departmentRole === 'President' ||
                   user.canApprove || 
                   user.canApprovePRF || 
                   user.canApproveTripTicket || 

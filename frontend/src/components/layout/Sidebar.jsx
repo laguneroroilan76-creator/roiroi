@@ -163,6 +163,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed }) {
         )}
 
         {(isAdmin || 
+          user?.departmentRole === 'President' || user?.departmentRole === 'DepartmentHead' ||
           user?.canApprove || 
           user?.canApprovePRF || 
           user?.canApproveTripTicket || 
@@ -210,7 +211,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed }) {
           <div className={`nav-item ${isActive('/history') ? 'active' : ''}`} onClick={() => { navigate('/history'); onClose(); }} title="History & Activity">
             <History size={20} />
             <span className="nav-text">
-              {(user?.canApprove || 
+              {(user?.departmentRole === 'President' || user?.departmentRole === 'DepartmentHead' ||
+                user?.canApprove || 
                 user?.canApprovePRF || 
                 user?.canApproveTripTicket || 
                 user?.canApproveRFP || 

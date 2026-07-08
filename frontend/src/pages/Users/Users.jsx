@@ -101,7 +101,7 @@ export default function Users() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!editingUser && formData.role === 'Guard' && currentUser?.role !== 'Admin') {
+    if (!editingUser && formData.isSecurityGuard === true && currentUser?.departmentRole !== 'President' && currentUser?.role !== 'Admin') {
       showToast('Only Admin users can create Guard accounts.', 'error');
       return;
     }

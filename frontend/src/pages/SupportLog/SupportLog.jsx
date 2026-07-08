@@ -28,7 +28,7 @@ export default function SupportLog() {
   const { isDarkMode } = useTheme();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const permissions = typeof user.permissions === 'string' ? JSON.parse(user.permissions) : (user.permissions || {});
-  const isIT = user.role === 'IT' || user.role === 'Admin';
+  const isIT = user.isITSpecialist === true || user.role === 'Admin' || user.departmentRole === 'President';
   const canManageSupport = user.role === 'IT' || user.role === 'Admin';
 
   useEffect(() => {

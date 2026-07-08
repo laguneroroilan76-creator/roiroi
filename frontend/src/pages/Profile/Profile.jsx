@@ -119,7 +119,7 @@ export default function Profile() {
     try {
       setIsSaving(true);
       // If user is a driver, update their status via driver routes
-      if (user.role === 'Driver') {
+      if (user.isDriver === true) {
         const driverRes = await api.put(`/drivers/${user.id}`, {
           status: editForm.status,
           inactiveReason: editForm.status === 'Inactive' ? editForm.inactiveReason : null

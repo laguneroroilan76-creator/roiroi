@@ -40,7 +40,7 @@ function ProtectedRoute({ children }) {
 
 function DashboardRoute() {
   const user = getStoredUser();
-  if (user?.role === 'Guard') {
+  if (user?.isSecurityGuard === true) {
     return <Navigate to="/guard-dashboard" replace />;
   }
 

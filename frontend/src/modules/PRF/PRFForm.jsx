@@ -25,7 +25,7 @@ export default function PRFForm() {
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user?.role === 'Admin' || user?.canApprove;
-  const canApprovePRF = user?.role === 'Admin' || user?.canApprove || user?.canApprovePRF || user?.canVerify || user?.role === 'Accounting';
+  const canApprovePRF = user?.role === 'Admin' || user?.departmentRole === 'President' || user?.departmentRole === 'DepartmentHead';
   const isGuard = user?.role === 'Guard';
   
   const [status, setStatus] = useState(initialData?.status || 'Pending');

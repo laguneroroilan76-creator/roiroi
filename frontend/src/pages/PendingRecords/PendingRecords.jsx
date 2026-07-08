@@ -88,7 +88,7 @@ export default function PendingRecords() {
       ];
 
       const filteredPending = allPending.filter(record => {
-        const isAdmin = user?.role === 'Admin' || user?.canApprove;
+        const isAdmin = user?.role === 'Admin' || user?.departmentRole === 'President';
         
         // Granular filtering per document type
         if (record.docType === 'TRIP_TICKET') {

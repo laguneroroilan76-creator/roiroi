@@ -220,7 +220,10 @@ const createTicket = async (req, res) => {
 
 const getTickets = async (req, res) => {
   try {
-    const hasAccess = req.user.canApprove || req.user.canApproveTripTicket || req.user.canEndorse;
+    const hasAccess = req.user.role === 'Admin' ||
+      req.user.departmentRole === 'President' ||
+      req.user.departmentRole === 'DepartmentHead' ||
+      req.user.departmentRole === 'ImmediateSupervisor';
     const tickets = await ticketService.getTickets(req.user.id, hasAccess, req.user.role === 'Guard');
     res.json(tickets);
   } catch (err) {

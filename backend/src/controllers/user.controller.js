@@ -86,7 +86,9 @@ const updateDarkMode = async (req, res) => {
 
 const getActivityLogs = async (req, res) => {
   try {
-    if (!req.user.canApprove) return res.status(403).json({ error: 'Forbidden' });
+    if (req.user.role !== 'Admin' && req.user.departmentRole !== 'President') {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
     const logs = await activityService.getActivityLogs();
     res.json(logs);
   } catch (err) {

@@ -22,7 +22,7 @@ export default function NotificationBell({ user }) {
       let hasAccess = false;
       if (!notif.targetRole) hasAccess = true;
       else if (notif.targetUserId === user.id) hasAccess = true;
-      else if (user.role === 'Admin' && notif.targetRole === 'Admin') hasAccess = true;
+      else if ((user.role === 'Admin' || user.departmentRole === 'President') && notif.targetRole === 'Admin') hasAccess = true;
       else if (user.role === 'IT' && notif.targetRole === 'IT') hasAccess = true;
       else if (user.canApprove && notif.targetRole === 'Approver') hasAccess = true;
       else if (user.canApprovePRF && notif.targetRole === 'PRF_Approver') hasAccess = true;

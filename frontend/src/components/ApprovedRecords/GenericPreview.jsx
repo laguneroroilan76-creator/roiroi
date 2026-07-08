@@ -4,7 +4,7 @@ import { Archive } from 'lucide-react';
 
 export default function GenericPreview({ record, onClose, onArchive }) {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isAdmin = user.role === 'Admin' || user.canApprove;
+  const isAdmin = user.role === 'Admin' || user.departmentRole === 'President';
   const type = record.type;
   
   const statusLabel = record.status === 'Archived'

@@ -39,7 +39,6 @@ const register = async (userData) => {
   }
 
   const derivedRole = deriveRole(departmentName, !!userData.isDriver, !!userData.isSecurityGuard, !!userData.isITSpecialist);
-  const canApprove = derivedRole === 'Admin' ? true : (derivedRole === 'User' && !!userData.canApprove);
   const hashedPassword = await bcrypt.hash(userData.password, 10);
   
   // Default permissions if none provided
@@ -57,7 +56,6 @@ const register = async (userData) => {
       ...userData,
       ...approvalFlags,
       role: derivedRole,
-      canApprove,
       permissions,
       password: hashedPassword
     }

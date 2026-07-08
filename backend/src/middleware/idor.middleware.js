@@ -11,7 +11,7 @@ const verifyOwnershipOrRole = (modelName) => {
       if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID format' });
 
       // If user is Admin, they can access anything
-      if (req.user.role === 'Admin') {
+      if (req.user.role === 'Admin' || req.user.departmentRole === 'President') {
         return next();
       }
 
@@ -36,7 +36,11 @@ const verifyOwnershipOrRole = (modelName) => {
       }
 
       // If they are an Approver (or have specific approve flags), they have access
-      if (req.user.role === 'Approver' || req.user.canApprove || req.user.canApprovePRF || req.user.canApproveRFP || req.user.canApproveTripTicket || req.user.role === 'Accounting' || req.user.role === 'Guard') {
+      if (
+        req.user.departmentRole === 'DepartmentHead' ||
+        req.user.departmentRole === 'ImmediateSupervisor' ||
+        req.user.isSecurityGuard === true
+      ) {
         return next();
       }
 

@@ -82,7 +82,8 @@ const register = async (req, res, next) => {
       departmentRole,
       isDriver,
       isRFPApprover,
-      isSecurityGuard
+      isSecurityGuard,
+      isITSpecialist,
     } = req.body;
 
     const error = validatePassword(password);
@@ -131,7 +132,9 @@ const register = async (req, res, next) => {
       departmentId: parsedDepartmentId,
       departmentRole: isSecurityGuard ? null : departmentRole,
       isDriver: !!isDriver,
-      isRFPApprover: !!isRFPApprover
+      isRFPApprover: !!isRFPApprover,
+      isSecurityGuard: !!isSecurityGuard,
+      isITSpecialist: !!isITSpecialist,
     });
     res.status(201).json({ message: 'User registered successfully', userId: user.id });
   } catch (err) {

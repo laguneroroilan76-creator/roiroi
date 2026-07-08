@@ -5,6 +5,8 @@ import './Vehicles.css';
 
 export default function Vehicles() {
   const [vehicles, setVehicles] = useState([]);
+  const [companies, setCompanies] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState(null);
@@ -20,13 +22,33 @@ export default function Vehicles() {
     engineNumber: '',
     chassisNumber: '',
     capacity: '',
+    companyId: '',
+    departmentId: '',
     status: 'Active'
   });
   const { showToast } = useToast();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   useEffect(() => {
-    fetchVehicles();
+    const loadInitialData = async () => {
+      try {
+        const [vehiclesRes, companiesRes, departmentsRes] = await Promise.all([
+          api.get('/vehicles'),
+          api.get('/companies'),
+          api.get('/departments')
+        ]);
+        setVehicles(vehiclesRes.data);
+        setCompanies(companiesRes.data);
+        setDepartments(departmentsRes.data);
+      } catch (err) {
+        console.error('Error loading vehicle data:', err);
+        showToast('Failed to load vehicles', 'error');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadInitialData();
   }, []);
 
   const fetchVehicles = async () => {
@@ -56,6 +78,8 @@ export default function Vehicles() {
         engineNumber: vehicle.engineNumber || '',
         chassisNumber: vehicle.chassisNumber || '',
         capacity: vehicle.capacity != null ? String(vehicle.capacity) : '',
+        companyId: vehicle.companyId || '',
+        departmentId: vehicle.departmentId || '',
         status: vehicle.status || 'Active'
       });
     } else {
@@ -72,6 +96,8 @@ export default function Vehicles() {
         engineNumber: '',
         chassisNumber: '',
         capacity: '',
+        companyId: '',
+        departmentId: '',
         status: 'Active'
       });
     }
@@ -114,7 +140,7 @@ export default function Vehicles() {
         <div className="header-left">
           <h1>Vehicle Management</h1>
         </div>
-        {(user?.role === 'Admin' || user?.permissions?.vehicles?.manage) && (
+        {(user?.role === 'Admin' || user?.departmentRole === 'President' || user?.permissions?.vehicles?.manage) && (
           <button className="btn add-btn" onClick={() => handleOpenModal()}>
             <span>+</span> Register New Vehicle
           </button>
@@ -129,7 +155,7 @@ export default function Vehicles() {
               <th>Plate Number</th>
               <th>Specifications</th>
               <th>Status</th>
-              {(user?.role === 'Admin' || user?.permissions?.vehicles?.manage) && <th style={{ textAlign: 'right' }}>Actions</th>}
+              {(user?.role === 'Admin' || user?.departmentRole === 'President' || user?.permissions?.vehicles?.manage) && <th style={{ textAlign: 'right' }}>Actions</th>}
             </tr>
           </thead>
           <tbody>
@@ -155,7 +181,7 @@ export default function Vehicles() {
                     {vehicle.status}
                   </span>
                 </td>
-                {(user?.role === 'Admin' || user?.permissions?.vehicles?.manage) && (
+                {(user?.role === 'Admin' || user?.departmentRole === 'President' || user?.permissions?.vehicles?.manage) && (
                   <td>
                     <div className="actions-cell">
                       <button className="action-link edit" onClick={() => handleOpenModal(vehicle)}>Edit</button>
@@ -167,7 +193,7 @@ export default function Vehicles() {
             ))}
             {vehicles.length === 0 && (
               <tr>
-                <td colSpan={(user?.role === 'Admin' || user?.permissions?.vehicles?.manage) ? "5" : "4"} className="empty-row">
+                <td colSpan={(user?.role === 'Admin' || user?.departmentRole === 'President' || user?.permissions?.vehicles?.manage) ? "5" : "4"} className="empty-row">
                   No records found in the vehicle registry.
                 </td>
               </tr>
@@ -304,6 +330,29 @@ export default function Vehicles() {
                 {/* Availability Section */}
                 <div className="form-section">
                   <h3 className="section-title">Availability</h3>
+                  <div className="input-group">
+                    <label>Company</label>
+                    <select
+                      value={formData.companyId}
+                      onChange={(e) => setFormData({ ...formData, companyId: e.target.value, departmentId: '' })}
+                    >
+                      <option value="">Select Company</option>
+                      {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="input-group">
+                    <label>Department</label>
+                    <select
+                      value={formData.departmentId}
+                      onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
+                      disabled={!formData.companyId}
+                    >
+                      <option value="">Select Department</option>
+                      {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    </select>
+                  </div>
+
                   <div className="input-group">
                     <label>Operational Status</label>
                     <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })}>

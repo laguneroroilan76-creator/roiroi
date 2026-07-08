@@ -62,7 +62,7 @@ export default function History() {
       setPrfs(prfsRes.map(parseRecord).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
       setRfps(rfpsRes.map(parseRecord).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
 
-      if (user?.canApprove) {
+      if (user?.departmentRole === 'President' || user?.departmentRole === 'DepartmentHead') {
         // Logs are fetched dynamically inside ActivityLog component
       }
     } catch (err) {
