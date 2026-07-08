@@ -254,7 +254,6 @@ const updateTicket = async (req, res) => {
     // Get the existing ticket to check status and permissions
     const existingTicket = await prisma.tripTicket.findUnique({ where: { id } });
     if (!existingTicket) return res.status(404).json({ error: 'Ticket not found' });
-    await ensurePassengerCountAndCapacity(sanitizedData, existingTicket);
 
     // If ticket is ARRIVED, no one can edit
     if (existingTicket.status === 'ARRIVED') {
@@ -264,7 +263,7 @@ const updateTicket = async (req, res) => {
     // Guards can only edit during travel phases (Approved, DEPARTED) and only KM/guard fields
     if (req.user.role === 'Guard') {
       const guardAllowed = ['kmOut', 'kmIn', 'guardOutId', 'guardInId', 'dateTimeDeparture', 'dateTimeReturn', 'status'];
-      const attemptedFields = Object.keys(sanitizedData);
+      const attemptedFields = Object.keys(sanitizedData).filter(f => sanitizedData[f] != null);
       const hasForbidden = attemptedFields.some((f) => !guardAllowed.includes(f));
       if (hasForbidden) return res.status(403).json({ error: 'Guard users can only update checkpoint fields.' });
       
@@ -283,6 +282,10 @@ const updateTicket = async (req, res) => {
     }
     else {
       return res.status(403).json({ error: 'Cannot edit this ticket at this stage.' });
+    }
+
+    if (req.user.role !== 'Guard') {
+      await ensurePassengerCountAndCapacity(sanitizedData, existingTicket);
     }
 
     if (req.user.role === 'Guard') {

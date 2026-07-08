@@ -15,10 +15,16 @@ const verifyOwnershipOrRole = (modelName) => {
         return next();
       }
 
+      // Security Guards can read any trip ticket (needed for Guard Dashboard)
+      if (modelName === 'tripTicket' && req.user.isSecurityGuard === true && req.method === 'GET') {
+        return next();
+      }
+
       // We need to look up the record's authorId
       const selectFields = { authorId: true, approvedById: true };
       if (modelName === 'tripTicket') {
         selectFields.endorsedById = true;
+        selectFields.status = true;
       }
       if (modelName === 'prf') {
         selectFields.verifiedById = true;
@@ -42,6 +48,16 @@ const verifyOwnershipOrRole = (modelName) => {
       if (record.endorsedById === req.user.id ||
           record.approvedById === req.user.id ||
           record.verifiedById === req.user.id) {
+        return next();
+      }
+
+      // Security Guards can update trip tickets that are Approved or DEPARTED (for departure/arrival logging)
+      if (
+        modelName === 'tripTicket' &&
+        req.user.isSecurityGuard === true &&
+        ['PUT', 'PATCH'].includes(req.method) &&
+        ['Approved', 'DEPARTED'].includes(record.status)
+      ) {
         return next();
       }
 
