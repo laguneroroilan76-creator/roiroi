@@ -97,10 +97,12 @@ const getTicketById = async (id, requestingUser) => {
   if (!ticket) return null;
 
   if (requestingUser) {
-    const isAdmin = requestingUser.role === 'Admin';
+    const isAdmin = requestingUser.role === 'Admin' || requestingUser.departmentRole === 'President';
     const isAuthor = ticket.authorId === requestingUser.id;
-    const hasFlag = !!(requestingUser.canApproveTripTicket || requestingUser.canEndorse || requestingUser.canApprove || requestingUser.role === 'Guard');
-    if (!isAdmin && !isAuthor && !hasFlag) {
+    const isExpectedEndorser = ticket.endorsedById === requestingUser.id;
+    const isExpectedApprover = ticket.approvedById === requestingUser.id;
+    const isGuard = requestingUser.isSecurityGuard === true;
+    if (!isAdmin && !isAuthor && !isExpectedEndorser && !isExpectedApprover && !isGuard) {
       const err = new Error('Access denied: insufficient permissions.');
       err.statusCode = 403;
       throw err;

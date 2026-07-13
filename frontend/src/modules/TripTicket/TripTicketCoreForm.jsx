@@ -19,9 +19,10 @@ export default function TripTicketCoreForm({
   vehicles, 
   occupiedDrivers, 
   occupiedVehicles, 
-  guards, 
+  guards,
   companies,
   user,
+  vehicleCompany,
   vehicleCapacityLimit,
   previewEndorser,
   previewApprover,
@@ -29,13 +30,14 @@ export default function TripTicketCoreForm({
 }) {
   return (
     <div className="form-container">
-      <FormHeader status={status || formData?.status} formData={formData} user={user} companies={companies} />
+      <FormHeader status={status || formData?.status} formData={formData} user={user} companies={companies} vehicleCompany={vehicleCompany} />
       <div className="form-body">
         <GeneralInfo 
           formData={formData} 
           handleChange={handleChange} 
           isFieldDisabled={isFieldDisabled} 
           isReadOnly={isReadOnly} 
+          user={user} 
         />
         <TravelDetails 
           formData={formData} 

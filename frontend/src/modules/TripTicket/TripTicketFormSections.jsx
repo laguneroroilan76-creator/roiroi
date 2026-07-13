@@ -22,12 +22,13 @@ const getLocalDateString = (date = new Date()) => {
 
 const getLocalDateTimeMin = () => `${getLocalDateString()}T00:00`;
 
-export const FormHeader = ({ status, formData, user, companies = [] }) => {
+export const FormHeader = ({ status, formData, user, companies = [], vehicleCompany }) => {
   const isOngoing = status === 'Approved' && !!formData?.dateTimeDeparture && (!formData?.dateTimeReturn || formData.dateTimeReturn === "");
   const isCompleted = status === 'Approved' && !!formData?.dateTimeDeparture && !!formData?.dateTimeReturn && formData.dateTimeReturn !== "";
-  
-  // Determine company to use for logo
-  const company = formData?.company || formData?.author?.company?.name || user?.company?.name;
+
+  // Determine company to use for logo: prefer the selected vehicle's company,
+  // fall back to the logged-in user's company if no vehicle is selected.
+  const company = vehicleCompany || formData?.company || formData?.author?.company?.name || user?.company?.name;
   const selectedCompany = companies.find(c => c.name === company);
   
   let logoSrc = "/HDI Primary Logo .png";
@@ -72,7 +73,7 @@ export const FormHeader = ({ status, formData, user, companies = [] }) => {
   );
 };
 
-export const GeneralInfo = ({ formData, handleChange, isFieldDisabled, isReadOnly }) => (
+export const GeneralInfo = ({ formData, handleChange, isFieldDisabled, isReadOnly, user }) => (
   <div className="form-section">
     <h3 className="section-title">General Information</h3>
     <div className="grid-2">
@@ -84,20 +85,23 @@ export const GeneralInfo = ({ formData, handleChange, isFieldDisabled, isReadOnl
         <label>Company</label>
         <input 
           type="text" 
-          value={formData.company || ''} 
+          value={user?.company?.name || formData.company || ''} 
           disabled={true} 
           className="locked-input"
           style={{ background: 'rgba(15, 23, 42, 0.03)', color: '#0f172a', fontWeight: 600 }}
-          placeholder="Select company from toolbar"
+          placeholder="Your company"
         />
       </div>
       <div className="form-group">
-        <label>Requestor Name</label>
-        <input type="text" name="requestorName" value={formData.requestorName} onChange={handleChange} disabled={isFieldDisabled('requestorName', isReadOnly)} placeholder={isFieldDisabled('requestorName', isReadOnly) ? "" : "Enter your name"} />
-      </div>
-      <div className="form-group">
-        <label>Subsidiary/Department</label>
-        <input type="text" name="subsidiary" value={formData.subsidiary} onChange={handleChange} disabled={isFieldDisabled('subsidiary', isReadOnly)} placeholder={isFieldDisabled('subsidiary', isReadOnly) ? "" : "e.g. Sales, Operations"} />
+        <label>Department</label>
+        <input
+          type="text"
+          value={user?.department?.name || formData.subsidiary || ''}
+          disabled={true}
+          className="locked-input"
+          style={{ background: 'rgba(15, 23, 42, 0.03)', color: '#0f172a', fontWeight: 600 }}
+          placeholder="Your department"
+        />
       </div>
     </div>
   </div>
@@ -206,7 +210,7 @@ export const FleetAssignment = ({ formData, handleChange, isFieldDisabled, isRea
       </div>
       <div className="form-group">
         <label>Plate Number</label>
-        <input type="text" name="plateNumber" value={formData.plateNumber} onChange={handleChange} disabled={isFieldDisabled('plateNumber', isReadOnly)} placeholder={isFieldDisabled('plateNumber', isReadOnly) ? "" : "ABC-1234"} />
+        <input type="text" name="plateNumber" value={formData.plateNumber} readOnly disabled className="locked-input" style={{ background: 'rgba(15, 23, 42, 0.03)', color: '#0f172a', fontWeight: 600 }} placeholder="Auto-filled from vehicle" />
       </div>
     </div>
     <div className="mt-3" style={{ display: 'grid', gap: '0.5rem' }}>

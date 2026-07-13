@@ -38,9 +38,8 @@ export default function TripTicketForm() {
 
     const defaults = {
       dateRequested: new Date().toISOString().split('T')[0],
-      requestorName: user?.name || '',
       company: initialData?.company || user?.company?.name || '',
-      subsidiary: '',
+      subsidiary: user?.department?.name || '',
       driver: '',
       vehicle: '',
       vehicleId: null,
@@ -94,6 +93,7 @@ export default function TripTicketForm() {
   };
 
   const selectedVehicle = vehicles.find(v => v.id === Number(formData.vehicleId));
+  const vehicleCompany = selectedVehicle?.company?.name || null;
   const vehicleCapacityLimit = selectedVehicle && Number.isInteger(selectedVehicle.capacity)
     ? Math.max(0, selectedVehicle.capacity - 1)
     : null;
@@ -292,6 +292,16 @@ export default function TripTicketForm() {
           showToast('You cannot select a past date for ETA.', 'error');
           return;
         }
+
+        const missingFields = [];
+        if (!formData.destination?.trim()) missingFields.push('Destination');
+        if (!formData.medium?.trim()) missingFields.push('Medium');
+        if (!formData.purpose?.trim()) missingFields.push('Purpose');
+        if (!formData.passengersDetail?.trim()) missingFields.push('Passenger Names');
+        if (missingFields.length > 0) {
+          showToast(`Please fill in the following required fields: ${missingFields.join(', ')}`, 'error');
+          return;
+        }
       }
 
       const hdi = parsePassengerValue(formData.hdiPassengers);
@@ -416,22 +426,6 @@ export default function TripTicketForm() {
           <button className="tool-btn back" onClick={() => initialData ? navigate(-1) : navigate('/dashboard')}>Back</button>
         </div>
         <div className="tool-group">
-          {!isReadOnly && !isReviewMode && !isGuard && (
-            <div className="toolbar-company-select" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#f1f5f9', padding: '0 16px', borderRadius: '12px', border: '1px solid #cbd5e1', height: '44px' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Company:</span>
-              <select 
-                name="company" 
-                value={formData.company || ''} 
-                onChange={handleChange}
-                style={{ border: 'none', background: 'transparent', outline: 'none', fontWeight: 800, color: '#0f172a', fontSize: '0.9rem', cursor: 'pointer' }}
-              >
-                <option value="">Select Company</option>
-                {companies.map(c => (
-                  <option key={c.id} value={c.name}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
           {!isGuard && ['ARRIVED', 'Completed'].includes(status) && (
             <button className="tool-btn print-btn" onClick={() => window.print()} style={{ background: '#334155', color: 'white' }}>Print</button>
           )}
@@ -516,6 +510,7 @@ export default function TripTicketForm() {
           guards={guards}
           companies={companies}
           user={user}
+          vehicleCompany={vehicleCompany}
           vehicleCapacityLimit={vehicleCapacityLimit}
           previewEndorser={previewEndorser}
           previewApprover={previewApprover}

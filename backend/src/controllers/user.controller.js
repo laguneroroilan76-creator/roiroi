@@ -153,6 +153,34 @@ const updateUserData = async (req, res) => {
         if (!validDepartmentRoles.includes(data.departmentRole)) {
           return res.status(400).json({ error: 'Invalid department role' });
         }
+
+        // Enforce one President per company
+        if (data.departmentRole === 'President' && data.companyId) {
+          const existingPresident = await prisma.user.findFirst({
+            where: { 
+              departmentRole: 'President', 
+              companyId: data.companyId,
+              NOT: { id: parseInt(req.params.id) } // exclude current user
+            }
+          });
+          if (existingPresident) {
+            return res.status(400).json({ error: 'A President already exists for this company. Only one President is allowed per company.' });
+          }
+        }
+
+        // Enforce one Department Head per department
+        if (data.departmentRole === 'DepartmentHead' && data.departmentId) {
+          const existingDeptHead = await prisma.user.findFirst({
+            where: { 
+              departmentRole: 'DepartmentHead', 
+              departmentId: data.departmentId,
+              NOT: { id: parseInt(req.params.id) } // exclude current user
+            }
+          });
+          if (existingDeptHead) {
+            return res.status(400).json({ error: 'A Department Head already exists for this department. Only one Department Head is allowed per department.' });
+          }
+        }
       }
     }
 

@@ -292,7 +292,7 @@ export default function RFPForm() {
               <div className="rfp-logo-section">
                 <img 
                   src={(() => {
-                    const compName = formData?.company || formData?.author?.company || user?.company?.name;
+                    const compName = formData?.company || formData?.author?.company?.name || user?.company?.name;
                     const selected = companies.find(c => c.name === compName);
                     if (selected?.logoUrl) return `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}${selected.logoUrl}`;
                     if (compName?.includes('Adventures')) return "/Adventures_Logo.png";

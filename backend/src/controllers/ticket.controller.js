@@ -95,8 +95,9 @@ const buildValidationError = (errors) => {
 };
 
 const resolveTripTicketWorkflowTargets = async (ticket, user) => {
-  const requestor = ticket.requestorId
-    ? await prisma.user.findUnique({ where: { id: ticket.requestorId }, include: { department: true, company: true } })
+  const requestorId = ticket.requestorId || ticket.authorId;
+  const requestor = requestorId
+    ? await prisma.user.findUnique({ where: { id: requestorId }, include: { department: true, company: true } })
     : null;
 
   const vehicle = ticket.vehicleId
@@ -182,6 +183,7 @@ const createTicket = async (req, res) => {
     const sanitizedData = await sanitizePayload(validatedBody, req.user);
     sanitizedData.authorId = req.user.id;
     sanitizedData.requestedById = req.user.id;
+    sanitizedData.requestorId = req.user.id;
 
     // Resolve and store expected endorser and approver at creation
     try {
@@ -537,6 +539,47 @@ const rejectTicket = async (req, res) => {
     console.error(err); res.status(500).json({ error: err.message });
   }
 };
+
+const backfillWorkflowTargets = async (req, res) => {
+  try {
+    // Only Admin or President can run this
+    if (req.user.role !== 'Admin' && req.user.departmentRole !== 'President') {
+      return res.status(403).json({ error: 'Admin only' });
+    }
+
+    const tickets = await prisma.tripTicket.findMany({
+      where: {
+        status: { in: ['Pending Endorsement', 'Endorsed'] },
+        OR: [{ endorsedById: null }, { approvedById: null }]
+      },
+      include: {
+        vehicleRef: { include: { company: true, department: true } },
+        requestor: { include: { department: true, company: true } }
+      }
+    });
+
+    let updated = 0;
+    for (const ticket of tickets) {
+      const targets = await resolveTripTicketWorkflowTargets(ticket, req.user);
+      if (targets.expectedEndorser || targets.expectedApprover) {
+        await prisma.tripTicket.update({
+          where: { id: ticket.id },
+          data: {
+            ...(targets.expectedEndorser && { endorsedById: targets.expectedEndorser.id }),
+            ...(targets.expectedApprover && { approvedById: targets.expectedApprover.id }),
+          }
+        });
+        updated++;
+      }
+    }
+
+    res.json({ message: `Backfilled ${updated} tickets`, total: tickets.length });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 module.exports = {
   createTicket,
   getTickets,
@@ -549,5 +592,6 @@ module.exports = {
   endorseTicket,
   approveTicket,
   rejectTicket,
-  getTicketWorkflowTargets
+  getTicketWorkflowTargets,
+  backfillWorkflowTargets
 };
