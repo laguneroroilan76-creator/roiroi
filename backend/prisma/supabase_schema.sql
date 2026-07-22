@@ -355,3 +355,6 @@ $$ LANGUAGE plpgsql;
 -- Apply trigger to tables with updatedAt
 CREATE TRIGGER user_updated_at BEFORE UPDATE ON "user" FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER supportticket_updated_at BEFORE UPDATE ON supportticket FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- Enable Row Level Security
+ALTER TABLE "user" ENABLE ROW LEVEL SECURITY;
