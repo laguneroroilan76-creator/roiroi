@@ -10,7 +10,7 @@ datasource db {
 
 model ActivityLog {
   id         Int      @id @default(autoincrement())
-  userId     Int
+  userId     Int      @map("user_id")
   action     String
   resource   String
   resourceId Int
@@ -24,18 +24,18 @@ model ActivityLog {
 
 model AuditTrail {
   id         Int      @id @default(autoincrement())
-  userId     Int
+  userId     Int      @map("user_id")
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  action     String   // CREATE, UPDATE, APPROVE, REJECT, DELETE
-  tableName  String   // Prf, Rfp, TripTicket
-  recordId   Int
-  oldValues  Json?    // Snapshot of record BEFORE mutation
-  newValues  Json?    // Snapshot of record AFTER mutation
-  ipAddress  String?
+  action     String   @map("action") // CREATE, UPDATE, APPROVE, REJECT, DELETE
+  tableName  String   @map("table_name") // Prf, Rfp, TripTicket
+  recordId   Int      @map("record_id")
+  oldValues  Json?    @map("old_values") // Snapshot of record BEFORE mutation
+  newValues  Json?    @map("new_values") // Snapshot of record AFTER mutation
+  ipAddress  String?  @map("ip_address")
   createdAt  DateTime @default(now()) @map("created_at")
 
-  hash       String?
-  previousHash String?
+  hash       String?   @map("hash")
+  previousHash String? @map("previous_hash")
 
   @@index([userId])
   @@map("audittrail")
