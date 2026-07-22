@@ -4,7 +4,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -14,9 +14,9 @@ model ActivityLog {
   action     String
   resource   String
   resourceId Int
-  details    String?
+  details    String? 
   createdAt  DateTime @default(now())
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "ActivityLog_userId_fkey")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId], map: "ActivityLog_userId_fkey")
   @@map("activitylog")
@@ -67,7 +67,7 @@ model Prf {
   approvedById     Int?
   approvedBy       User?     @relation("PrfApprovedBy", fields: [approvedById], references: [id])
   createdAt        DateTime  @default(now())
-  layout           String?   @db.LongText
+  layout           String?
   status           String    @default("Pending")
   authorId         Int?
   requestorId      Int?
@@ -91,7 +91,7 @@ model PrfItem {
   estimatedCost   String?
   availableStocks String?
   prfId           Int
-  prf             Prf     @relation(fields: [prfId], references: [id], onDelete: Cascade, map: "PrfItem_prfId_fkey")
+  prf             Prf     @relation(fields: [prfId], references: [id], onDelete: Cascade)
 
   @@index([prfId], map: "PrfItem_prfId_fkey")
   @@map("prfitem")
@@ -104,7 +104,7 @@ model Reminder {
   text      String   @db.Text
   createdAt DateTime @default(now())
   endDate   DateTime?
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Reminder_userId_fkey")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId], map: "Reminder_userId_fkey")
   @@map("reminder")
@@ -128,7 +128,7 @@ model Rfp {
   verifiedBy    User?     @relation("RfpVerifiedBy", fields: [verifiedById], references: [id])
   approvedById  Int?
   approvedBy    User?     @relation("RfpApprovedBy", fields: [approvedById], references: [id])
-  layout        String?   @db.LongText
+  layout        String?
   status        String    @default("Pending")
   authorId      Int?
   createdAt     DateTime  @default(now())
@@ -152,7 +152,7 @@ model RfpItem {
   estimatedCost String?
   availableStocks String?
   rfpId         Int
-  rfp           Rfp     @relation(fields: [rfpId], references: [id], onDelete: Cascade, map: "RfpItem_rfpId_fkey")
+  rfp           Rfp     @relation(fields: [rfpId], references: [id], onDelete: Cascade)
 
   @@index([rfpId], map: "RfpItem_rfpId_fkey")
   @@map("rfpitem")
@@ -166,7 +166,7 @@ model Task {
   userId      Int
   createdAt   DateTime @default(now())
   updatedAt   DateTime
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Task_userId_fkey")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId], map: "Task_userId_fkey")
   @@map("task")
@@ -199,7 +199,7 @@ model TripTicket {
   approvedById      Int?
   approvedBy        User?    @relation("TripTicketApprovedBy", fields: [approvedById], references: [id])
   createdAt         DateTime @default(now())
-  layout            String?  @db.LongText
+  layout            String?
   status            String   @default("Pending")
   authorId          Int?
   guardInId         Int?
@@ -385,25 +385,30 @@ enum DepartmentRole {
 }
 
 model Department {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
-  isAdmin   Boolean  @default(false)
-  status    String   @default("Active")
-  createdAt DateTime @default(now())
-  users     User[]
-  vehicles  Vehicle[]
+  id           Int      @id @default(autoincrement())
+  name         String
+  companyId    Int?
+  company      Company? @relation(fields: [companyId], references: [id])
+  isAdmin      Boolean  @default(false)
+  isAccounting Boolean  @default(false)
+  status       String   @default("Active")
+  createdAt    DateTime @default(now())
+  users        User[]
+  vehicles     Vehicle[]
 
+  @@unique([name, companyId])
   @@map("department")
 }
 
 model Company {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
-  logoUrl   String?
-  status    String   @default("Active")
-  createdAt DateTime @default(now())
-  users     User[]
-  vehicles  Vehicle[]
+  id           Int           @id @default(autoincrement())
+  name         String        @unique
+  logoUrl      String?
+  status       String        @default("Active")
+  createdAt    DateTime      @default(now())
+  users        User[]
+  vehicles     Vehicle[]
+  departments  Department[]
 
   @@map("company")
 }

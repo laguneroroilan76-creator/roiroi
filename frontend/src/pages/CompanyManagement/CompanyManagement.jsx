@@ -108,7 +108,6 @@ export default function CompanyManagement() {
           <div className="title-area" style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
             <div>
               <h1 style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0 }}>Company Management</h1>
-              <p style={{ color: 'var(--text-dim)', margin: 0, marginTop: '0.2rem' }}>Manage company names, statuses, and logos</p>
             </div>
           </div>
         </div>

@@ -70,7 +70,7 @@ exports.getDashboardStats = async (req, res) => {
           SUM(CASE WHEN status IN ('In Progress', 'Ongoing', 'DEPARTED') THEN 1 ELSE 0 END) as ongoing,
           SUM(CASE WHEN status IN ('Approved', 'Resolved', 'Completed', 'ARRIVED') THEN 1 ELSE 0 END) as approved
         FROM prf
-        WHERE createdAt >= DATE_SUB(NOW(), INTERVAL 14 DAY) AND status != 'Archived'
+        WHERE createdAt >= NOW() - INTERVAL '14 days' AND status != 'Archived'
         GROUP BY DATE(createdAt)
       `,
       prisma.$queryRaw`
@@ -80,7 +80,7 @@ exports.getDashboardStats = async (req, res) => {
           SUM(CASE WHEN status IN ('In Progress', 'Ongoing', 'DEPARTED') THEN 1 ELSE 0 END) as ongoing,
           SUM(CASE WHEN status IN ('Approved', 'Resolved', 'Completed', 'ARRIVED', 'Received') AND receivedBy IS NOT NULL AND receivedBy != '' THEN 1 ELSE 0 END) as approved
         FROM rfp
-        WHERE createdAt >= DATE_SUB(NOW(), INTERVAL 14 DAY) AND status != 'Archived'
+        WHERE createdAt >= NOW() - INTERVAL '14 days' AND status != 'Archived'
         GROUP BY DATE(createdAt)
       `,
       prisma.$queryRaw`
@@ -90,7 +90,7 @@ exports.getDashboardStats = async (req, res) => {
           SUM(CASE WHEN status IN ('In Progress', 'Ongoing', 'DEPARTED') OR (status IN ('Approved', 'Resolved', 'Completed') AND guardInId IS NULL) THEN 1 ELSE 0 END) as ongoing,
           SUM(CASE WHEN status IN ('Approved', 'Resolved', 'Completed', 'ARRIVED') AND guardInId IS NOT NULL THEN 1 ELSE 0 END) as approved
         FROM tripticket
-        WHERE createdAt >= DATE_SUB(NOW(), INTERVAL 14 DAY) AND status != 'Archived'
+        WHERE createdAt >= NOW() - INTERVAL '14 days' AND status != 'Archived'
         GROUP BY DATE(createdAt)
       `
     ]);
@@ -197,7 +197,7 @@ exports.getAnalyticsData = async (req, res) => {
     // 1. Fetch Aggregated Data via DB Queries
     const [prfAgg, rfpAgg, ttAgg] = await Promise.all([
       prisma.$queryRaw`
-        SELECT DATE(createdAt) as date, IFNULL(department, 'General') as department,
+        SELECT DATE(createdAt) as date, COALESCE(department, 'General') as department,
           SUM(CASE WHEN status IN ('Pending', 'Pending Verification', 'Pending Approval', 'Pending Endorsement', 'Pending Dept Head Approval', 'Pending Final Approval', 'Verified', 'Endorsed') THEN 1 ELSE 0 END) as submitted,
           SUM(CASE WHEN status IN ('Disapproved', 'Closed', 'Cancelled', 'CANCELLED') THEN 1 ELSE 0 END) as rejected,
           SUM(CASE WHEN status IN ('In Progress', 'Ongoing', 'DEPARTED') THEN 1 ELSE 0 END) as ongoing,
@@ -205,10 +205,10 @@ exports.getAnalyticsData = async (req, res) => {
           COUNT(id) as total
         FROM prf
         WHERE createdAt >= ${startDate} AND createdAt <= ${endDate} AND status != 'Archived'
-        GROUP BY DATE(createdAt), IFNULL(department, 'General')
+        GROUP BY DATE(createdAt), COALESCE(department, 'General')
       `,
       prisma.$queryRaw`
-        SELECT DATE(createdAt) as date, IFNULL(department, 'General') as department,
+        SELECT DATE(createdAt) as date, COALESCE(department, 'General') as department,
           SUM(CASE WHEN status IN ('Pending', 'Pending Verification', 'Pending Approval', 'Pending Endorsement', 'Pending Dept Head Approval', 'Pending Final Approval', 'Verified', 'Endorsed') OR (status = 'Approved' AND (receivedBy IS NULL OR receivedBy = '')) THEN 1 ELSE 0 END) as submitted,
           SUM(CASE WHEN status IN ('Disapproved', 'Closed', 'Cancelled', 'CANCELLED') THEN 1 ELSE 0 END) as rejected,
           SUM(CASE WHEN status IN ('In Progress', 'Ongoing', 'DEPARTED') THEN 1 ELSE 0 END) as ongoing,
@@ -216,7 +216,7 @@ exports.getAnalyticsData = async (req, res) => {
           COUNT(id) as total
         FROM rfp
         WHERE createdAt >= ${startDate} AND createdAt <= ${endDate} AND status != 'Archived'
-        GROUP BY DATE(createdAt), IFNULL(department, 'General')
+        GROUP BY DATE(createdAt), COALESCE(department, 'General')
       `,
       prisma.$queryRaw`
         SELECT DATE(createdAt) as date, 'General' as department,

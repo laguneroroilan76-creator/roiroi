@@ -188,7 +188,9 @@ const createTicket = async (req, res) => {
     // Resolve and store expected endorser and approver at creation
     try {
       const targets = await resolveTripTicketWorkflowTargets(sanitizedData, req.user);
-      if (targets.expectedEndorser) sanitizedData.endorsedById = targets.expectedEndorser.id;
+      if (req.user.departmentRole !== 'President' && targets.expectedEndorser) {
+        sanitizedData.endorsedById = targets.expectedEndorser.id;
+      }
       if (targets.expectedApprover) sanitizedData.approvedById = targets.expectedApprover.id;
     } catch (e) {
       console.warn('Could not resolve workflow targets at creation:', e.message);
@@ -203,7 +205,9 @@ const createTicket = async (req, res) => {
     }
 
     const ticket = await prisma.$transaction(async (tx) => {
-      if (!sanitizedData.status) sanitizedData.status = 'Pending Endorsement';
+      if (!sanitizedData.status) {
+        sanitizedData.status = req.user.departmentRole === 'President' ? 'Endorsed' : 'Pending Endorsement';
+      }
       const created = await tx.tripTicket.create({ data: sanitizedData });
       await auditService.log(tx, {
         userId: req.user.id, action: 'CREATE', tableName: 'TripTicket', recordId: created.id, newValues: created, ipAddress: req.ip
@@ -225,7 +229,7 @@ const getTickets = async (req, res) => {
       req.user.departmentRole === 'President' ||
       req.user.departmentRole === 'DepartmentHead' ||
       req.user.departmentRole === 'ImmediateSupervisor';
-    const tickets = await ticketService.getTickets(req.user.id, hasAccess, req.user.role === 'Guard');
+    const tickets = await ticketService.getTickets(req.user.id, hasAccess, req.user.isSecurityGuard === true);
     res.json(tickets);
   } catch (err) {
     console.error(err); res.status(500).json({ error: err.message });
@@ -263,7 +267,7 @@ const updateTicket = async (req, res) => {
     }
 
     // Guards can only edit during travel phases (Approved, DEPARTED) and only KM/guard fields
-    if (req.user.role === 'Guard') {
+    if (req.user.isSecurityGuard === true) {
       const guardAllowed = ['kmOut', 'kmIn', 'guardOutId', 'guardInId', 'dateTimeDeparture', 'dateTimeReturn', 'status'];
       const attemptedFields = Object.keys(sanitizedData).filter(f => sanitizedData[f] != null);
       const hasForbidden = attemptedFields.some((f) => !guardAllowed.includes(f));
@@ -286,11 +290,11 @@ const updateTicket = async (req, res) => {
       return res.status(403).json({ error: 'Cannot edit this ticket at this stage.' });
     }
 
-    if (req.user.role !== 'Guard') {
+    if (req.user.isSecurityGuard !== true) {
       await ensurePassengerCountAndCapacity(sanitizedData, existingTicket);
     }
 
-    if (req.user.role === 'Guard') {
+    if (req.user.isSecurityGuard === true) {
       if (sanitizedData.dateTimeDeparture && !sanitizedData.dateTimeReturn && existingTicket.status === 'Approved') {
         sanitizedData.status = 'DEPARTED';
       } else if (sanitizedData.dateTimeReturn && existingTicket.status === 'DEPARTED') {
