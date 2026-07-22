@@ -24,6 +24,7 @@ export default function SupportLog() {
   const [resolvingTicket, setResolvingTicket] = useState(null);
   const [resolveNote, setResolveNote] = useState('');
   const [activeChatTicket, setActiveChatTicket] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { showToast } = useToast();
   const { isDarkMode } = useTheme();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -89,6 +90,8 @@ export default function SupportLog() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       if (editingTicket) {
         await api.put(`/support/${editingTicket.id}`, formData);
@@ -101,6 +104,8 @@ export default function SupportLog() {
       fetchTickets();
     } catch (err) {
       showToast(err.response?.data?.error || 'Error saving ticket', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -123,7 +128,8 @@ export default function SupportLog() {
 
   const confirmResolve = async (e) => {
     e.preventDefault();
-    if (!resolvingTicket) return;
+    if (!resolvingTicket || isSubmitting) return;
+    setIsSubmitting(true);
     try {
       await api.put(`/support/${resolvingTicket.id}`, { 
         status: 'Resolved', 
@@ -135,6 +141,8 @@ export default function SupportLog() {
       fetchTickets();
     } catch (err) {
       showToast('Error resolving ticket', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -425,13 +433,13 @@ export default function SupportLog() {
               <div className="modal-footer">
                 <button type="button" className="btn-cancel" onClick={() => setIsModalOpen(false)}>Cancel</button>
                 {canManageSupport && editingTicket?.status === 'Pending' && (
-                  <button type="button" className="btn-submit" onClick={(e) => { e.preventDefault(); handleAcceptRequest(); }} style={{ background: '#3b82f6' }}>
-                    Accept Request
+                  <button type="button" className="btn-submit" onClick={(e) => { e.preventDefault(); handleAcceptRequest(); }} disabled={isSubmitting} style={{ background: '#3b82f6', opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}>
+                    {isSubmitting ? 'Accepting...' : 'Accept Request'}
                   </button>
                 )}
                 {(!editingTicket || (editingTicket.status !== 'Resolved' && (canManageSupport || editingTicket.status === 'Pending'))) && (
-                  <button type="submit" className="btn-submit">
-                    {editingTicket ? 'Update Ticket' : 'Submit Request'}
+                  <button type="submit" className="btn-submit" disabled={isSubmitting} style={{ opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}>
+                    {editingTicket ? (isSubmitting ? 'Updating...' : 'Update Ticket') : (isSubmitting ? 'Submitting...' : 'Submit Request')}
                   </button>
                 )}
               </div>
@@ -470,8 +478,8 @@ export default function SupportLog() {
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn-cancel" onClick={() => setIsResolveModalOpen(false)}>Cancel</button>
-                <button type="submit" className="btn-submit" style={{ background: 'var(--primary)', color: '#ffffff' }}>
-                  Confirm Resolution
+                <button type="submit" className="btn-submit" disabled={isSubmitting} style={{ background: 'var(--primary)', color: '#ffffff', opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}>
+                  {isSubmitting ? 'Resolving...' : 'Confirm Resolution'}
                 </button>
               </div>
             </form>

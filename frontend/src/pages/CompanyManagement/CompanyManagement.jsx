@@ -14,6 +14,7 @@ export default function CompanyManagement() {
   const [logoFile, setLogoFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const fileInputRef = useRef(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { showToast, confirm } = useToast();
 
@@ -66,6 +67,8 @@ export default function CompanyManagement() {
   const handleSave = async (e) => {
     e.preventDefault();
     if (!formData.name.trim()) return showToast('Company name is required', 'error');
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
     try {
       const data = new FormData();
@@ -87,6 +90,8 @@ export default function CompanyManagement() {
       fetchCompanies();
     } catch (err) {
       showToast(err.response?.data?.error || 'Error saving company', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -220,9 +225,9 @@ export default function CompanyManagement() {
 
               <div className="cm-modal-actions">
                 <button type="button" className="cm-btn-cancel" onClick={handleCloseModal}>Cancel</button>
-                <button type="submit" className="cm-btn-save">
+                <button type="submit" className="cm-btn-save" disabled={isSubmitting} style={{ opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}>
                   {editingId ? <CheckCircle size={18} /> : <PlusCircle size={18} />}
-                  <span>{editingId ? 'Update' : 'Save'} Company</span>
+                  <span>{isSubmitting ? 'Saving...' : ((editingId ? 'Update' : 'Save') + ' Company')}</span>
                 </button>
               </div>
             </form>

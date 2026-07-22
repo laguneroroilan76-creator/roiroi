@@ -93,6 +93,7 @@ export default function RFPForm() {
 
   const [disReason, setDisReason] = useState('');
   const [showReasonModal, setShowReasonModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isAdmin = user?.role === 'Admin' || user?.canApprove;
   const isGuard = user?.role === 'Guard';
@@ -106,6 +107,8 @@ export default function RFPForm() {
   };
 
   const handleSave = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       const payload = { ...formData, requestor: user?.name || 'Unknown' };
       delete payload.layout;
@@ -121,6 +124,8 @@ export default function RFPForm() {
       console.error(err);
       const msg = err.response?.data?.error || err.message || 'Error saving RFP';
       showToast(msg, 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -272,9 +277,9 @@ export default function RFPForm() {
                   ))}
                 </select>
               </div>
-              <button className="action-btn-premium primary" onClick={handleSave} style={{ borderRadius: '16px', padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button className="action-btn-premium primary" onClick={handleSave} disabled={isSubmitting} style={{ borderRadius: '16px', padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '8px', opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}>
                 <PlusCircle size={20} />
-                <span>Submit Request</span>
+                <span>{isSubmitting ? 'Submitting...' : 'Submit Request'}</span>
               </button>
             </>
           )}

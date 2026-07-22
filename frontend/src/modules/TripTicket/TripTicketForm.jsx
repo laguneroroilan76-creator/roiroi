@@ -28,6 +28,7 @@ export default function TripTicketForm() {
   const [occupiedVehicles, setOccupiedVehicles] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [workflowTargets, setWorkflowTargets] = useState({ expectedEndorser: null, expectedApprover: null });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const getDefaultFormData = () => {
     const requestedBy = initialData?.requestedBy?.name || initialData?.requestedBy || user?.name || '';
@@ -278,6 +279,8 @@ export default function TripTicketForm() {
   };
 
   const handleSave = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       if (!isGuard) {
         if (isDateInPast(formData.dateRequested)) {
@@ -361,6 +364,9 @@ export default function TripTicketForm() {
       }
       navigate(isGuard ? '/guard-dashboard' : '/dashboard');
     } catch (err) { showToast(err.response?.data?.error || 'Error saving Trip Ticket', 'error'); }
+    finally {
+      setIsSubmitting(false);
+    }
   };
 
   const [showReasonModal, setShowReasonModal] = useState(false);
@@ -430,9 +436,9 @@ export default function TripTicketForm() {
             <button className="tool-btn print-btn" onClick={() => window.print()} style={{ background: '#334155', color: 'white' }}>Print</button>
           )}
           {!isReviewMode && status === 'Pending' && (
-            <button className="action-btn-premium primary" onClick={handleSave} style={{ borderRadius: '16px', padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button className="action-btn-premium primary" onClick={handleSave} disabled={isSubmitting} style={{ borderRadius: '16px', padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '8px', opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}>
               <PlusCircle size={20} />
-              <span>Submit Request</span>
+              <span>{isSubmitting ? 'Submitting...' : 'Submit Request'}</span>
             </button>
           )}
 

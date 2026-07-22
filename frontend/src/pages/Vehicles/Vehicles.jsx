@@ -28,6 +28,7 @@ export default function Vehicles() {
   });
   const { showToast } = useToast();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -106,6 +107,8 @@ export default function Vehicles() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       if (editingVehicle) {
         await api.put(`/vehicles/${editingVehicle.id}`, formData);
@@ -118,6 +121,8 @@ export default function Vehicles() {
       fetchVehicles();
     } catch (err) {
       showToast('Error saving vehicle', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -365,7 +370,9 @@ export default function Vehicles() {
 
               <div className="modal-actions">
                 <button type="button" className="btn cancel" onClick={() => setIsModalOpen(false)}>Discard Changes</button>
-                <button type="submit" className="btn submit">{editingVehicle ? 'Update Asset' : 'Register Asset'}</button>
+                <button type="submit" className="btn submit" disabled={isSubmitting} style={{ opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}>
+                  {isSubmitting ? 'Saving...' : (editingVehicle ? 'Update Asset' : 'Register Asset')}
+                </button>
               </div>
             </form>
           </div>

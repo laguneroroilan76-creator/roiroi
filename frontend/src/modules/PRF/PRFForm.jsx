@@ -32,6 +32,7 @@ export default function PRFForm() {
   const [showReasonModal, setShowReasonModal] = useState(false);
   const [disReason, setDisReason] = useState('');
   const [companies, setCompanies] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const getDefaultFormData = () => {
     const today = new Date().toISOString().split('T')[0];
@@ -101,6 +102,8 @@ export default function PRFForm() {
   };
 
   const handleSave = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       const items = (formData?.items || []).filter(it => it?.particulars?.trim() !== '');
       const payload = { ...formData, items };
@@ -116,6 +119,8 @@ export default function PRFForm() {
     } catch (err) { 
       const msg = err.response?.data?.error || err.message || 'Error saving Purchase Requisition';
       showToast(msg, 'error'); 
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -209,9 +214,9 @@ export default function PRFForm() {
                   ))}
                 </select>
               </div>
-              <button className="action-btn-premium primary" onClick={handleSave} style={{ borderRadius: '16px', padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button className="action-btn-premium primary" onClick={handleSave} disabled={isSubmitting} style={{ borderRadius: '16px', padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '8px', opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}>
                 <PlusCircle size={20} />
-                <span>Submit Request</span>
+                <span>{isSubmitting ? 'Submitting...' : 'Submit Request'}</span>
               </button>
             </>
           )}
