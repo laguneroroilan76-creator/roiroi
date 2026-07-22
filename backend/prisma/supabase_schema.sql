@@ -2,11 +2,20 @@
 -- Run this in: Supabase Dashboard -> SQL Editor
 
 -- Enum types
-CREATE TYPE user_role AS ENUM ('User', 'Admin', 'Driver', 'Guard', 'Accounting', 'IT');
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
+    CREATE TYPE user_role AS ENUM ('User', 'Admin', 'Driver', 'Guard', 'Accounting', 'IT');
+  END IF;
+END $$;
 
-CREATE TYPE department_role AS ENUM ('President', 'DepartmentHead', 'ImmediateSupervisor', 'Staff');
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'department_role') THEN
+    CREATE TYPE department_role AS ENUM ('President', 'DepartmentHead', 'ImmediateSupervisor', 'Staff');
+  END IF;
+END $$;
 
--- Companies
 CREATE TABLE IF NOT EXISTS company (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
@@ -15,7 +24,6 @@ CREATE TABLE IF NOT EXISTS company (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Departments
 CREATE TABLE IF NOT EXISTS department (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
@@ -29,7 +37,6 @@ CREATE TABLE IF NOT EXISTS department (
 
 CREATE UNIQUE INDEX IF NOT EXISTS department_name_company_id_key ON department(name, company_id);
 
--- Users
 CREATE TABLE IF NOT EXISTS "user" (
     id SERIAL PRIMARY KEY,
     email TEXT NOT NULL UNIQUE,
@@ -66,7 +73,6 @@ CREATE TABLE IF NOT EXISTS "user" (
 CREATE INDEX IF NOT EXISTS user_company_id_idx ON "user"(company_id);
 CREATE INDEX IF NOT EXISTS user_department_id_idx ON "user"(department_id);
 
--- Activity Log
 CREATE TABLE IF NOT EXISTS activitylog (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,
@@ -80,7 +86,6 @@ CREATE TABLE IF NOT EXISTS activitylog (
 
 CREATE INDEX IF NOT EXISTS activitylog_user_id_idx ON activitylog(user_id);
 
--- Audit Trail
 CREATE TABLE IF NOT EXISTS audittrail (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,
@@ -98,7 +103,6 @@ CREATE TABLE IF NOT EXISTS audittrail (
 
 CREATE INDEX IF NOT EXISTS audittrail_user_id_idx ON audittrail(user_id);
 
--- Driver
 CREATE TABLE IF NOT EXISTS driver (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
@@ -106,7 +110,6 @@ CREATE TABLE IF NOT EXISTS driver (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Vehicle
 CREATE TABLE IF NOT EXISTS vehicle (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
@@ -128,7 +131,6 @@ CREATE TABLE IF NOT EXISTS vehicle (
     CONSTRAINT vehicle_department_id_fkey FOREIGN KEY (department_id) REFERENCES department(id) ON DELETE SET NULL
 );
 
--- Reminder
 CREATE TABLE IF NOT EXISTS reminder (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,
@@ -141,7 +143,6 @@ CREATE TABLE IF NOT EXISTS reminder (
 
 CREATE INDEX IF NOT EXISTS reminder_user_id_idx ON reminder(user_id);
 
--- Task
 CREATE TABLE IF NOT EXISTS task (
     id SERIAL PRIMARY KEY,
     title TEXT NOT NULL,
@@ -155,7 +156,6 @@ CREATE TABLE IF NOT EXISTS task (
 
 CREATE INDEX IF NOT EXISTS task_user_id_idx ON task(user_id);
 
--- Notification
 CREATE TABLE IF NOT EXISTS notification (
     id SERIAL PRIMARY KEY,
     message TEXT NOT NULL,
@@ -170,7 +170,6 @@ CREATE TABLE IF NOT EXISTS notification (
 
 CREATE INDEX IF NOT EXISTS notification_target_user_id_idx ON notification(target_user_id);
 
--- Support Ticket
 CREATE TABLE IF NOT EXISTS supportticket (
     id SERIAL PRIMARY KEY,
     subject TEXT NOT NULL,
@@ -190,7 +189,6 @@ CREATE TABLE IF NOT EXISTS supportticket (
     CONSTRAINT supportticket_resolved_by_id_fkey FOREIGN KEY (resolved_by_id) REFERENCES "user"(id) ON DELETE SET NULL
 );
 
--- Support Message
 CREATE TABLE IF NOT EXISTS supportmessage (
     id SERIAL PRIMARY KEY,
     ticket_id INTEGER NOT NULL,
@@ -201,7 +199,6 @@ CREATE TABLE IF NOT EXISTS supportmessage (
     CONSTRAINT supportmessage_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES "user"(id) ON DELETE CASCADE
 );
 
--- Trip Ticket
 CREATE TABLE IF NOT EXISTS tripticket (
     id SERIAL PRIMARY KEY,
     date_requested TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -249,7 +246,6 @@ CREATE TABLE IF NOT EXISTS tripticket (
 
 CREATE INDEX IF NOT EXISTS tripticket_author_id_idx ON tripticket(author_id);
 
--- PRF
 CREATE TABLE IF NOT EXISTS prf (
     id SERIAL PRIMARY KEY,
     prf_no TEXT,
@@ -283,7 +279,6 @@ CREATE TABLE IF NOT EXISTS prf (
 
 CREATE INDEX IF NOT EXISTS prf_author_id_idx ON prf(author_id);
 
--- PRF Item
 CREATE TABLE IF NOT EXISTS prfitem (
     id SERIAL PRIMARY KEY,
     qty TEXT,
@@ -297,7 +292,6 @@ CREATE TABLE IF NOT EXISTS prfitem (
 
 CREATE INDEX IF NOT EXISTS prfitem_prf_id_idx ON prfitem(prf_id);
 
--- RFP
 CREATE TABLE IF NOT EXISTS rfp (
     id SERIAL PRIMARY KEY,
     rfp_no TEXT,
@@ -329,7 +323,6 @@ CREATE TABLE IF NOT EXISTS rfp (
 
 CREATE INDEX IF NOT EXISTS rfp_author_id_idx ON rfp(author_id);
 
--- RFP Item
 CREATE TABLE IF NOT EXISTS rfpitem (
     id SERIAL PRIMARY KEY,
     qty TEXT,
