@@ -2,7 +2,7 @@ const { PrismaClient } = require('@prisma/client')
 const prisma = new PrismaClient()
 
 async function main() {
-  await prisma.company.upsert({
+  const company = await prisma.company.upsert({
     where: { name: 'Adventures' },
     update: { status: 'Active' },
     create: { name: 'Adventures', status: 'Active' }
@@ -19,12 +19,26 @@ async function main() {
   ]
 
   for (const dept of departments) {
-    await prisma.department.upsert({
-      where: { name: dept.name },
-      update: { isAdmin: dept.isAdmin ?? false },
-      create: { name: dept.name, isAdmin: dept.isAdmin ?? false }
+    const existing = await prisma.department.findFirst({
+      where: { name: dept.name }
     })
+
+    if (existing) {
+      await prisma.department.update({
+        where: { id: existing.id },
+        data: { isAdmin: dept.isAdmin ?? false }
+      })
+    } else {
+      await prisma.department.create({
+        data: {
+          name: dept.name,
+          isAdmin: dept.isAdmin ?? false
+        }
+      })
+    }
   }
+
+  console.log('Seed completed successfully')
 }
 
 main()

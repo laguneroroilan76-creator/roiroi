@@ -15,7 +15,7 @@ model ActivityLog {
   resource   String
   resourceId Int
   details    String? 
-  createdAt  DateTime @default(now())
+  createdAt  DateTime @default(now()) @map("created_at")
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId], map: "ActivityLog_userId_fkey")
@@ -32,7 +32,7 @@ model AuditTrail {
   oldValues  Json?    // Snapshot of record BEFORE mutation
   newValues  Json?    // Snapshot of record AFTER mutation
   ipAddress  String?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime @default(now()) @map("created_at")
 
   hash       String?
   previousHash String?
@@ -45,19 +45,19 @@ model Driver {
   id        Int      @id @default(autoincrement())
   name      String
   status    String   @default("Active")
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at")
   @@map("driver")
 }
 
 model Prf {
   id               Int       @id @default(autoincrement())
-  prfNo            String?
-  dateRequested    DateTime? @default(now())
-  dateNeeded       DateTime?
+  prfNo            String?   @map("prf_no")
+  dateRequested    DateTime? @default(now()) @map("date_requested")
+  dateNeeded       DateTime? @map("date_needed")
   to               String?
   from             String?
   remarks          String?
-  quotationSummary String?
+  quotationSummary String?  @map("quotation_summary")
   preparedById     Int?
   preparedBy       User?     @relation("PrfPreparedBy", fields: [preparedById], references: [id])
   verifiedById     Int?
@@ -66,17 +66,17 @@ model Prf {
   notedBy          User?     @relation("PrfNotedBy", fields: [notedById], references: [id])
   approvedById     Int?
   approvedBy       User?     @relation("PrfApprovedBy", fields: [approvedById], references: [id])
-  createdAt        DateTime  @default(now())
+  createdAt        DateTime  @default(now()) @map("created_at")
   layout           String?
   status           String    @default("Pending")
-  authorId         Int?
-  requestorId      Int?
+  authorId         Int?      @map("author_id")
+  requestorId      Int?      @map("requestor_id")
   requestor        User?     @relation("PrfRequestor", fields: [requestorId], references: [id])
   department       String?
   company          String?
-  archivedById     Int?
+  archivedById     Int?      @map("archived_by_id")
   archivedBy       User?     @relation("PrfArchivedBy", fields: [archivedById], references: [id])
-  disapprovalReason String?
+  disapprovalReason String?  @map("disapproval_reason")
   author           User?     @relation("PrfAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   items            PrfItem[]
   @@index([authorId])
@@ -88,9 +88,9 @@ model PrfItem {
   qty             String?
   unit            String?
   particulars     String?
-  estimatedCost   String?
-  availableStocks String?
-  prfId           Int
+  estimatedCost   String? @map("estimated_cost")
+  availableStocks String? @map("available_stocks")
+  prfId           Int     @map("prf_id")
   prf             Prf     @relation(fields: [prfId], references: [id], onDelete: Cascade)
 
   @@index([prfId], map: "PrfItem_prfId_fkey")
@@ -99,11 +99,11 @@ model PrfItem {
 
 model Reminder {
   id        Int      @id @default(autoincrement())
-  userId    Int
-  date      DateTime
+  userId    Int      @map("user_id")
+  date      DateTime @map("date")
   text      String   @db.Text
-  createdAt DateTime @default(now())
-  endDate   DateTime?
+  createdAt DateTime @default(now()) @map("created_at")
+  endDate   DateTime? @map("end_date")
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId], map: "Reminder_userId_fkey")
@@ -112,31 +112,31 @@ model Reminder {
 
 model Rfp {
   id            Int       @id @default(autoincrement())
-  rfpNo         String?
-  requestorId   Int?
+  rfpNo         String?   @map("rfp_no")
+  requestorId   Int?      @map("requestor_id")
   requestor     User?     @relation("RfpRequestor", fields: [requestorId], references: [id])
-  dateRequested DateTime? @default(now())
-  dateNeeded    DateTime?
+  dateRequested DateTime? @default(now()) @map("date_requested")
+  dateNeeded    DateTime? @map("date_needed")
   to            String?
   from          String?
   department    String?
   company       String?
   remarks       String?
-  preparedById  Int?
+  preparedById  Int?      @map("prepared_by_id")
   preparedBy    User?     @relation("RfpPreparedBy", fields: [preparedById], references: [id])
-  verifiedById  Int?
+  verifiedById  Int?      @map("verified_by_id")
   verifiedBy    User?     @relation("RfpVerifiedBy", fields: [verifiedById], references: [id])
-  approvedById  Int?
+  approvedById  Int?      @map("approved_by_id")
   approvedBy    User?     @relation("RfpApprovedBy", fields: [approvedById], references: [id])
   layout        String?
   status        String    @default("Pending")
-  authorId      Int?
-  createdAt     DateTime  @default(now())
-  archivedById  Int?
+  authorId      Int?      @map("author_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  archivedById  Int?      @map("archived_by_id")
   archivedBy    User?     @relation("RfpArchivedBy", fields: [archivedById], references: [id])
-  receivedBy    String?
-  receivedDate  DateTime?
-  disapprovalReason String?
+  receivedBy    String?   @map("received_by")
+  receivedDate  DateTime? @map("received_date")
+  disapprovalReason String? @map("disapproval_reason")
   author           User?     @relation("RfpAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   items         RfpItem[]
 
@@ -149,9 +149,9 @@ model RfpItem {
   qty           String?
   unit          String?
   particulars   String?
-  estimatedCost String?
-  availableStocks String?
-  rfpId         Int
+  estimatedCost String? @map("estimated_cost")
+  availableStocks String? @map("available_stocks")
+  rfpId         Int     @map("rfp_id")
   rfp           Rfp     @relation(fields: [rfpId], references: [id], onDelete: Cascade)
 
   @@index([rfpId], map: "RfpItem_rfpId_fkey")
@@ -163,9 +163,9 @@ model Task {
   title       String
   description String?
   completed   Boolean  @default(false)
-  userId      Int
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime
+  userId      Int      @map("user_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @map("updated_at")
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId], map: "Task_userId_fkey")
@@ -174,46 +174,46 @@ model Task {
 
 model TripTicket {
   id                Int      @id @default(autoincrement())
-  dateRequested     DateTime? @default(now())
-  requestorId       Int?
+  dateRequested     DateTime? @default(now()) @map("date_requested")
+  requestorId       Int?      @map("requestor_id")
   requestor         User?    @relation("TripTicketRequestor", fields: [requestorId], references: [id])
   subsidiary        String?
-  driverId          Int?
+  driverId          Int?      @map("driver_id")
   driverUser        User?    @relation("TripTicketDriver", fields: [driverId], references: [id])
   vehicle           String?
-  vehicleId         Int?
+  vehicleId         Int?      @map("vehicle_id")
   vehicleRef        Vehicle? @relation(fields: [vehicleId], references: [id])
-  plateNumber       String?
-  etdOffice         String?
-  etaDestination    String?
-  dateTimeDeparture DateTime?
-  dateTimeReturn    DateTime?
-  passengersDetail  String?
+  plateNumber       String?   @map("plate_number")
+  etdOffice         String?   @map("etd_office")
+  etaDestination    String?   @map("eta_destination")
+  dateTimeDeparture DateTime? @map("date_time_departure")
+  dateTimeReturn    DateTime? @map("date_time_return")
+  passengersDetail  String?   @map("passengers_detail")
   destination       String?
   purpose           String?
   medium            String?
-  requestedById     Int?
+  requestedById     Int?      @map("requested_by_id")
   requestedBy       User?    @relation("TripTicketRequestedBy", fields: [requestedById], references: [id])
-  endorsedById      Int?
+  endorsedById      Int?      @map("endorsed_by_id")
   endorsedBy        User?    @relation("TripTicketEndorsedBy", fields: [endorsedById], references: [id])
-  approvedById      Int?
+  approvedById      Int?      @map("approved_by_id")
   approvedBy        User?    @relation("TripTicketApprovedBy", fields: [approvedById], references: [id])
-  createdAt         DateTime @default(now())
+  createdAt         DateTime @default(now()) @map("created_at")
   layout            String?
   status            String   @default("Pending")
-  authorId          Int?
-  guardInId         Int?
+  authorId          Int?      @map("author_id")
+  guardInId         Int?      @map("guard_in_id")
   guardInUser       User?    @relation("TripTicketGuardIn", fields: [guardInId], references: [id])
-  guardOutId        Int?
+  guardOutId        Int?      @map("guard_out_id")
   guardOutUser      User?    @relation("TripTicketGuardOut", fields: [guardOutId], references: [id])
-  kmIn              String?
-  kmOut             String?
-  hdiPassengers     String?
-  outsidePassengers String?
-  passengerCount    String?
-  archivedById      Int?
+  kmIn              String?   @map("km_in")
+  kmOut             String?   @map("km_out")
+  hdiPassengers     String?   @map("hdi_passengers")
+  outsidePassengers String?   @map("outside_passengers")
+  passengerCount    String?   @map("passenger_count")
+  archivedById      Int?      @map("archived_by_id")
   archivedBy        User?    @relation("TripTicketArchivedBy", fields: [archivedById], references: [id])
-  disapprovalReason String?
+  disapprovalReason String?   @map("disapproval_reason")
   author            User?    @relation("TripTicketAuthor", fields: [authorId], references: [id], onDelete: Cascade)
 
   @@index([authorId])
@@ -225,8 +225,8 @@ model User {
   email        String        @unique(map: "User_email_key")
   password     String
   name         String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
   canApprove          Boolean       @default(false)
   canApprovePRF       Boolean       @default(false)
   canApproveTripTicket Boolean      @default(false)
@@ -240,12 +240,12 @@ model User {
   isDarkMode   Boolean       @default(false)
   role         UserRole      @default(User)
   status       String        @default("Active")
-  inactiveReason String?     @db.Text
-  companyId    Int?
+  inactiveReason String?     @db.Text @map("inactive_reason")
+  companyId    Int?          @map("company_id")
   company      Company?      @relation(fields: [companyId], references: [id])
-  departmentId Int?
+  departmentId Int?          @map("department_id")
   department   Department?   @relation(fields: [departmentId], references: [id])
-  departmentRole DepartmentRole?
+  departmentRole DepartmentRole? @map("department_role")
   isDriver     Boolean       @default(false)
   isRFPApprover Boolean      @default(false)
   isSecurityGuard  Boolean  @default(false)
@@ -301,16 +301,16 @@ model SupportTicket {
   status      String   @default("Pending")
   priority    String   @default("Medium")
   category    String   @default("Others")
-  authorId    Int
+  authorId    Int      @map("author_id")
   author      User     @relation("SupportAuthor", fields: [authorId], references: [id], onDelete: Cascade)
-  assignedToId Int?
+  assignedToId Int?     @map("assigned_to_id")
   assignedTo  User?    @relation("SupportAssigned", fields: [assignedToId], references: [id])
-  resolvedById Int?
+  resolvedById Int?     @map("resolved_by_id")
   resolvedBy  User?    @relation("SupportResolvedBy", fields: [resolvedById], references: [id])
-  resolutionNotes String? @db.Text
-  resolvedAt  DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  resolutionNotes String? @db.Text @map("resolution_notes")
+  resolvedAt  DateTime? @map("resolved_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
   messages    SupportMessage[]
 
   @@map("supportticket")
@@ -319,34 +319,34 @@ model SupportTicket {
 model Vehicle {
   id            Int      @id @default(autoincrement())
   name          String
-  plateNumber   String
+  plateNumber   String   @map("plate_number")
   brand         String?
   model         String?
   year          String?
   color         String?
-  fuelType      String?
+  fuelType      String?  @map("fuel_type")
   transmission  String?
-  engineNumber  String?
-  chassisNumber String?
+  engineNumber  String?  @map("engine_number")
+  chassisNumber String?  @map("chassis_number")
   capacity      Int
   status        String   @default("Active")
-  createdAt     DateTime @default(now())
-  companyId     Int?
+  createdAt     DateTime @default(now()) @map("created_at")
+  companyId     Int?      @map("company_id")
   company       Company?  @relation(fields: [companyId], references: [id])
-  departmentId  Int?
-  department    Department?  @relation(fields: [departmentId], references: [id])
+  departmentId  Int?      @map("department_id")
+  department    Department?   @relation(fields: [departmentId], references: [id])
   tripTickets   TripTicket[]
   @@map("vehicle")
 }
 
 model SupportMessage {
-  id          Int      @id @default(autoincrement())
-  ticketId    Int
+  id          Int          @id @default(autoincrement())
+  ticketId    Int           @map("ticket_id")
   ticket      SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  senderId    Int
-  sender      User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
-  message     String   @db.Text
-  createdAt   DateTime @default(now())
+  senderId    Int           @map("sender_id")
+  sender      User          @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  message     String        @db.Text
+  createdAt   DateTime      @default(now()) @map("created_at")
 
   @@map("supportmessage")
 }
@@ -356,11 +356,11 @@ model Notification {
   message     String
   type        String   @default("INFO")
   link        String?
-  isRead      Boolean  @default(false)
-  targetRole  String?
-  targetUserId Int?
+  isRead      Boolean  @default(false) @map("is_read")
+  targetRole  String?  @map("target_role")
+  targetUserId Int?     @map("target_user_id")
   user        User?    @relation(fields: [targetUserId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
+  createdAt   DateTime @default(now()) @map("created_at")
 
   @@index([targetUserId])
   @@map("notification")
@@ -387,12 +387,12 @@ enum DepartmentRole {
 model Department {
   id           Int      @id @default(autoincrement())
   name         String
-  companyId    Int?
+  companyId    Int?      @map("company_id")
   company      Company? @relation(fields: [companyId], references: [id])
-  isAdmin      Boolean  @default(false)
-  isAccounting Boolean  @default(false)
+  isAdmin      Boolean  @default(false) @map("is_admin")
+  isAccounting Boolean  @default(false) @map("is_accounting")
   status       String   @default("Active")
-  createdAt    DateTime @default(now())
+  createdAt    DateTime @default(now()) @map("created_at")
   users        User[]
   vehicles     Vehicle[]
 
@@ -403,9 +403,9 @@ model Department {
 model Company {
   id           Int           @id @default(autoincrement())
   name         String        @unique
-  logoUrl      String?
+  logoUrl      String?       @map("logo_url")
   status       String        @default("Active")
-  createdAt    DateTime      @default(now())
+  createdAt    DateTime      @default(now()) @map("created_at")
   users        User[]
   vehicles     Vehicle[]
   departments  Department[]
