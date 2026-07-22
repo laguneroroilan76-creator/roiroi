@@ -13,7 +13,7 @@ model ActivityLog {
   userId     Int      @map("user_id")
   action     String
   resource   String
-  resourceId Int
+  resourceId Int      @map("resource_id")
   details    String? 
   createdAt  DateTime @default(now()) @map("created_at")
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -54,17 +54,17 @@ model Prf {
   prfNo            String?   @map("prf_no")
   dateRequested    DateTime? @default(now()) @map("date_requested")
   dateNeeded       DateTime? @map("date_needed")
-  to               String?
-  from             String?
+  to               String?   @map("to")
+  from             String?   @map("from")
   remarks          String?
   quotationSummary String?  @map("quotation_summary")
-  preparedById     Int?
+  preparedById     Int?      @map("prepared_by_id")
   preparedBy       User?     @relation("PrfPreparedBy", fields: [preparedById], references: [id])
-  verifiedById     Int?
+  verifiedById     Int?      @map("verified_by_id")
   verifiedBy       User?     @relation("PrfVerifiedBy", fields: [verifiedById], references: [id])
-  notedById        Int?
+  notedById        Int?      @map("noted_by_id")
   notedBy          User?     @relation("PrfNotedBy", fields: [notedById], references: [id])
-  approvedById     Int?
+  approvedById     Int?      @map("approved_by_id")
   approvedBy       User?     @relation("PrfApprovedBy", fields: [approvedById], references: [id])
   createdAt        DateTime  @default(now()) @map("created_at")
   layout           String?
@@ -117,8 +117,7 @@ model Rfp {
   requestor     User?     @relation("RfpRequestor", fields: [requestorId], references: [id])
   dateRequested DateTime? @default(now()) @map("date_requested")
   dateNeeded    DateTime? @map("date_needed")
-  to            String?
-  from          String?
+  from          String?   @map("from")
   department    String?
   company       String?
   remarks       String?

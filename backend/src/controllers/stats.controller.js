@@ -64,34 +64,34 @@ exports.getDashboardStats = async (req, res) => {
     // 2. Trends & Sparklines (Database-level Aggregation)
     const [prfs14, rfps14, tts14] = await Promise.all([
       prisma.$queryRaw`
-        SELECT DATE(createdAt) as date,
+        SELECT DATE(created_at) as date,
           SUM(CASE WHEN status IN ('Pending', 'Pending Verification', 'Pending Approval', 'Pending Endorsement', 'Pending Dept Head Approval', 'Pending Final Approval', 'Verified', 'Endorsed') THEN 1 ELSE 0 END) as pending,
           SUM(CASE WHEN status IN ('Disapproved', 'Closed', 'Cancelled', 'CANCELLED') THEN 1 ELSE 0 END) as rejected,
           SUM(CASE WHEN status IN ('In Progress', 'Ongoing', 'DEPARTED') THEN 1 ELSE 0 END) as ongoing,
           SUM(CASE WHEN status IN ('Approved', 'Resolved', 'Completed', 'ARRIVED') THEN 1 ELSE 0 END) as approved
         FROM prf
-        WHERE createdAt >= NOW() - INTERVAL '14 days' AND status != 'Archived'
-        GROUP BY DATE(createdAt)
+        WHERE created_at >= NOW() - INTERVAL '14 days' AND status != 'Archived'
+        GROUP BY DATE(created_at)
       `,
       prisma.$queryRaw`
-        SELECT DATE(createdAt) as date,
-          SUM(CASE WHEN status IN ('Pending', 'Pending Verification', 'Pending Approval', 'Pending Endorsement', 'Pending Dept Head Approval', 'Pending Final Approval', 'Verified', 'Endorsed') OR (status = 'Approved' AND (receivedBy IS NULL OR receivedBy = '')) THEN 1 ELSE 0 END) as pending,
+        SELECT DATE(created_at) as date,
+          SUM(CASE WHEN status IN ('Pending', 'Pending Verification', 'Pending Approval', 'Pending Endorsement', 'Pending Dept Head Approval', 'Pending Final Approval', 'Verified', 'Endorsed') OR (status = 'Approved' AND (received_by IS NULL OR received_by = '')) THEN 1 ELSE 0 END) as pending,
           SUM(CASE WHEN status IN ('Disapproved', 'Closed', 'Cancelled', 'CANCELLED') THEN 1 ELSE 0 END) as rejected,
           SUM(CASE WHEN status IN ('In Progress', 'Ongoing', 'DEPARTED') THEN 1 ELSE 0 END) as ongoing,
-          SUM(CASE WHEN status IN ('Approved', 'Resolved', 'Completed', 'ARRIVED', 'Received') AND receivedBy IS NOT NULL AND receivedBy != '' THEN 1 ELSE 0 END) as approved
+          SUM(CASE WHEN status IN ('Approved', 'Resolved', 'Completed', 'ARRIVED', 'Received') AND received_by IS NOT NULL AND received_by != '' THEN 1 ELSE 0 END) as approved
         FROM rfp
-        WHERE createdAt >= NOW() - INTERVAL '14 days' AND status != 'Archived'
-        GROUP BY DATE(createdAt)
+        WHERE created_at >= NOW() - INTERVAL '14 days' AND status != 'Archived'
+        GROUP BY DATE(created_at)
       `,
       prisma.$queryRaw`
-        SELECT DATE(createdAt) as date,
+        SELECT DATE(created_at) as date,
           SUM(CASE WHEN status IN ('Pending', 'Pending Verification', 'Pending Approval', 'Pending Endorsement', 'Pending Dept Head Approval', 'Pending Final Approval', 'Verified', 'Endorsed') THEN 1 ELSE 0 END) as pending,
           SUM(CASE WHEN status IN ('Disapproved', 'Closed', 'Cancelled', 'CANCELLED') THEN 1 ELSE 0 END) as rejected,
-          SUM(CASE WHEN status IN ('In Progress', 'Ongoing', 'DEPARTED') OR (status IN ('Approved', 'Resolved', 'Completed') AND guardInId IS NULL) THEN 1 ELSE 0 END) as ongoing,
-          SUM(CASE WHEN status IN ('Approved', 'Resolved', 'Completed', 'ARRIVED') AND guardInId IS NOT NULL THEN 1 ELSE 0 END) as approved
+          SUM(CASE WHEN status IN ('In Progress', 'Ongoing', 'DEPARTED') OR (status IN ('Approved', 'Resolved', 'Completed') AND guard_in_id IS NULL) THEN 1 ELSE 0 END) as ongoing,
+          SUM(CASE WHEN status IN ('Approved', 'Resolved', 'Completed', 'ARRIVED') AND guard_in_id IS NOT NULL THEN 1 ELSE 0 END) as approved
         FROM tripticket
-        WHERE createdAt >= NOW() - INTERVAL '14 days' AND status != 'Archived'
-        GROUP BY DATE(createdAt)
+        WHERE created_at >= NOW() - INTERVAL '14 days' AND status != 'Archived'
+        GROUP BY DATE(created_at)
       `
     ]);
 
@@ -197,37 +197,37 @@ exports.getAnalyticsData = async (req, res) => {
     // 1. Fetch Aggregated Data via DB Queries
     const [prfAgg, rfpAgg, ttAgg] = await Promise.all([
       prisma.$queryRaw`
-        SELECT DATE(createdAt) as date, COALESCE(department, 'General') as department,
+        SELECT DATE(created_at) as date, COALESCE(department, 'General') as department,
           SUM(CASE WHEN status IN ('Pending', 'Pending Verification', 'Pending Approval', 'Pending Endorsement', 'Pending Dept Head Approval', 'Pending Final Approval', 'Verified', 'Endorsed') THEN 1 ELSE 0 END) as submitted,
           SUM(CASE WHEN status IN ('Disapproved', 'Closed', 'Cancelled', 'CANCELLED') THEN 1 ELSE 0 END) as rejected,
           SUM(CASE WHEN status IN ('In Progress', 'Ongoing', 'DEPARTED') THEN 1 ELSE 0 END) as ongoing,
           SUM(CASE WHEN status IN ('Approved', 'Resolved', 'Completed', 'ARRIVED') THEN 1 ELSE 0 END) as completed,
           COUNT(id) as total
         FROM prf
-        WHERE createdAt >= ${startDate} AND createdAt <= ${endDate} AND status != 'Archived'
-        GROUP BY DATE(createdAt), COALESCE(department, 'General')
+        WHERE created_at >= ${startDate} AND created_at <= ${endDate} AND status != 'Archived'
+        GROUP BY DATE(created_at), COALESCE(department, 'General')
       `,
       prisma.$queryRaw`
-        SELECT DATE(createdAt) as date, COALESCE(department, 'General') as department,
-          SUM(CASE WHEN status IN ('Pending', 'Pending Verification', 'Pending Approval', 'Pending Endorsement', 'Pending Dept Head Approval', 'Pending Final Approval', 'Verified', 'Endorsed') OR (status = 'Approved' AND (receivedBy IS NULL OR receivedBy = '')) THEN 1 ELSE 0 END) as submitted,
+        SELECT DATE(created_at) as date, COALESCE(department, 'General') as department,
+          SUM(CASE WHEN status IN ('Pending', 'Pending Verification', 'Pending Approval', 'Pending Endorsement', 'Pending Dept Head Approval', 'Pending Final Approval', 'Verified', 'Endorsed') OR (status = 'Approved' AND (received_by IS NULL OR received_by = '')) THEN 1 ELSE 0 END) as submitted,
           SUM(CASE WHEN status IN ('Disapproved', 'Closed', 'Cancelled', 'CANCELLED') THEN 1 ELSE 0 END) as rejected,
           SUM(CASE WHEN status IN ('In Progress', 'Ongoing', 'DEPARTED') THEN 1 ELSE 0 END) as ongoing,
-          SUM(CASE WHEN status IN ('Approved', 'Resolved', 'Completed', 'ARRIVED', 'Received') AND receivedBy IS NOT NULL AND receivedBy != '' THEN 1 ELSE 0 END) as completed,
+          SUM(CASE WHEN status IN ('Approved', 'Resolved', 'Completed', 'ARRIVED', 'Received') AND received_by IS NOT NULL AND received_by != '' THEN 1 ELSE 0 END) as completed,
           COUNT(id) as total
         FROM rfp
-        WHERE createdAt >= ${startDate} AND createdAt <= ${endDate} AND status != 'Archived'
-        GROUP BY DATE(createdAt), COALESCE(department, 'General')
+        WHERE created_at >= ${startDate} AND created_at <= ${endDate} AND status != 'Archived'
+        GROUP BY DATE(created_at), COALESCE(department, 'General')
       `,
       prisma.$queryRaw`
-        SELECT DATE(createdAt) as date, 'General' as department,
+        SELECT DATE(created_at) as date, 'General' as department,
           SUM(CASE WHEN status IN ('Pending', 'Pending Verification', 'Pending Approval', 'Pending Endorsement', 'Pending Dept Head Approval', 'Pending Final Approval', 'Verified', 'Endorsed') THEN 1 ELSE 0 END) as submitted,
           SUM(CASE WHEN status IN ('Disapproved', 'Closed', 'Cancelled', 'CANCELLED') THEN 1 ELSE 0 END) as rejected,
-          SUM(CASE WHEN status IN ('In Progress', 'Ongoing', 'DEPARTED') OR (status IN ('Approved', 'Resolved', 'Completed') AND guardInId IS NULL) THEN 1 ELSE 0 END) as ongoing,
-          SUM(CASE WHEN status IN ('Approved', 'Resolved', 'Completed', 'ARRIVED') AND guardInId IS NOT NULL THEN 1 ELSE 0 END) as completed,
+          SUM(CASE WHEN status IN ('In Progress', 'Ongoing', 'DEPARTED') OR (status IN ('Approved', 'Resolved', 'Completed') AND guard_in_id IS NULL) THEN 1 ELSE 0 END) as ongoing,
+          SUM(CASE WHEN status IN ('Approved', 'Resolved', 'Completed', 'ARRIVED') AND guard_in_id IS NOT NULL THEN 1 ELSE 0 END) as completed,
           COUNT(id) as total
         FROM tripticket
-        WHERE createdAt >= ${startDate} AND createdAt <= ${endDate} AND status != 'Archived'
-        GROUP BY DATE(createdAt)
+        WHERE created_at >= ${startDate} AND created_at <= ${endDate} AND status != 'Archived'
+        GROUP BY DATE(created_at)
       `
     ]);
 
