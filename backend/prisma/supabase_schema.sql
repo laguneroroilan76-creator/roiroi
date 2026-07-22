@@ -255,7 +255,7 @@ CREATE TABLE IF NOT EXISTS prf (
     prf_no TEXT,
     date_requested TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     date_needed TIMESTAMP,
-    to TEXT,
+    "to" TEXT,
     "from" TEXT,
     remarks TEXT,
     quotation_summary TEXT,
