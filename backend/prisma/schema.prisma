@@ -227,17 +227,17 @@ model User {
   name         String?
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
-  canApprove          Boolean       @default(false)
-  canApprovePRF       Boolean       @default(false)
-  canApproveTripTicket Boolean      @default(false)
-  canApproveRFP       Boolean       @default(false)
-  canApproveDeptHead  Boolean       @default(false)
-  canEndorse          Boolean       @default(false)
-  canVerify           Boolean       @default(false)
-  signatureUrl String?
-  avatarUrl    String?
-  themeColor   String?       @default("#0f172a")
-  isDarkMode   Boolean       @default(false)
+  canApprove          Boolean       @default(false) @map("can_approve")
+  canApprovePRF       Boolean       @default(false) @map("can_approve_prf")
+  canApproveTripTicket Boolean      @default(false) @map("can_approve_trip_ticket")
+  canApproveRFP       Boolean       @default(false) @map("can_approve_rfp")
+  canApproveDeptHead  Boolean       @default(false) @map("can_approve_dept_head")
+  canEndorse          Boolean       @default(false) @map("can_endorse")
+  canVerify           Boolean       @default(false) @map("can_verify")
+  signatureUrl String? @map("signature_url")
+  avatarUrl    String? @map("avatar_url")
+  themeColor   String?       @default("#0f172a") @map("theme_color")
+  isDarkMode   Boolean       @default(false) @map("is_dark_mode")
   role         UserRole      @default(User)
   status       String        @default("Active")
   inactiveReason String?     @db.Text @map("inactive_reason")
@@ -246,10 +246,10 @@ model User {
   departmentId Int?          @map("department_id")
   department   Department?   @relation(fields: [departmentId], references: [id])
   departmentRole DepartmentRole? @map("department_role")
-  isDriver     Boolean       @default(false)
-  isRFPApprover Boolean      @default(false)
-  isSecurityGuard  Boolean  @default(false)
-  isITSpecialist   Boolean  @default(false)
+  isDriver     Boolean       @default(false) @map("is_driver")
+  isRFPApprover Boolean      @default(false) @map("is_rfp_approver")
+  isSecurityGuard  Boolean  @default(false) @map("is_security_guard")
+  isITSpecialist   Boolean  @default(false) @map("is_it_specialist")
   permissions  Json?
   
   // Backwards relations
